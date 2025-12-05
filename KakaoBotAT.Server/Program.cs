@@ -9,6 +9,9 @@ builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
 // Register statistics service
 builder.Services.AddSingleton<IChatStatisticsService, ChatStatisticsService>();
 
+// Register cleanup service
+builder.Services.AddSingleton<MessageCleanupService>();
+
 // ⚠️ Register command handlers
 // 
 // IMPORTANT: When adding a new command handler, follow these 3 steps:
@@ -55,6 +58,24 @@ builder.Services.AddSingleton<IKakaoService, KakaoService>();
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
+// Run cleanup on startup to remove blacklisted messages from database
+using (var scope = app.Services.CreateScope())
+{
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var cleanupService = scope.ServiceProvider.GetRequiredService<MessageCleanupService>();
+    
+    try
+    {
+        logger.LogInformation("[STARTUP] Starting cleanup of blacklisted messages...");
+        var deletedCount = await cleanupService.DeleteBlacklistedMessagesAsync();
+        logger.LogInformation("[STARTUP] Cleanup completed. Deleted {Count} blacklisted messages.", deletedCount);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "[STARTUP] Error during cleanup of blacklisted messages");
+    }
+}
 
 app.MapControllers();
 
