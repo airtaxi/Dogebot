@@ -17,6 +17,7 @@ builder.Services.AddSingleton<ICommandHandler, MyRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, FoodRecommendCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ProbabilityCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, JudgeCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
