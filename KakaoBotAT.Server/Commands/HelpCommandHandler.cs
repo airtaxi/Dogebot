@@ -66,7 +66,11 @@ public class HelpCommandHandler : ICommandHandler
                          "• !랭크 [개수] - 많이 올라온 채팅 TOP (최대 50개)\n" +
                          "• !정보 - 방 정보 및 통계\n\n" +
                          "ℹ️ 기타\n" +
-                         "• !도움말 / !help - 이 메시지";
+                         "• !도움말 / !help - 이 메시지\n\n" +
+                         "━━━━━━━━━━━━━━━━━━\n" +
+                         "👨‍💻 제작자: 이호원\n" +
+                         "📦 소스코드:\n" +
+                         "github.com/airtaxi-fork/Dogebot";
 
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("[HELP] Showing help message to {Sender} in room {RoomId}", 
