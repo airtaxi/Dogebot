@@ -12,6 +12,7 @@ builder.Services.AddSingleton<IChatStatisticsService, ChatStatisticsService>();
 // Register command handlers
 builder.Services.AddSingleton<ICommandHandler, DengCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ViewRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MyRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, FoodRecommendCommandHandler>();
