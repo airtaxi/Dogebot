@@ -67,6 +67,7 @@ public class MessageCleanupService
         // Add regex filters for each blacklist pattern
         var patterns = new[]
         {
+            "사진을 보냈습니다\\.",
             "이모티콘을 보냈습니다\\.",
             "^\\(사진\\)",
             "^\\(동영상\\)",
