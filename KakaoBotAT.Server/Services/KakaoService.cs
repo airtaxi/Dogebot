@@ -7,8 +7,22 @@ namespace KakaoBotAT.Server.Services;
 /// <summary>
 /// Service implementation that handles bot logic.
 /// </summary>
-public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory commandHandlerFactory) : IKakaoService
+public class KakaoService : IKakaoService
 {
+    private readonly ILogger<KakaoService> _logger;
+    private readonly CommandHandlerFactory _commandHandlerFactory;
+    private readonly IChatStatisticsService _chatStatisticsService;
+
+    public KakaoService(
+        ILogger<KakaoService> logger, 
+        CommandHandlerFactory commandHandlerFactory,
+        IChatStatisticsService chatStatisticsService)
+    {
+        _logger = logger;
+        _commandHandlerFactory = commandHandlerFactory;
+        _chatStatisticsService = chatStatisticsService;
+    }
+
     /// <summary>
     /// Processes received notifications and executes appropriate command handlers.
     /// </summary>
@@ -16,12 +30,15 @@ public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory co
     {
         var data = notification.Data;
 
-        if (logger.IsEnabled(LogLevel.Information))
-            logger.LogInformation("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", 
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", 
                 data.RoomName, data.SenderName, data.Content);
 
+        // Record message statistics
+        await _chatStatisticsService.RecordMessageAsync(data);
+
         // Find and execute appropriate command handler
-        var handler = commandHandlerFactory.FindHandler(data.Content);
+        var handler = _commandHandlerFactory.FindHandler(data.Content);
         if (handler != null)
         {
             return await handler.HandleAsync(data);
