@@ -34,7 +34,8 @@ public class ChatStatisticsService : IChatStatisticsService
 
     public async Task RecordMessageAsync(KakaoMessageData data)
     {
-        if (string.IsNullOrWhiteSpace(data.Content) || data.Content.StartsWith('/'))
+        // Filter out blacklisted messages (emoticons, photos, etc.)
+        if (MessageBlacklist.IsBlacklisted(data.Content))
             return;
 
         var chatStatsFilter = Builders<ChatStatistics>.Filter.And(
