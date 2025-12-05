@@ -5,9 +5,9 @@ namespace KakaoBotAT.Server.Commands;
 /// <summary>
 /// Handles the !핑 (ping) command.
 /// </summary>
-public class PingCommandHandler(ILogger<PingCommandHandler> logger) : ICommandHandler
+public class DengCommandHandler(ILogger<DengCommandHandler> logger) : ICommandHandler
 {
-    public string Command => "!핑";
+    public string Command => "댕";
 
     public bool CanHandle(string content)
     {
@@ -20,7 +20,7 @@ public class PingCommandHandler(ILogger<PingCommandHandler> logger) : ICommandHa
         {
             Action = "send_text",
             RoomId = data.RoomId,
-            Message = "퐁"
+            Message = "댕"
         };
 
         if (logger.IsEnabled(LogLevel.Information))

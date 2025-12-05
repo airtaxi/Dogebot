@@ -1,4 +1,4 @@
-using KakaoBotAT.Server.Commands;
+﻿using KakaoBotAT.Server.Commands;
 using KakaoBotAT.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,7 +10,7 @@ builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
 builder.Services.AddSingleton<IChatStatisticsService, ChatStatisticsService>();
 
 // Register command handlers
-builder.Services.AddSingleton<ICommandHandler, PingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DengCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MyRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankCommandHandler>();
