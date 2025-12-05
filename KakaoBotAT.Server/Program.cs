@@ -9,7 +9,32 @@ builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
 // Register statistics service
 builder.Services.AddSingleton<IChatStatisticsService, ChatStatisticsService>();
 
-// Register command handlers
+// ⚠️ Register command handlers
+// 
+// IMPORTANT: When adding a new command handler, follow these 3 steps:
+// 
+// Step 1: Add the registration line here
+//         builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
+// 
+// Step 2: Update HelpCommandHandler.cs to include your command in the help message
+//         Add your command under the appropriate category:
+//         - 🎮 게임 & 랜덤 (Game & Random)
+//         - 🎭 재미 (Fun)
+//         - 📊 통계 (Statistics)
+//         - ℹ️ 기타 (Others)
+//         Format: "• [command] - [description]"
+// 
+// Step 3: Your command handler must implement ICommandHandler interface
+//         See existing handlers for examples (DengCommandHandler, FoodRecommendCommandHandler, etc.)
+// 
+// Example:
+// If you create "!날씨" command:
+// 1. Add here: builder.Services.AddSingleton<ICommandHandler, WeatherCommandHandler>();
+// 2. Update HelpCommandHandler.cs:
+//    "ℹ️ 기타\n" +
+//    "• !날씨 - 현재 날씨 확인\n" +
+//    "• !도움말 / !help - 이 메시지"
+//
 builder.Services.AddSingleton<ICommandHandler, DengCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ViewRankingCommandHandler>();
@@ -21,6 +46,7 @@ builder.Services.AddSingleton<ICommandHandler, JudgeCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, OddEvenCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DiceCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MagicConchCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, HelpCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
