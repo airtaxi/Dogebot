@@ -50,6 +50,7 @@ builder.Services.AddSingleton<ICommandHandler, OddEvenCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DiceCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MagicConchCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HelpCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, RoomInfoCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 

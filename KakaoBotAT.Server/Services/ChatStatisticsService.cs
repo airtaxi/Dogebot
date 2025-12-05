@@ -115,4 +115,18 @@ public class ChatStatisticsService : IChatStatisticsService
 
         return results.Select(r => (r.Content, r.Count)).ToList();
     }
+
+    public async Task<(long TotalMessages, int UniqueUsers)> GetRoomStatisticsAsync(string roomId)
+    {
+        var filter = Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, roomId);
+        
+        var users = await _chatStatistics
+            .Find(filter)
+            .ToListAsync();
+
+        var totalMessages = users.Sum(u => u.MessageCount);
+        var uniqueUsers = users.Count;
+
+        return (totalMessages, uniqueUsers);
+    }
 }

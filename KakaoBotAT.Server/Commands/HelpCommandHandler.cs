@@ -62,7 +62,8 @@ public class HelpCommandHandler : ICommandHandler
                          "• !랭킹 - 랭킹 조회 방법 안내\n" +
                          "• !조회 (roomId) - 채팅 랭킹 TOP 10\n" +
                          "• !내랭킹 - 내 순위 확인\n" +
-                         "• !랭크 [개수] - 많이 올라온 채팅 TOP\n\n" +
+                         "• !랭크 [개수] - 많이 올라온 채팅 TOP\n" +
+                         "• !정보 - 방 정보 및 통계\n\n" +
                          "ℹ️ 기타\n" +
                          "• !도움말 / !help - 이 메시지";
 
