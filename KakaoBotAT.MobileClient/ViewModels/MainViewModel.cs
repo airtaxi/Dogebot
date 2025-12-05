@@ -9,11 +9,12 @@ namespace KakaoBotAT.MobileClient.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
+    private const string ServerAddressPreferenceKey = "ServerAddress";
     private readonly IKakaoBotService _kakaoBotService;
     private readonly HttpClient _httpClient;
 
     [ObservableProperty]
-    private string serverAddress = Constants.ServerEndpointUrl;
+    private string serverAddress = string.Empty;
 
     [ObservableProperty]
     private string logText = "Waiting for bot to start...";
@@ -34,6 +35,9 @@ public partial class MainViewModel : ObservableObject
     {
         _kakaoBotService = kakaoBotService;
         _httpClient = new HttpClient();
+
+        // Load saved server address or use default
+        ServerAddress = Preferences.Get(ServerAddressPreferenceKey, Constants.ServerEndpointUrl);
 
         KakaoNotificationListener.NotificationReceived += OnKakaoNotificationReceived;
 
@@ -92,6 +96,9 @@ public partial class MainViewModel : ObservableObject
                 LogText = "❌ Bot start failed: Both notification permission and battery optimization exemption are required.";
                 return;
             }
+
+            // Save server address when bot starts
+            Preferences.Set(ServerAddressPreferenceKey, ServerAddress);
 
             IsBotRunning = true;
             LogText = $"✅ Bot started. Wakelock acquired. Server: {ServerAddress}";

@@ -1,4 +1,5 @@
 ﻿using KakaoBotAT.Commons;
+using KakaoBotAT.Server.Commands;
 using System.Diagnostics;
 
 namespace KakaoBotAT.Server.Services;
@@ -6,34 +7,27 @@ namespace KakaoBotAT.Server.Services;
 /// <summary>
 /// Service implementation that handles bot logic.
 /// </summary>
-public class KakaoService(ILogger<KakaoService> logger) : IKakaoService
+public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory commandHandlerFactory) : IKakaoService
 {
     /// <summary>
-    /// Processes received notifications and checks for !ping command.
+    /// Processes received notifications and executes appropriate command handlers.
     /// </summary>
-    public Task<ServerResponse> HandleNotificationAsync(ServerNotification notification)
+    public async Task<ServerResponse> HandleNotificationAsync(ServerNotification notification)
     {
         var data = notification.Data;
 
         if (logger.IsEnabled(LogLevel.Information))
-            logger.LogInformation("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", data.RoomName, data.SenderName, data.Content);
+            logger.LogInformation("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", 
+                data.RoomName, data.SenderName, data.Content);
 
-        if (data.Content.Trim().Equals("!핑", StringComparison.OrdinalIgnoreCase))
+        // Find and execute appropriate command handler
+        var handler = commandHandlerFactory.FindHandler(data.Content);
+        if (handler != null)
         {
-            var response = new ServerResponse
-            {
-                Action = "send_text",
-                RoomId = data.RoomId,
-                Message = $"퐁"
-            };
-
-            if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[RESPONSE] Responding to !핑 command: {Message}", response.Message);
-
-            return Task.FromResult(response);
+            return await handler.HandleAsync(data);
         }
 
-        return Task.FromResult(new ServerResponse());
+        return new ServerResponse();
     }
 
     /// <summary>
