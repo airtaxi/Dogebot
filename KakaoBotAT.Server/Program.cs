@@ -19,6 +19,7 @@ builder.Services.AddSingleton<ICommandHandler, FoodRecommendCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ProbabilityCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, JudgeCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, OddEvenCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DiceCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
