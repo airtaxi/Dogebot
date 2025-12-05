@@ -1,4 +1,4 @@
-using KakaoBotAT.Commons;
+﻿using KakaoBotAT.Commons;
 using KakaoBotAT.Server.Models;
 using MongoDB.Driver;
 
@@ -21,7 +21,7 @@ public class ChatStatisticsService : IChatStatisticsService
     {
         var chatStatsIndexKeys = Builders<ChatStatistics>.IndexKeys
             .Ascending(x => x.RoomId)
-            .Ascending(x => x.SenderName);
+            .Ascending(x => x.SenderHash);
         var chatStatsIndexModel = new CreateIndexModel<ChatStatistics>(chatStatsIndexKeys);
         _chatStatistics.Indexes.CreateOne(chatStatsIndexModel);
 
@@ -39,12 +39,13 @@ public class ChatStatisticsService : IChatStatisticsService
 
         var chatStatsFilter = Builders<ChatStatistics>.Filter.And(
             Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId),
-            Builders<ChatStatistics>.Filter.Eq(x => x.SenderName, data.SenderName)
+            Builders<ChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash)
         );
 
         var chatStatsUpdate = Builders<ChatStatistics>.Update
             .Inc(x => x.MessageCount, 1)
-            .Set(x => x.LastMessageTime, data.Time);
+            .Set(x => x.LastMessageTime, data.Time)
+            .Set(x => x.SenderName, data.SenderName);
 
         await _chatStatistics.UpdateOneAsync(
             chatStatsFilter,
@@ -82,7 +83,7 @@ public class ChatStatisticsService : IChatStatisticsService
         return results.Select(r => (r.SenderName, r.MessageCount)).ToList();
     }
 
-    public async Task<(int Rank, long MessageCount)?> GetUserRankAsync(string roomId, string senderName)
+    public async Task<(int Rank, long MessageCount)?> GetUserRankAsync(string roomId, string senderHash)
     {
         var filter = Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, roomId);
         var sort = Builders<ChatStatistics>.Sort.Descending(x => x.MessageCount);
@@ -92,7 +93,7 @@ public class ChatStatisticsService : IChatStatisticsService
             .Sort(sort)
             .ToListAsync();
 
-        var userIndex = allUsers.FindIndex(u => u.SenderName == senderName);
+        var userIndex = allUsers.FindIndex(u => u.SenderHash == senderHash);
         
         if (userIndex == -1)
             return null;

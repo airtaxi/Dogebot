@@ -1,4 +1,4 @@
-using KakaoBotAT.Commons;
+﻿using KakaoBotAT.Commons;
 using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
@@ -27,7 +27,7 @@ public class MyRankingCommandHandler : ICommandHandler
     {
         try
         {
-            var result = await _statisticsService.GetUserRankAsync(data.RoomId, data.SenderName);
+            var result = await _statisticsService.GetUserRankAsync(data.RoomId, data.SenderHash);
 
             if (result == null)
             {
