@@ -20,6 +20,7 @@ builder.Services.AddSingleton<ICommandHandler, ProbabilityCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, JudgeCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, OddEvenCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DiceCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MagicConchCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
