@@ -42,7 +42,21 @@ public class KakaoNotificationListener : NotificationListenerService
         var roomId = sbn.Tag;
         var logId = extras?.GetLong("chatLogId").ToString();
 
-        if (roomId == null || messageText == null) return;
+        Bundle? messageBundle;
+        if (OperatingSystem.IsAndroidVersionAtLeast(33)) messageBundle = extras?.GetParcelableArray(Notification.ExtraMessages, Java.Lang.Class.FromType(typeof(Bundle)))?.Cast<Bundle>().FirstOrDefault();
+        else messageBundle = extras?.GetParcelableArray(Notification.ExtraMessages)?.Cast<Bundle>().FirstOrDefault();
+
+        Person? senderPerson;
+        if (OperatingSystem.IsAndroidVersionAtLeast(33))
+        {
+            var senderPersonObj = messageBundle?.GetParcelable("sender_person", Java.Lang.Class.FromType(typeof(Person)));
+            senderPerson = senderPersonObj as Person;
+        }
+        else senderPerson = (Person?)messageBundle?.GetParcelable("sender_person");
+
+        var senderHash = senderPerson?.Key;
+
+        if (roomId == null || senderHash == null || messageText == null) return;
 
         Notification.Action? replyAction = null;
         Notification.Action? readAction = null;
@@ -81,6 +95,7 @@ public class KakaoNotificationListener : NotificationListenerService
                 RoomName = roomName,
                 RoomId = roomId,
                 SenderName = senderName,
+                SenderHash = senderHash,
                 Content = messageText,
                 LogId = logId ?? string.Empty,
                 IsGroupChat = isGroupChat,

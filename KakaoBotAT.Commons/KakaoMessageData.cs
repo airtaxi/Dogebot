@@ -10,6 +10,9 @@ public class KakaoMessageData
     [JsonPropertyName("roomId")]
     public string RoomId { get; set; } = string.Empty;
 
+    [JsonPropertyName("senderHash")]
+    public string SenderHash { get; set; } = string.Empty;
+
     [JsonPropertyName("senderName")]
     public string SenderName { get; set; } = string.Empty;
 
