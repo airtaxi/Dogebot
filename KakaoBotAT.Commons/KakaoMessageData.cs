@@ -13,9 +13,6 @@ public class KakaoMessageData
     [JsonPropertyName("senderName")]
     public string SenderName { get; set; } = string.Empty;
 
-    [JsonPropertyName("senderHash")]
-    public string SenderHash { get; set; } = string.Empty;
-
     [JsonPropertyName("content")]
     public string Content { get; set; } = string.Empty;
 

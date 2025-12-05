@@ -33,7 +33,9 @@ public class BooleanToColorConverter : IValueConverter
             var parts = colors.Split('|');
             if (parts.Length == 2)
             {
-                return isRunning ? Color.FromArgb(parts[0]) : Color.FromArgb(parts[1]); 
+                var trueColor = parts[0];
+                var falseColor = parts[1];
+                return isRunning ? Color.Parse(trueColor) : Color.Parse(falseColor);
             }
         }
         return Color.FromArgb("#000000"); 

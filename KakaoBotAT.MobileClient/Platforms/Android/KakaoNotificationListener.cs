@@ -31,35 +31,18 @@ public class KakaoNotificationListener : NotificationListenerService
         if (extras == null) return;
 
         // MessagingStyle only
-        if (extras.GetString(Notification.ExtraTemplate) != "android.app.Notification$MessagingStyle")
+        var style = extras.GetString(Notification.ExtraTemplate);
+        if (style != "android.app.Notification$MessagingStyle") 
             return;
 
         var senderName = extras.GetString(Notification.ExtraTitle) ?? "Unknown";
         var roomName = extras.GetString(Notification.ExtraSubText) ?? extras.GetString(Notification.ExtraSummaryText) ?? senderName;
         var messageText = extras.GetCharSequence(Notification.ExtraText)?.ToString();
         var isGroupChat = extras.GetBoolean(Notification.ExtraIsGroupConversation);
-
-        IParcelable[]? messageBundleArray = null;
-        if (OperatingSystem.IsAndroidVersionAtLeast(33)) messageBundleArray = extras.GetParcelableArray(Notification.ExtraMessages, Java.Lang.Class.FromType(typeof(Bundle))) as IParcelable[];
-        else messageBundleArray = extras.GetParcelableArray(Notification.ExtraMessages);
-
-        if (messageBundleArray == null || messageBundleArray.Length == 0) return;
-        var latestMessageBundle = messageBundleArray.Cast<Bundle>().LastOrDefault();
-
-        AndroidX.Core.App.Person? senderPerson;
-        if (OperatingSystem.IsAndroidVersionAtLeast(33))
-        {
-            var senderPersonObj = latestMessageBundle?.GetParcelable("sender_person", Java.Lang.Class.FromType(typeof(AndroidX.Core.App.Person)));
-            senderPerson = senderPersonObj as AndroidX.Core.App.Person;
-        }
-        else senderPerson = (AndroidX.Core.App.Person?)latestMessageBundle?.GetParcelable("sender_person");
-
-        var senderHash = senderPerson?.Key;
-
         var roomId = sbn.Tag;
         var logId = extras?.GetLong("chatLogId").ToString();
 
-        if (roomId == null || senderHash == null || messageText == null) return;
+        if (roomId == null || messageText == null) return;
 
         Notification.Action? replyAction = null;
         Notification.Action? readAction = null;
@@ -98,7 +81,6 @@ public class KakaoNotificationListener : NotificationListenerService
                 RoomName = roomName,
                 RoomId = roomId,
                 SenderName = senderName,
-                SenderHash = senderHash,
                 Content = messageText,
                 LogId = logId ?? string.Empty,
                 IsGroupChat = isGroupChat,

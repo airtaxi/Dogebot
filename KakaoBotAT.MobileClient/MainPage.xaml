@@ -35,7 +35,6 @@
                     <Button
                         Command="{Binding OpenNotificationSettingsCommand}"
                         IsEnabled="{Binding IsBotRunning, Converter={StaticResource InverseBooleanConverter}}"
-                        Style="{StaticResource TextButton}"
                         Text="Open Notification Listener Settings" />
 
                     <BoxView
@@ -47,7 +46,6 @@
                     <Button
                         Command="{Binding RequestBatteryOptimizationExemptionCommand}"
                         IsEnabled="{Binding IsBotRunning, Converter={StaticResource InverseBooleanConverter}}"
-                        Style="{StaticResource TextButton}"
                         Text="Request Battery Optimization Exemption" />
                 </VerticalStackLayout>
             </Border>
