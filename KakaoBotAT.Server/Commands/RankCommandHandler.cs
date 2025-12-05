@@ -1,4 +1,4 @@
-using KakaoBotAT.Commons;
+﻿using KakaoBotAT.Commons;
 using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
@@ -16,7 +16,7 @@ public class RankCommandHandler : ICommandHandler
         _logger = logger;
     }
 
-    public string Command => "/랭크";
+    public string Command => "!랭크";
 
     public bool CanHandle(string content)
     {

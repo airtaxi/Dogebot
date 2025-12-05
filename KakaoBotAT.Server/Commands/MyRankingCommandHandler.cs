@@ -16,7 +16,7 @@ public class MyRankingCommandHandler : ICommandHandler
         _logger = logger;
     }
 
-    public string Command => "/내랭킹";
+    public string Command => "!내랭킹";
 
     public bool CanHandle(string content)
     {
