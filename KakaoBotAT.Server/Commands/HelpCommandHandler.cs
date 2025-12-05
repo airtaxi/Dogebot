@@ -28,14 +28,10 @@ namespace KakaoBotAT.Server.Commands;
 /// </summary>
 public class HelpCommandHandler : ICommandHandler
 {
-    private readonly CommandHandlerFactory _handlerFactory;
     private readonly ILogger<HelpCommandHandler> _logger;
 
-    public HelpCommandHandler(
-        CommandHandlerFactory handlerFactory,
-        ILogger<HelpCommandHandler> logger)
+    public HelpCommandHandler(ILogger<HelpCommandHandler> logger)
     {
-        _handlerFactory = handlerFactory;
         _logger = logger;
     }
 
