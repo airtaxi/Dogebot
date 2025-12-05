@@ -12,6 +12,9 @@ builder.Services.AddSingleton<IChatStatisticsService, ChatStatisticsService>();
 // Register cleanup service
 builder.Services.AddSingleton<MessageCleanupService>();
 
+// Register SimSim service
+builder.Services.AddSingleton<ISimSimService, SimSimService>();
+
 // ⚠️ Register command handlers
 // 
 // IMPORTANT: When adding a new command handler, follow these 3 steps:
@@ -52,6 +55,11 @@ builder.Services.AddSingleton<ICommandHandler, MagicConchCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HelpCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RoomInfoCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, CarGachaCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SimSimQueryCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SimSimRegisterCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SimSimDeleteCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SimSimCountCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SimSimRankingCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
