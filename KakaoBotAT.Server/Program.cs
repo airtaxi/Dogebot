@@ -3,6 +3,9 @@ using KakaoBotAT.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Register HttpClient
+builder.Services.AddHttpClient();
+
 // Register MongoDB service
 builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
 
@@ -14,6 +17,9 @@ builder.Services.AddSingleton<MessageCleanupService>();
 
 // Register SimSim service
 builder.Services.AddSingleton<ISimSimService, SimSimService>();
+
+// Register Weather service
+builder.Services.AddSingleton<IWeatherService, WeatherService>();
 
 // ⚠️ Register command handlers
 // 
@@ -60,6 +66,7 @@ builder.Services.AddSingleton<ICommandHandler, SimSimRegisterCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SimSimDeleteCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SimSimCountCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SimSimRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, WeatherCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 

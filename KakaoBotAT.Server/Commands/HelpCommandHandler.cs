@@ -71,6 +71,7 @@ public class HelpCommandHandler : ICommandHandler
                          "• !랭크 [개수] - 많이 올라온 채팅 TOP (최대 50개)\n" +
                          "• !정보 - 방 정보 및 통계\n\n" +
                          "ℹ️ 기타\n" +
+                         "• !날씨 - 서울 현재 날씨\n" +
                          "• !도움말 / !help - 이 메시지\n\n" +
                          "━━━━━━━━━━━━━━━━━━\n" +
                          "👨‍💻 제작자: 이호원\n" +
