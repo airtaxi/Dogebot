@@ -6,6 +6,7 @@ namespace KakaoBotAT.Server.Services;
 public interface IWeatherService
 {
     Task<WeatherResponse?> GetWeatherAsync(string city = "Seoul");
+    Task<GeocodingResponse?> GetCityCoordinatesAsync(string cityName);
 }
 
 public class WeatherService : IWeatherService
@@ -19,6 +20,38 @@ public class WeatherService : IWeatherService
         _httpClient = httpClientFactory.CreateClient();
         _logger = logger;
         _apiKey = Environment.GetEnvironmentVariable("WEATHER_API_KEY") ?? configuration["Weather:ApiKey"];
+    }
+
+    public async Task<GeocodingResponse?> GetCityCoordinatesAsync(string cityName)
+    {
+        if (string.IsNullOrEmpty(_apiKey))
+        {
+            _logger.LogError("[WEATHER] API key is not configured");
+            return null;
+        }
+
+        try
+        {
+            var encodedCityName = Uri.EscapeDataString(cityName);
+            var url = $"http://api.openweathermap.org/geo/1.0/direct?q={encodedCityName}&limit=1&appid={_apiKey}";
+            var response = await _httpClient.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("[WEATHER] Geocoding API request failed with status code {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var geocodingData = JsonSerializer.Deserialize<List<GeocodingResponse>>(content);
+
+            return geocodingData?.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[WEATHER] Error fetching geocoding data for {CityName}", cityName);
+            return null;
+        }
     }
 
     public async Task<WeatherResponse?> GetWeatherAsync(string city = "Seoul")
