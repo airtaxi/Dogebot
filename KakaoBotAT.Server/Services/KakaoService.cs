@@ -51,6 +51,8 @@ public class KakaoService : IKakaoService
                                 handler.Command == "!관리추가" ||
                                 handler.Command == "!관리제거" ||
                                 handler.Command == "!관리목록" ||
+                                handler.Command == "!랭크활성화" ||
+                                handler.Command == "!랭크비활성화" ||
                                 handler.Command == "!심삭제";
 
             if (!isAdminCommand)

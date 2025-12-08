@@ -86,6 +86,8 @@ builder.Services.AddSingleton<ICommandHandler, AdminRemoveCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, AdminListCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SetRequestLimitCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RemoveRequestLimitCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, EnableRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DisableRankingCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 

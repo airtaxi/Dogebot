@@ -29,6 +29,18 @@ public class RankCommandHandler : ICommandHandler
     {
         try
         {
+            // Check if message content ranking is enabled for this room
+            if (!await _statisticsService.IsMessageContentEnabledAsync(data.RoomId))
+            {
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = "❌ 이 방은 랭킹이 비활성화되어 있습니다.\n\n" +
+                             "관리자가 !랭크활성화 명령어로 활성화할 수 있습니다."
+                };
+            }
+
             var parts = data.Content.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var limit = 10;
 

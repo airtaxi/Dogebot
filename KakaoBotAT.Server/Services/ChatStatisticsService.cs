@@ -8,11 +8,13 @@ public class ChatStatisticsService : IChatStatisticsService
 {
     private readonly IMongoCollection<ChatStatistics> _chatStatistics;
     private readonly IMongoCollection<MessageContent> _messageContents;
+    private readonly IMongoCollection<RoomRankingSettings> _roomRankingSettings;
 
     public ChatStatisticsService(IMongoDbService mongoDbService)
     {
         _chatStatistics = mongoDbService.Database.GetCollection<ChatStatistics>("chatStatistics");
         _messageContents = mongoDbService.Database.GetCollection<MessageContent>("messageContents");
+        _roomRankingSettings = mongoDbService.Database.GetCollection<RoomRankingSettings>("roomRankingSettings");
 
         CreateIndexes();
     }
@@ -30,6 +32,10 @@ public class ChatStatisticsService : IChatStatisticsService
             .Ascending(x => x.Content);
         var messageContentIndexModel = new CreateIndexModel<MessageContent>(messageContentIndexKeys);
         _messageContents.Indexes.CreateOne(messageContentIndexModel);
+
+        var roomRankingSettingsIndexKeys = Builders<RoomRankingSettings>.IndexKeys.Ascending(x => x.RoomId);
+        var roomRankingSettingsIndexModel = new CreateIndexModel<RoomRankingSettings>(roomRankingSettingsIndexKeys, new CreateIndexOptions { Unique = true });
+        _roomRankingSettings.Indexes.CreateOne(roomRankingSettingsIndexModel);
     }
 
     public async Task RecordMessageAsync(KakaoMessageData data)
@@ -54,20 +60,24 @@ public class ChatStatisticsService : IChatStatisticsService
             new UpdateOptions { IsUpsert = true }
         );
 
-        var messageContentFilter = Builders<MessageContent>.Filter.And(
-            Builders<MessageContent>.Filter.Eq(x => x.RoomId, data.RoomId),
-            Builders<MessageContent>.Filter.Eq(x => x.Content, data.Content)
-        );
+        // Only record message content if enabled for this room
+        if (await IsMessageContentEnabledAsync(data.RoomId))
+        {
+            var messageContentFilter = Builders<MessageContent>.Filter.And(
+                Builders<MessageContent>.Filter.Eq(x => x.RoomId, data.RoomId),
+                Builders<MessageContent>.Filter.Eq(x => x.Content, data.Content)
+            );
 
-        var messageContentUpdate = Builders<MessageContent>.Update
-            .Inc(x => x.Count, 1)
-            .Set(x => x.LastTime, data.Time);
+            var messageContentUpdate = Builders<MessageContent>.Update
+                .Inc(x => x.Count, 1)
+                .Set(x => x.LastTime, data.Time);
 
-        await _messageContents.UpdateOneAsync(
-            messageContentFilter,
-            messageContentUpdate,
-            new UpdateOptions { IsUpsert = true }
-        );
+            await _messageContents.UpdateOneAsync(
+                messageContentFilter,
+                messageContentUpdate,
+                new UpdateOptions { IsUpsert = true }
+            );
+        }
     }
 
     public async Task<List<(string SenderName, long MessageCount)>> GetTopUsersAsync(string roomId, int limit = 10)
@@ -128,5 +138,56 @@ public class ChatStatisticsService : IChatStatisticsService
         var uniqueUsers = users.Count;
 
         return (totalMessages, uniqueUsers);
+    }
+
+    public async Task<bool> IsMessageContentEnabledAsync(string roomId)
+    {
+        var filter = Builders<RoomRankingSettings>.Filter.Eq(x => x.RoomId, roomId);
+        var settings = await _roomRankingSettings.Find(filter).FirstOrDefaultAsync();
+        
+        // Default is enabled if no settings exist
+        return settings?.IsMessageContentEnabled ?? true;
+    }
+
+    public async Task<bool> EnableMessageContentAsync(string roomId, string roomName, string setBy)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        var settings = new RoomRankingSettings
+        {
+            RoomId = roomId,
+            RoomName = roomName,
+            IsMessageContentEnabled = true,
+            SetBy = setBy,
+            SetAt = now
+        };
+
+        var filter = Builders<RoomRankingSettings>.Filter.Eq(x => x.RoomId, roomId);
+        await _roomRankingSettings.ReplaceOneAsync(filter, settings, new ReplaceOptions { IsUpsert = true });
+
+        return true;
+    }
+
+    public async Task<bool> DisableMessageContentAsync(string roomId, string roomName, string setBy)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        var settings = new RoomRankingSettings
+        {
+            RoomId = roomId,
+            RoomName = roomName,
+            IsMessageContentEnabled = false,
+            SetBy = setBy,
+            SetAt = now
+        };
+
+        var filter = Builders<RoomRankingSettings>.Filter.Eq(x => x.RoomId, roomId);
+        await _roomRankingSettings.ReplaceOneAsync(filter, settings, new ReplaceOptions { IsUpsert = true });
+
+        // Delete all message content records for this room
+        var deleteFilter = Builders<MessageContent>.Filter.Eq(x => x.RoomId, roomId);
+        await _messageContents.DeleteManyAsync(deleteFilter);
+
+        return true;
     }
 }
