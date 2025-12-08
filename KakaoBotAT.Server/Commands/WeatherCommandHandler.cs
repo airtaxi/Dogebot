@@ -31,7 +31,7 @@ public class WeatherCommandHandler : ICommandHandler
     {
         try
         {
-            // 지역명 파싱 (기본값: 서울)
+            // Parse city name (default: Seoul)
             var content = data.Content.Trim();
             var cityName = "서울";
             
@@ -44,7 +44,7 @@ public class WeatherCommandHandler : ICommandHandler
                 }
             }
 
-            // Geocoding API를 사용하여 도시 정보 조회
+            // Get city information using Geocoding API
             var geoData = await _weatherService.GetCityCoordinatesAsync(cityName);
 
             if (geoData == null)
@@ -57,8 +57,8 @@ public class WeatherCommandHandler : ICommandHandler
                 };
             }
 
-            // 영어 도시명으로 날씨 조회
-            var weather = await _weatherService.GetWeatherAsync(geoData.Name);
+            // Get weather using coordinates (more accurate and stable)
+            var weather = await _weatherService.GetWeatherByCoordinatesAsync(geoData.Lat, geoData.Lon);
 
             if (weather == null)
             {
@@ -66,14 +66,14 @@ public class WeatherCommandHandler : ICommandHandler
                 {
                     Action = "send_text",
                     RoomId = data.RoomId,
-                    Message = $"❌ '{cityName}' 날씨 정보를 가져올 수 없습니다.\n지원하는 도시명인지 확인해주세요."
+                    Message = $"❌ '{cityName}' 날씨 정보를 가져올 수 없습니다."
                 };
             }
 
             var weatherEmoji = GetWeatherEmoji(weather.Weather.FirstOrDefault()?.Main ?? "");
             var description = weather.Weather.FirstOrDefault()?.Description ?? "정보 없음";
             
-            // 한국어 도시명 우선 사용, 없으면 영어 도시명 사용
+            // Prefer Korean city name, fallback to English
             var displayCityName = geoData.LocalNames?.GetValueOrDefault("ko") ?? weather.Name;
             
             var message = $"{weatherEmoji} {displayCityName} 날씨\n\n" +
