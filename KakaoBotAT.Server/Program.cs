@@ -67,6 +67,7 @@ builder.Services.AddSingleton<ICommandHandler, SimSimDeleteCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SimSimCountCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SimSimRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WeatherCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, TomorrowWeatherCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HamburgerCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, CourseMealCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ChoiceCommandHandler>();

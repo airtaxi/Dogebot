@@ -7,6 +7,7 @@ public interface IWeatherService
 {
     Task<WeatherResponse?> GetWeatherAsync(string city = "Seoul");
     Task<WeatherResponse?> GetWeatherByCoordinatesAsync(double lat, double lon);
+    Task<ForecastResponse?> GetForecastByCoordinatesAsync(double lat, double lon);
     Task<GeocodingResponse?> GetCityCoordinatesAsync(string cityName);
 }
 
@@ -82,6 +83,37 @@ public class WeatherService : IWeatherService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[WEATHER] Error fetching weather data for coordinates ({Lat}, {Lon})", lat, lon);
+            return null;
+        }
+    }
+
+    public async Task<ForecastResponse?> GetForecastByCoordinatesAsync(double lat, double lon)
+    {
+        if (string.IsNullOrEmpty(_apiKey))
+        {
+            _logger.LogError("[WEATHER] API key is not configured");
+            return null;
+        }
+
+        try
+        {
+            var url = $"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={_apiKey}&units=metric&lang=kr";
+            var response = await _httpClient.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("[WEATHER] Forecast API request failed with status code {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var forecastData = JsonSerializer.Deserialize<ForecastResponse>(content);
+
+            return forecastData;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[WEATHER] Error fetching forecast data for coordinates ({Lat}, {Lon})", lat, lon);
             return null;
         }
     }

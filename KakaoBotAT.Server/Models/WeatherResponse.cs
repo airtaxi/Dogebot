@@ -42,6 +42,12 @@ public class MainWeather
 
     [JsonPropertyName("pressure")]
     public int Pressure { get; set; }
+
+    [JsonPropertyName("temp_min")]
+    public double TempMin { get; set; }
+
+    [JsonPropertyName("temp_max")]
+    public double TempMax { get; set; }
 }
 
 public class Wind
@@ -66,4 +72,37 @@ public class GeocodingResponse
 
     [JsonPropertyName("local_names")]
     public Dictionary<string, string>? LocalNames { get; set; }
+}
+
+public class ForecastResponse
+{
+    [JsonPropertyName("list")]
+    public List<ForecastItem> List { get; set; } = new();
+
+    [JsonPropertyName("city")]
+    public ForecastCity City { get; set; } = new();
+}
+
+public class ForecastItem
+{
+    [JsonPropertyName("dt")]
+    public long Dt { get; set; }
+
+    [JsonPropertyName("main")]
+    public MainWeather Main { get; set; } = new();
+
+    [JsonPropertyName("weather")]
+    public List<Weather> Weather { get; set; } = new();
+
+    [JsonPropertyName("wind")]
+    public Wind Wind { get; set; } = new();
+
+    [JsonPropertyName("dt_txt")]
+    public string DtTxt { get; set; } = string.Empty;
+}
+
+public class ForecastCity
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
 }
