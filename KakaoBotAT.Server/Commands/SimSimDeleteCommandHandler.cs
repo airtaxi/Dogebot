@@ -11,16 +11,16 @@ namespace KakaoBotAT.Server.Commands;
 public class SimSimDeleteCommandHandler : ICommandHandler
 {
     private readonly ISimSimService _simSimService;
+    private readonly IAdminService _adminService;
     private readonly ILogger<SimSimDeleteCommandHandler> _logger;
-
-    // Admin hash - only this user can delete responses
-    private const string AdminHash = "***REMOVED***";
 
     public SimSimDeleteCommandHandler(
         ISimSimService simSimService,
+        IAdminService adminService,
         ILogger<SimSimDeleteCommandHandler> logger)
     {
         _simSimService = simSimService;
+        _adminService = adminService;
         _logger = logger;
     }
 
@@ -36,7 +36,7 @@ public class SimSimDeleteCommandHandler : ICommandHandler
         try
         {
             // Check if user is admin
-            if (data.SenderHash != AdminHash)
+            if (!await _adminService.IsAdminAsync(data.SenderHash))
             {
                 return new ServerResponse
                 {

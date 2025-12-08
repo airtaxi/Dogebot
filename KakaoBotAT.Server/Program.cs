@@ -21,6 +21,9 @@ builder.Services.AddSingleton<ISimSimService, SimSimService>();
 // Register Weather service
 builder.Services.AddSingleton<IWeatherService, WeatherService>();
 
+// Register Admin service
+builder.Services.AddSingleton<IAdminService, AdminService>();
+
 // ⚠️ Register command handlers
 // 
 // IMPORTANT: When adding a new command handler, follow these 3 steps:
@@ -71,6 +74,9 @@ builder.Services.AddSingleton<ICommandHandler, TomorrowWeatherCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HamburgerCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, CourseMealCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ChoiceCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, AdminAddCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, AdminRemoveCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, AdminListCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
