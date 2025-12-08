@@ -7,7 +7,7 @@ public class AdminUser
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = string.Empty;
+    public string? Id { get; set; }
 
     [BsonElement("senderHash")]
     public string SenderHash { get; set; } = string.Empty;

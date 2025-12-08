@@ -7,7 +7,7 @@ public class AdminApprovalCode
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = string.Empty;
+    public string? Id { get; set; }
 
     [BsonElement("code")]
     public string Code { get; set; } = string.Empty;

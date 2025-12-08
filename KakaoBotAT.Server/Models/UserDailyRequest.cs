@@ -7,7 +7,7 @@ public class UserDailyRequest
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = string.Empty;
+    public string? Id { get; set; }
 
     [BsonElement("roomId")]
     public string RoomId { get; set; } = string.Empty;
