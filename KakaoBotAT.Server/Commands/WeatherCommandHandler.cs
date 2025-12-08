@@ -73,8 +73,8 @@ public class WeatherCommandHandler : ICommandHandler
             var weatherEmoji = GetWeatherEmoji(weather.Weather.FirstOrDefault()?.Main ?? "");
             var description = weather.Weather.FirstOrDefault()?.Description ?? "정보 없음";
             
-            // API에서 반환된 실제 도시명 사용
-            var displayCityName = !string.IsNullOrEmpty(weather.Name) ? weather.Name : geoData.Name;
+            // 한국어 도시명 우선 사용, 없으면 영어 도시명 사용
+            var displayCityName = geoData.LocalNames?.GetValueOrDefault("ko") ?? weather.Name;
             
             var message = $"{weatherEmoji} {displayCityName} 날씨\n\n" +
                          $"🌡️ 현재 기온: {weather.Main.Temp:F1}°C\n" +
