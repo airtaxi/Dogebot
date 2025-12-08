@@ -1,4 +1,4 @@
-# KakaoBotAT
+﻿# KakaoBotAT
 
 A KakaoTalk bot system built with .NET 10 that uses Android's NotificationListenerService to intercept and respond to KakaoTalk messages.
 
@@ -8,14 +8,14 @@ A KakaoTalk bot system built with .NET 10 that uses Android's NotificationListen
 
 ## License
 
-This project is licensed under the MIT License.
+See the [LICENSE](LICENSE) file for details.
 
 ## Overview
 
 KakaoBotAT is a distributed system consisting of three main components:
 
 - **KakaoBotAT.MobileClient**: A .NET MAUI Android application that listens to KakaoTalk notifications and communicates with the server
-- **KakaoBotAT.Server**: An ASP.NET Core REST API server that processes messages and sends commands
+- **KakaoBotAT.Server**: An ASP.NET Core REST API server that processes messages with extensible command handlers and MongoDB-based statistics
 - **KakaoBotAT.Commons**: Shared data models and contracts used by both client and server
 
 ## Architecture
@@ -33,7 +33,8 @@ KakaoBotAT is a distributed system consisting of three main components:
                                            ▼
                               ┌────────────────────────┐
                               │  ASP.NET Core Server   │
-                              │  (REST API)            │
+                              │  • Command Handlers    │
+                              │  • MongoDB Stats       │
                               └────────────────────────┘
                                            │
                                            │ Command Response
@@ -53,15 +54,21 @@ KakaoBotAT is a distributed system consisting of three main components:
 ### Mobile Client
 - **Notification Listener**: Intercepts KakaoTalk notifications using Android's NotificationListenerService
 - **Message Processing**: Extracts message content, sender information, and room details
-- **Action Execution**: Can send replies and mark messages as read
+- **Action Execution**: Can send replies and mark messages as read through notification actions
 - **Server Communication**: Sends notifications to server and polls for commands
 - **Battery Optimization**: Implements WakeLock to ensure continuous operation
 - **Permission Management**: Guides users through notification access and battery optimization settings
 
 ### Server
 - **REST API**: Provides endpoints for receiving notifications and delivering commands
-- **Command Processing**: Handles bot commands (e.g., `!핑` command responds with `퐁`)
-- **Extensible Design**: Easy to add new bot commands and features
+- **Command Handler Pattern**: Extensible architecture for adding new bot commands
+- **Built-in Commands**: 
+  - `!핑` - Responds with `퐁` (ping/pong)
+  - `!순위` - Shows chat activity ranking
+  - `!내순위` - Shows user's personal ranking
+  - `!등수 [순위]` - Shows specific rank information
+- **MongoDB Integration**: Stores chat statistics and message history
+- **Statistics Tracking**: Records message counts per user and room
 - **Logging**: Built-in logging for debugging and monitoring
 
 ## Technology Stack
@@ -70,6 +77,7 @@ KakaoBotAT is a distributed system consisting of three main components:
 - **C# 14.0**: Latest C# language features
 - **.NET MAUI**: Cross-platform UI framework (Android target)
 - **ASP.NET Core**: Web API framework
+- **MongoDB**: NoSQL database for statistics and chat history
 - **CommunityToolkit.Mvvm**: MVVM helpers and patterns
 - **System.Text.Json**: JSON serialization
 
@@ -80,10 +88,12 @@ KakaoBotAT is a distributed system consisting of three main components:
 - .NET 10 SDK
 - Android SDK (API Level 21+)
 - Android device or emulator with KakaoTalk installed
+- MongoDB instance (optional, for statistics features)
 
 ### For Deployment
 - **Mobile Client**: Android device with KakaoTalk installed
 - **Server**: Any platform supporting .NET 10 (Windows, Linux, macOS)
+- **Database**: MongoDB instance (optional)
 
 ## Setup
 
@@ -99,18 +109,29 @@ Edit `KakaoBotAT.MobileClient\Constants.cs` and update the server URL:
 internal const string ServerEndpointUrl = "https://your-server-url.com/api/kakao";
 ```
 
-### 3. Build the Solution
+### 3. Configure MongoDB (Optional)
+If you want to use statistics features, configure MongoDB connection in `KakaoBotAT.Server\appsettings.json`:
+```json
+{
+  "MongoDB": {
+    "ConnectionString": "mongodb://localhost:27017",
+    "DatabaseName": "KakaoBotAT"
+  }
+}
+```
+
+### 4. Build the Solution
 ```bash
 dotnet build
 ```
 
-### 4. Run the Server
+### 5. Run the Server
 ```bash
 cd KakaoBotAT.Server
 dotnet run
 ```
 
-### 5. Deploy Mobile Client
+### 6. Deploy Mobile Client
 Deploy the `KakaoBotAT.MobileClient` project to your Android device through Visual Studio.
 
 ## Usage
@@ -136,15 +157,23 @@ Deploy the `KakaoBotAT.MobileClient` project to your Android device through Visu
 
 ### Adding Bot Commands
 
-Edit `KakaoBotAT.Server\Services\KakaoService.cs` to add new commands:
+Create a new command handler by implementing the `ICommandHandler` interface:
 
 ```csharp
-public Task<ServerResponse> HandleNotificationAsync(ServerNotification notification)
+using KakaoBotAT.Commons;
+
+namespace KakaoBotAT.Server.Commands;
+
+public class HelloCommandHandler : ICommandHandler
 {
-    var data = notification.Data;
-    
-    // Example: Add a new command
-    if (data.Content.Trim().Equals("!hello", StringComparison.OrdinalIgnoreCase))
+    public string Command => "!hello";
+
+    public bool CanHandle(string content)
+    {
+        return content.Trim().Equals(Command, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public Task<ServerResponse> HandleAsync(KakaoMessageData data)
     {
         return Task.FromResult(new ServerResponse
         {
@@ -153,15 +182,18 @@ public Task<ServerResponse> HandleNotificationAsync(ServerNotification notificat
             Message = "Hello! How can I help you?"
         });
     }
-    
-    // Existing commands...
 }
+```
+
+Then register it in `Program.cs`:
+```csharp
+builder.Services.AddSingleton<ICommandHandler, HelloCommandHandler>();
 ```
 
 ## API Endpoints
 
 ### POST /api/kakao/notify
-Receives notification messages from the MAUI client.
+Receives notification messages from the MAUI client and returns immediate command response.
 
 **Request Body:**
 ```json
@@ -190,14 +222,14 @@ Receives notification messages from the MAUI client.
 ```
 
 ### GET /api/kakao/command
-Polling endpoint for retrieving queued commands.
+Polling endpoint for retrieving queued commands (currently returns empty response).
 
 **Response:**
 ```json
 {
-  "action": "send_text",
-  "roomId": "room_id_hash",
-  "message": "Command message"
+  "action": "",
+  "roomId": "",
+  "message": ""
 }
 ```
 
@@ -217,14 +249,28 @@ KakaoBotAT/
 │   ├── ViewModels/
 │   │   └── MainViewModel.cs       # Main UI logic
 │   ├── MainPage.xaml              # Main UI
+│   ├── MainPage.xaml.cs           # UI code-behind with converters
 │   ├── Constants.cs               # Configuration constants
-│   └── IKakaoBotService.cs        # Service interface
+│   ├── IKakaoBotService.cs        # Service interface
+│   ├── MauiProgram.cs             # App configuration
+│   └── App.xaml                   # Application resources
 ├── KakaoBotAT.Server/
+│   ├── Commands/
+│   │   ├── ICommandHandler.cs            # Command handler interface
+│   │   ├── CommandHandlerFactory.cs      # Handler factory
+│   │   ├── PingCommandHandler.cs         # !핑 command
+│   │   ├── RankingCommandHandler.cs      # !순위 command
+│   │   ├── MyRankingCommandHandler.cs    # !내순위 command
+│   │   └── RankCommandHandler.cs         # !등수 command
 │   ├── Controllers/
 │   │   └── KakaoController.cs     # API endpoints
 │   ├── Services/
-│   │   ├── IKakaoService.cs       # Service interface
-│   │   └── KakaoService.cs        # Bot logic implementation
+│   │   ├── IKakaoService.cs              # Service interface
+│   │   ├── KakaoService.cs               # Bot logic implementation
+│   │   ├── IMongoDbService.cs            # MongoDB interface
+│   │   ├── MongoDbService.cs             # MongoDB implementation
+│   │   ├── IChatStatisticsService.cs     # Statistics interface
+│   │   └── ChatStatisticsService.cs      # Statistics implementation
 │   └── Program.cs                 # Server entry point
 └── README.md
 ```
@@ -236,26 +282,43 @@ KakaoBotAT/
 - `ACCESS_NETWORK_STATE`: Check network connectivity
 - `BIND_NOTIFICATION_LISTENER_SERVICE`: Listen to notifications
 - `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`: Background operation
-- `WAKE_LOCK`: Keep CPU awake
+- `WAKE_LOCK`: Keep CPU awake for continuous operation
 
 ## Troubleshooting
 
 ### Bot Not Receiving Messages
-1. Verify notification access is granted
-2. Check battery optimization is disabled
+1. Verify notification access is granted in Android settings
+2. Check battery optimization is disabled for the app
 3. Ensure KakaoTalk is installed and logged in
-4. Verify server endpoint URL is correct
+4. Verify server endpoint URL is correct in Constants.cs
+5. Check that the bot is started (green button shows "Stop Bot")
 
 ### Server Connection Issues
 1. Check server is running and accessible
-2. Verify firewall settings
-3. Check server endpoint URL in Constants.cs
+2. Verify firewall settings allow incoming connections
+3. Check server endpoint URL matches in Constants.cs
 4. Review network connectivity on mobile device
+5. Check server logs for error messages
 
 ### Replies Not Sending
-1. Reply actions may expire if notification is dismissed
-2. Ensure KakaoTalk notification is still visible
-3. Check logs for detailed error messages
+1. Reply actions expire when notification is dismissed
+2. Ensure KakaoTalk notification is still visible in notification shade
+3. Check logcat for detailed error messages
+4. Verify notification actions are properly extracted
+
+### Statistics Not Working
+1. Verify MongoDB is running and accessible
+2. Check MongoDB connection string in appsettings.json
+3. Review server logs for database connection errors
+
+## Built-in Commands
+
+| Command | Description | Example Response |
+|---------|-------------|------------------|
+| `!핑` | Ping command | `퐁` |
+| `!순위` | Show chat activity ranking | Top 10 users by message count |
+| `!내순위` | Show your personal ranking | Your rank and message count |
+| `!등수 [N]` | Show specific rank | User at rank N |
 
 ## Contributing
 
@@ -264,28 +327,3 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 ## Disclaimer
 
 This project is for educational purposes. Make sure to comply with KakaoTalk's Terms of Service when using this bot.
-
-## MIT License
-
-```
-MIT License
-
-Copyright (c) 2024 airtaxi
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
