@@ -45,10 +45,15 @@ public class KakaoService : IKakaoService
         if (handler != null)
         {
             // Check if the command should be rate-limited
-            // Exclude limit management commands from rate limiting
-            var isLimitManagementCommand = handler.Command == "!제한설정" || handler.Command == "!제한해제";
+            // Exclude limit management commands and admin commands from rate limiting
+            var isAdminCommand = handler.Command == "!제한설정" || 
+                                handler.Command == "!제한해제" ||
+                                handler.Command == "!관리추가" ||
+                                handler.Command == "!관리제거" ||
+                                handler.Command == "!관리목록" ||
+                                handler.Command == "!심삭제";
 
-            if (!isLimitManagementCommand)
+            if (!isAdminCommand)
             {
                 // Check request limit
                 var canExecute = await _requestLimitService.CheckRequestLimitAsync(data.RoomId, data.SenderHash);

@@ -1,5 +1,6 @@
 ﻿using KakaoBotAT.Server.Commands;
 using KakaoBotAT.Server.Services;
+using KakaoBotAT.Server.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,9 @@ builder.Services.AddSingleton<IAdminService, AdminService>();
 
 // Register Request Limit service
 builder.Services.AddSingleton<IRequestLimitService, RequestLimitService>();
+
+// Register background services
+builder.Services.AddHostedService<ApprovalCodeCleanupService>();
 
 // ⚠️ Register command handlers
 // 
@@ -96,6 +100,8 @@ using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     var cleanupService = scope.ServiceProvider.GetRequiredService<MessageCleanupService>();
+    var adminService = scope.ServiceProvider.GetRequiredService<IAdminService>();
+    var requestLimitService = scope.ServiceProvider.GetRequiredService<IRequestLimitService>();
     
     try
     {
@@ -106,6 +112,19 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         logger.LogError(ex, "[STARTUP] Error during cleanup of blacklisted messages");
+    }
+
+    try
+    {
+        logger.LogInformation("[STARTUP] Starting cleanup of expired approval codes...");
+        var deletedAdminCodes = await adminService.DeleteExpiredApprovalCodesAsync();
+        var deletedLimitCodes = await requestLimitService.DeleteExpiredApprovalCodesAsync();
+        logger.LogInformation("[STARTUP] Cleanup completed. Deleted {AdminCodes} admin approval codes and {LimitCodes} limit approval codes.", 
+            deletedAdminCodes, deletedLimitCodes);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "[STARTUP] Error during cleanup of expired approval codes");
     }
 }
 

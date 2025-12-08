@@ -123,6 +123,14 @@ public class AdminService : IAdminService
         return admins.Select(a => (a.RoomName, a.SenderName, a.SenderHash, a.AddedAt)).ToList();
     }
 
+    public async Task<int> DeleteExpiredApprovalCodesAsync()
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var filter = Builders<AdminApprovalCode>.Filter.Lte(x => x.ExpiresAt, now);
+        var result = await _approvalCodes.DeleteManyAsync(filter);
+        return (int)result.DeletedCount;
+    }
+
     private string GenerateApprovalCode()
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

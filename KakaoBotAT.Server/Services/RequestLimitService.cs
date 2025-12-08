@@ -9,7 +9,6 @@ public class RequestLimitService : IRequestLimitService
     private readonly IMongoCollection<RoomRequestLimitApprovalCode> _approvalCodes;
     private readonly IMongoCollection<UserDailyRequest> _userDailyRequests;
     private readonly IAdminService _adminService;
-    private readonly Random _random = new();
 
     public RequestLimitService(IMongoDbService mongoDbService, IAdminService adminService)
     {
@@ -38,56 +37,24 @@ public class RequestLimitService : IRequestLimitService
         _userDailyRequests.Indexes.CreateOne(userDailyRequestIndexModel);
     }
 
-    public async Task<string> CreateLimitApprovalCodeAsync(string roomId, string roomName, int dailyLimit, string requestedBy)
+    public async Task<bool> SetLimitAsync(string roomId, string roomName, int dailyLimit, string setBy)
     {
-        var code = GenerateApprovalCode();
-        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var expiresAt = now + 600;
-
-        var approvalCode = new RoomRequestLimitApprovalCode
-        {
-            Code = code,
-            RoomId = roomId,
-            RoomName = roomName,
-            DailyLimit = dailyLimit,
-            RequestedBy = requestedBy,
-            CreatedAt = now,
-            ExpiresAt = expiresAt
-        };
-
-        await _approvalCodes.InsertOneAsync(approvalCode);
-
-        return code;
-    }
-
-    public async Task<bool> ApproveLimitAsync(string code, string approverHash)
-    {
-        if (!await _adminService.IsAdminAsync(approverHash))
+        if (!await _adminService.IsAdminAsync(setBy))
             return false;
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var filter = Builders<RoomRequestLimitApprovalCode>.Filter.And(
-            Builders<RoomRequestLimitApprovalCode>.Filter.Eq(x => x.Code, code),
-            Builders<RoomRequestLimitApprovalCode>.Filter.Gt(x => x.ExpiresAt, now)
-        );
-
-        var approvalCode = await _approvalCodes.Find(filter).FirstOrDefaultAsync();
-        if (approvalCode == null)
-            return false;
 
         var roomLimit = new RoomRequestLimit
         {
-            RoomId = approvalCode.RoomId,
-            RoomName = approvalCode.RoomName,
-            DailyLimit = approvalCode.DailyLimit,
-            SetBy = approverHash,
+            RoomId = roomId,
+            RoomName = roomName,
+            DailyLimit = dailyLimit,
+            SetBy = setBy,
             SetAt = now
         };
 
-        var roomFilter = Builders<RoomRequestLimit>.Filter.Eq(x => x.RoomId, approvalCode.RoomId);
-        await _roomLimits.ReplaceOneAsync(roomFilter, roomLimit, new ReplaceOptions { IsUpsert = true });
-
-        await _approvalCodes.DeleteOneAsync(Builders<RoomRequestLimitApprovalCode>.Filter.Eq(x => x.Id, approvalCode.Id));
+        var filter = Builders<RoomRequestLimit>.Filter.Eq(x => x.RoomId, roomId);
+        await _roomLimits.ReplaceOneAsync(filter, roomLimit, new ReplaceOptions { IsUpsert = true });
 
         return true;
     }
@@ -175,10 +142,11 @@ public class RequestLimitService : IRequestLimitService
         return (true, roomLimit.DailyLimit, usedToday);
     }
 
-    private string GenerateApprovalCode()
+    public async Task<int> DeleteExpiredApprovalCodesAsync()
     {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        return new string(Enumerable.Repeat(chars, 6)
-            .Select(s => s[_random.Next(s.Length)]).ToArray());
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var filter = Builders<RoomRequestLimitApprovalCode>.Filter.Lte(x => x.ExpiresAt, now);
+        var result = await _approvalCodes.DeleteManyAsync(filter);
+        return (int)result.DeletedCount;
     }
 }

@@ -8,4 +8,5 @@ public interface IAdminService
     Task<bool> ApproveAdminAsync(string code, string approverHash);
     Task<bool> RemoveAdminAsync(string senderHash, string removerHash);
     Task<List<(string RoomName, string SenderName, string SenderHash, long AddedAt)>> GetAdminListAsync();
+    Task<int> DeleteExpiredApprovalCodesAsync();
 }
