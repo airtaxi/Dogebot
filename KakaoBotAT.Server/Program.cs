@@ -24,6 +24,9 @@ builder.Services.AddSingleton<IWeatherService, WeatherService>();
 // Register Admin service
 builder.Services.AddSingleton<IAdminService, AdminService>();
 
+// Register Request Limit service
+builder.Services.AddSingleton<IRequestLimitService, RequestLimitService>();
+
 // ⚠️ Register command handlers
 // 
 // IMPORTANT: When adding a new command handler, follow these 3 steps:
@@ -77,6 +80,8 @@ builder.Services.AddSingleton<ICommandHandler, ChoiceCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, AdminAddCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, AdminRemoveCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, AdminListCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SetRequestLimitCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, RemoveRequestLimitCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 

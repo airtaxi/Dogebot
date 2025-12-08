@@ -12,15 +12,18 @@ public class KakaoService : IKakaoService
     private readonly ILogger<KakaoService> _logger;
     private readonly CommandHandlerFactory _commandHandlerFactory;
     private readonly IChatStatisticsService _chatStatisticsService;
+    private readonly IRequestLimitService _requestLimitService;
 
     public KakaoService(
         ILogger<KakaoService> logger, 
         CommandHandlerFactory commandHandlerFactory,
-        IChatStatisticsService chatStatisticsService)
+        IChatStatisticsService chatStatisticsService,
+        IRequestLimitService requestLimitService)
     {
         _logger = logger;
         _commandHandlerFactory = commandHandlerFactory;
         _chatStatisticsService = chatStatisticsService;
+        _requestLimitService = requestLimitService;
     }
 
     /// <summary>
@@ -41,6 +44,38 @@ public class KakaoService : IKakaoService
         var handler = _commandHandlerFactory.FindHandler(data.Content);
         if (handler != null)
         {
+            // Check if the command should be rate-limited
+            // Exclude limit management commands from rate limiting
+            var isLimitManagementCommand = handler.Command == "!제한설정" || handler.Command == "!제한해제";
+
+            if (!isLimitManagementCommand)
+            {
+                // Check request limit
+                var canExecute = await _requestLimitService.CheckRequestLimitAsync(data.RoomId, data.SenderHash);
+
+                if (!canExecute)
+                {
+                    var limitInfo = await _requestLimitService.GetLimitInfoAsync(data.RoomId, data.SenderHash);
+
+                    if (_logger.IsEnabled(LogLevel.Warning))
+                        _logger.LogWarning("[REQUEST_LIMIT] User {Sender} exceeded daily limit in room {RoomName}",
+                            data.SenderName, data.RoomName);
+
+                    return new ServerResponse
+                    {
+                        Action = "send_text",
+                        RoomId = data.RoomId,
+                        Message = $"⛔ 하루 요청 제한 초과\n\n" +
+                                 $"오늘 사용: {limitInfo.UsedToday}회\n" +
+                                 $"일일 제한: {limitInfo.DailyLimit}회\n\n" +
+                                 $"내일 다시 시도해주세요."
+                    };
+                }
+
+                // Increment request count
+                await _requestLimitService.IncrementRequestCountAsync(data.RoomId, data.SenderHash);
+            }
+
             return await handler.HandleAsync(data);
         }
 
