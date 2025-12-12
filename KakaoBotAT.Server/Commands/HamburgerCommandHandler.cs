@@ -28,7 +28,7 @@ public class HamburgerCommandHandler : ICommandHandler
         try
         {
             var count = _random.Next(1, 5); // 1~4
-            var message = $"🍔 {data.SenderName}가 한번에 먹을 수 있는 햄버거의 갯수는 {count}개다 꿀꿀!";
+            var message = $"🍔 {data.SenderName}이(가) 한번에 먹을 수 있는 햄버거의 갯수는 {count}개다 꿀꿀!";
 
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("[HAMBURGER] {Sender} can eat {Count} hamburgers at once in room {RoomId}",
