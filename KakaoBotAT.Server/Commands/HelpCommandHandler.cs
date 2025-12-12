@@ -40,6 +40,7 @@ public class HelpCommandHandler : ICommandHandler
     public bool CanHandle(string content)
     {
         return content.Trim().Equals(Command, StringComparison.OrdinalIgnoreCase) ||
+               content.Trim().Equals("!도움", StringComparison.OrdinalIgnoreCase) ||
                content.Trim().Equals("!help", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -86,7 +87,7 @@ public class HelpCommandHandler : ICommandHandler
                          "ℹ️ 기타\n" +
                          "• !날씨 [지역] - 현재 날씨 확인 (기본: 서울)\n" +
                          "• !내일날씨 [지역] - 내일 날씨 확인 (기본: 서울)\n" +
-                         "• !도움말 / !help - 이 메시지\n\n" +
+                         "• !도움 / !도움말 / !help - 이 메시지\n\n" +
                          "━━━━━━━━━━━━━━━━━━\n" +
                          "👨‍💻 제작자: 이호원\n" +
                          "📦 소스코드:\n" +
