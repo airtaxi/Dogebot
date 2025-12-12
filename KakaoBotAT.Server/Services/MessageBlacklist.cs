@@ -48,6 +48,7 @@ public static class MessageBlacklist
         "(지도)",
         "(연락처)",
         "(음악)",
+        "확률",
         "샵검색:",
         "샵검색 :",
         "#검색:"
@@ -64,7 +65,11 @@ public static class MessageBlacklist
             return true;
 
         // Filter out command messages
-        if (content.TrimStart().StartsWith('/') || content.TrimStart().StartsWith('!'))
+        if (content.TrimStart().StartsWith('/')
+            || content.TrimStart().StartsWith('!')
+            || content.TrimStart().StartsWith("심심아")
+            || content.TrimStart().StartsWith("판사님")
+            || content.TrimStart().StartsWith("소라고동님"))
             return true;
 
         // Check against blacklist patterns
