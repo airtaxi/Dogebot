@@ -71,6 +71,7 @@ builder.Services.AddSingleton<ICommandHandler, MagicConchCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HelpCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RoomInfoCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, CarGachaCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, PlanetGachaCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SimSimQueryCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SimSimRegisterCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SimSimDeleteCommandHandler>();
