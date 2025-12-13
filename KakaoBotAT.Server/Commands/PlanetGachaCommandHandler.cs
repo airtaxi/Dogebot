@@ -161,7 +161,7 @@ public class PlanetGachaCommandHandler : ICommandHandler
             // For biomes with weather as object with clear/normal/extreme
             else if (weatherElement.ValueKind == JsonValueKind.Object)
             {
-                _logger.LogDebug("[PLANET_GACHA] Weather element for biome {Biome} is an object: {RawText} ", selectedBiomeKey, weatherElement.GetRawText());
+                _logger.LogInformation("[PLANET_GACHA] Weather element for biome {Biome} is an object: {RawText} ", selectedBiomeKey, weatherElement.GetRawText());
                 var weatherObj = JsonSerializer.Deserialize<BiomeWeatherObject>(weatherElement.GetRawText());
                 
                 // Select weather type randomly (equal probability)
