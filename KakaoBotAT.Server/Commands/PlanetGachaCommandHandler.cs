@@ -129,9 +129,9 @@ public class PlanetGachaCommandHandler : ICommandHandler
             starSystemKey = "BLUE";
         else
         {
-            // 75% chance for YELLOW, 25% for others
+            // 87.5% chance for YELLOW, 12.5% for others
             var roll2 = _random.Next(0, 100);
-            if (roll2 < 75)
+            if (roll2 < 87.5)
                 starSystemKey = "YELLOW";
             else
             {
