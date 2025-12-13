@@ -212,9 +212,24 @@ public class PlanetGachaCommandHandler : ICommandHandler
         // Add biome exclusive resources
         if (selectedBiome.ExclusiveResources?.Count > 0)
         {
+            // Resources with 20% appearance chance (gases)
+            var gasResources = new[] { "질소", "설퍼린", "라돈" };
+            
             foreach (var resource in selectedBiome.ExclusiveResources)
             {
-                resources.Add(resource);
+                // 20% chance for gas resources only
+                if (gasResources.Contains(resource))
+                {
+                    if (_random.Next(0, 100) < 20)
+                    {
+                        resources.Add(resource);
+                    }
+                }
+                else
+                {
+                    // 100% chance for other resources
+                    resources.Add(resource);
+                }
             }
         }
 
