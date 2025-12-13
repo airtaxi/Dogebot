@@ -170,6 +170,24 @@ public class PlanetGachaCommandHandler : ICommandHandler
                 if (weatherObj?.Normal?.Count > 0) weatherTypes.Add("normal");
                 if (weatherObj?.Extreme?.Count > 0) weatherTypes.Add("extreme");
 
+                // log each weather type count
+                foreach (var type in weatherTypes)
+                {
+                    int count = type switch
+                    {
+                        "clear" => weatherObj?.Clear?.Count ?? 0,
+                        "normal" => weatherObj?.Normal?.Count ?? 0,
+                        "extreme" => weatherObj?.Extreme?.Count ?? 0,
+                        _ => 0
+                    };
+                    _logger.LogInformation("[PLANET_GACHA] Biome {Biome} has {Count} {Type} weather options", selectedBiomeKey, count, type);
+                }
+
+                if (weatherTypes.Count == 0)
+                {
+                    _logger.LogInformation("[PLANET_GACHA] No weather options available for biome {Biome}", selectedBiomeKey);
+                }
+
                 weatherType = weatherTypes.Count > 0 ? weatherTypes[_random.Next(weatherTypes.Count)] : "normal";
                 
                 weather = weatherType switch
