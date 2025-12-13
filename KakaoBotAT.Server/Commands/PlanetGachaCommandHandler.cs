@@ -163,13 +163,40 @@ public class PlanetGachaCommandHandler : ICommandHandler
             {
                 var weatherObj = JsonSerializer.Deserialize<BiomeWeatherObject>(weatherElement.GetRawText());
                 
-                // Select weather type randomly (equal probability)
+                // Select weather type with weighted probabilities
+                // Extreme: 15%, Clear and Normal: split remaining 85%
                 var weatherTypes = new List<string>();
                 if (weatherObj?.Clear?.Count > 0) weatherTypes.Add("clear");
                 if (weatherObj?.Normal?.Count > 0) weatherTypes.Add("normal");
                 if (weatherObj?.Extreme?.Count > 0) weatherTypes.Add("extreme");
 
-                weatherType = weatherTypes.Count > 0 ? weatherTypes[_random.Next(weatherTypes.Count)] : "normal";
+                if (weatherTypes.Count == 0)
+                {
+                    weatherType = "normal";
+                }
+                else
+                {
+                    var roll = _random.Next(0, 100);
+                    
+                    // 15% chance for extreme weather
+                    if (roll < 15 && weatherTypes.Contains("extreme"))
+                    {
+                        weatherType = "extreme";
+                    }
+                    else
+                    {
+                        // 85% chance split between clear and normal
+                        var nonExtremeTypes = weatherTypes.Where(t => t != "extreme").ToList();
+                        if (nonExtremeTypes.Count > 0)
+                        {
+                            weatherType = nonExtremeTypes[_random.Next(nonExtremeTypes.Count)];
+                        }
+                        else
+                        {
+                            weatherType = "extreme"; // Fallback if only extreme exists
+                        }
+                    }
+                }
                 
                 weather = weatherType switch
                 {
