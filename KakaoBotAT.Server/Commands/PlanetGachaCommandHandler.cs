@@ -171,8 +171,7 @@ public class PlanetGachaCommandHandler : ICommandHandler
         {
             foreach (var resource in selectedBiome.ExclusiveResources)
             {
-                if (resource != "녹슨 금속")
-                    resources.Add(resource);
+                resources.Add(resource);
             }
         }
 
@@ -186,6 +185,8 @@ public class PlanetGachaCommandHandler : ICommandHandler
             resources.Add(starResource);
         }
 
+        var hasVileBrood = _random.Next(0, 100) < 10;
+
         // 10% chance for dissonance detected
         var hasDissonance = _random.Next(0, 100) < 10;
 
@@ -196,6 +197,10 @@ public class PlanetGachaCommandHandler : ICommandHandler
         var message = $"방금 발견한 노 맨즈 스카이 행성이다!\n\n" +
                      $"{prefix} 행성\n" +
                      $"☁️ 날씨: {weather}\n\n";
+
+        // Add optional flags
+        if (hasVileBrood)
+            message += "- 끔찍한 무리 감지됨\n";
 
         // Add resources
         foreach (var resource in resources)
