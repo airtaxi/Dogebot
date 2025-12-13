@@ -161,7 +161,6 @@ public class PlanetGachaCommandHandler : ICommandHandler
             // For biomes with weather as object with clear/normal/extreme
             else if (weatherElement.ValueKind == JsonValueKind.Object)
             {
-                _logger.LogInformation("[PLANET_GACHA] Weather element for biome {Biome} is an object: {RawText} ", selectedBiomeKey, weatherElement.GetRawText());
                 var weatherObj = JsonSerializer.Deserialize<BiomeWeatherObject>(weatherElement.GetRawText());
                 
                 // Select weather type randomly (equal probability)
@@ -170,31 +169,13 @@ public class PlanetGachaCommandHandler : ICommandHandler
                 if (weatherObj?.Normal?.Count > 0) weatherTypes.Add("normal");
                 if (weatherObj?.Extreme?.Count > 0) weatherTypes.Add("extreme");
 
-                // log each weather type count
-                foreach (var type in weatherTypes)
-                {
-                    int count = type switch
-                    {
-                        "clear" => weatherObj?.Clear?.Count ?? 0,
-                        "normal" => weatherObj?.Normal?.Count ?? 0,
-                        "extreme" => weatherObj?.Extreme?.Count ?? 0,
-                        _ => 0
-                    };
-                    _logger.LogInformation("[PLANET_GACHA] Biome {Biome} has {Count} {Type} weather options", selectedBiomeKey, count, type);
-                }
-
-                if (weatherTypes.Count == 0)
-                {
-                    _logger.LogInformation("[PLANET_GACHA] No weather options available for biome {Biome}", selectedBiomeKey);
-                }
-
                 weatherType = weatherTypes.Count > 0 ? weatherTypes[_random.Next(weatherTypes.Count)] : "normal";
                 
                 weather = weatherType switch
                 {
-                    "clear" => weatherObj?.Clear?[_random.Next(weatherObj.Clear.Count)] ?? "화창",
-                    "extreme" => weatherObj?.Extreme?[_random.Next(weatherObj.Extreme.Count)] ?? "극한",
-                    _ => weatherObj?.Normal?[_random.Next(weatherObj.Normal.Count)] ?? "보통"
+                    "clear" => weatherObj?.Clear?[_random.Next(weatherObj.Clear.Count)] ?? "알 수 없는 날씨",
+                    "extreme" => weatherObj?.Extreme?[_random.Next(weatherObj.Extreme.Count)] ?? "알 수 없는 날씨",
+                    _ => weatherObj?.Normal?[_random.Next(weatherObj.Normal.Count)] ?? "알 수 없는 날씨"
                 };
             }
             else
@@ -316,10 +297,7 @@ public class PlanetGachaCommandHandler : ICommandHandler
                 }
 
                 var jsonContent = File.ReadAllText(jsonPath);
-                _nmsData = JsonSerializer.Deserialize<NMSData>(jsonContent, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                _nmsData = JsonSerializer.Deserialize<NMSData>(jsonContent);
 
                 _logger.LogInformation("[PLANET_GACHA] Loaded NMS data from NMS.json");
             }
