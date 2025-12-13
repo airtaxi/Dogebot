@@ -71,9 +71,52 @@ public class PlanetGachaCommandHandler : ICommandHandler
         if (_nmsData == null || _nmsData.Biomes == null)
             return "❌ 행성 데이터를 불러올 수 없습니다.";
 
-        // Select random biome
+        // Define special biome groups with weighted probabilities
+        var specialBiomes = new[] { "WIRECELLS", "CONTOUR", "BONESPIRE", "IRRISHELLS", 
+                                   "HYDROGARDEN", "MSTRUCT", "BEAMS", "HEXAGON", 
+                                   "FRACTCUBE", "BUBBLE", "SHARDS", "GLITCH" };
+        var colorBiomes = new[] { "RED", "GREEN", "BLUE" };
+        
+        // Calculate probabilities
+        // Special biomes: 10% total (shared among all special biomes)
+        // Color biomes: 3% each = 9% total
+        // Normal biomes: remaining 81%
+        
         var biomeKeys = _nmsData.Biomes.Keys.ToList();
-        var selectedBiomeKey = biomeKeys[_random.Next(biomeKeys.Count)];
+        var normalBiomes = biomeKeys.Except(specialBiomes).Except(colorBiomes).ToList();
+        
+        string selectedBiomeKey;
+        var roll = _random.Next(0, 100);
+        
+        if (roll < 3)
+        {
+            // 3% chance for RED
+            selectedBiomeKey = "RED";
+        }
+        else if (roll < 6)
+        {
+            // 3% chance for GREEN
+            selectedBiomeKey = "GREEN";
+        }
+        else if (roll < 9)
+        {
+            // 3% chance for BLUE
+            selectedBiomeKey = "BLUE";
+        }
+        else if (roll < 19)
+        {
+            // 10% chance for special biomes (randomly select one)
+            var availableSpecialBiomes = specialBiomes.Where(b => biomeKeys.Contains(b)).ToList();
+            selectedBiomeKey = availableSpecialBiomes.Count > 0 
+                ? availableSpecialBiomes[_random.Next(availableSpecialBiomes.Count)]
+                : normalBiomes[_random.Next(normalBiomes.Count)];
+        }
+        else
+        {
+            // 81% chance for normal biomes
+            selectedBiomeKey = normalBiomes[_random.Next(normalBiomes.Count)];
+        }
+        
         var selectedBiome = _nmsData.Biomes[selectedBiomeKey];
 
         // Determine star system based on biome
@@ -87,8 +130,8 @@ public class PlanetGachaCommandHandler : ICommandHandler
         else
         {
             // 75% chance for YELLOW, 25% for others
-            var roll = _random.Next(0, 100);
-            if (roll < 75)
+            var roll2 = _random.Next(0, 100);
+            if (roll2 < 75)
                 starSystemKey = "YELLOW";
             else
             {
