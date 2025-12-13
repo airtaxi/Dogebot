@@ -130,8 +130,8 @@ public class PlanetGachaCommandHandler : ICommandHandler
         else
         {
             // 87.5% chance for YELLOW, 12.5% for others
-            var roll2 = _random.Next(0, 100);
-            if (roll2 < 87.5)
+            roll = _random.Next(0, 100);
+            if (roll < 87.5)
                 starSystemKey = "YELLOW";
             else
             {
@@ -176,7 +176,7 @@ public class PlanetGachaCommandHandler : ICommandHandler
                 }
                 else
                 {
-                    var roll = _random.Next(0, 100);
+                    roll = _random.Next(0, 100);
                     
                     // 15% chance for extreme weather
                     if (roll < 15 && weatherTypes.Contains("extreme"))
