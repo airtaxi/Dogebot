@@ -28,6 +28,9 @@ builder.Services.AddSingleton<IAdminService, AdminService>();
 // Register Request Limit service
 builder.Services.AddSingleton<IRequestLimitService, RequestLimitService>();
 
+// Register User Preference service
+builder.Services.AddSingleton<IUserPreferenceService, UserPreferenceService>();
+
 // Register background services
 builder.Services.AddHostedService<ApprovalCodeCleanupService>();
 

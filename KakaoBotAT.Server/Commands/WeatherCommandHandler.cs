@@ -5,18 +5,21 @@ namespace KakaoBotAT.Server.Commands;
 
 /// <summary>
 /// Handles the !날씨 [지역명] command to show current weather.
-/// Uses OpenWeatherMap API. Default city is Seoul.
+/// Uses OpenWeatherMap API. If no city is specified, uses the user's preferred city or defaults to Seoul.
 /// </summary>
 public class WeatherCommandHandler : ICommandHandler
 {
     private readonly IWeatherService _weatherService;
+    private readonly IUserPreferenceService _userPreferenceService;
     private readonly ILogger<WeatherCommandHandler> _logger;
 
     public WeatherCommandHandler(
         IWeatherService weatherService,
+        IUserPreferenceService userPreferenceService,
         ILogger<WeatherCommandHandler> logger)
     {
         _weatherService = weatherService;
+        _userPreferenceService = userPreferenceService;
         _logger = logger;
     }
 
@@ -31,9 +34,10 @@ public class WeatherCommandHandler : ICommandHandler
     {
         try
         {
-            // Parse city name (default: Seoul)
+            // Parse city name
             var content = data.Content.Trim();
-            var cityName = "서울";
+            string? cityName = null;
+            bool userSpecifiedCity = false;
             
             if (content.Length > Command.Length)
             {
@@ -41,6 +45,19 @@ public class WeatherCommandHandler : ICommandHandler
                 if (!string.IsNullOrEmpty(inputCity))
                 {
                     cityName = inputCity;
+                    userSpecifiedCity = true;
+                }
+            }
+
+            // If no city specified, try to get user's preferred city
+            if (cityName == null)
+            {
+                cityName = await _userPreferenceService.GetUserPreferredCityAsync(data.SenderHash);
+                
+                // If no preference found, use default
+                if (cityName == null)
+                {
+                    cityName = "서울";
                 }
             }
 
@@ -55,6 +72,12 @@ public class WeatherCommandHandler : ICommandHandler
                     RoomId = data.RoomId,
                     Message = $"❌ '{cityName}' 도시를 찾을 수 없습니다.\n다른 도시명으로 시도해주세요."
                 };
+            }
+
+            // If user specified a city, save it as their preference
+            if (userSpecifiedCity)
+            {
+                await _userPreferenceService.SetUserPreferredCityAsync(data.SenderHash, cityName);
             }
 
             // Get weather using coordinates (more accurate and stable)
