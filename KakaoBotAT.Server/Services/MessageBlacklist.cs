@@ -10,6 +10,10 @@ public static class MessageBlacklist
     [
         "이모티콘을 보냈습니다.",
         "사진을 보냈습니다.",
+        "Video",
+        "Photo",
+        "Emoticon",
+        "선착순 선물에 당첨되었어요",
         "동영상을 보냈습니다.",
         "사진 2장을 보냈습니다.",
         "사진 3장을 보냈습니다.",
@@ -60,7 +64,7 @@ public static class MessageBlacklist
     /// </summary>
     /// <param name="content">The message content to check</param>
     /// <returns>True if the message should be blacklisted (excluded), false otherwise</returns>
-    public static bool IsBlacklisted(string content)
+    public static bool IsBlacklisted(string content, string senderName)
     {
         if (string.IsNullOrWhiteSpace(content))
             return true;
@@ -71,6 +75,9 @@ public static class MessageBlacklist
             || content.TrimStart().StartsWith("심심아")
             || content.TrimStart().StartsWith("판사님")
             || content.TrimStart().StartsWith("소라고동님"))
+            return true;
+
+        if (senderName.EndsWith("봇", StringComparison.OrdinalIgnoreCase))
             return true;
 
         // Check against blacklist patterns

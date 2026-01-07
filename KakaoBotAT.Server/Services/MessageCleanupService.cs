@@ -65,9 +65,13 @@ public class MessageCleanupService
         var filters = new List<FilterDefinition<MessageContent>>();
 
         // Add regex filters for each blacklist pattern
-        var patterns = new[]
+        var contentPatterns = new[]
         {
             "동영상을 보냈습니다\\.",
+            "Video",
+            "Photo",
+            "Emoticon",
+            "선착순 선물에 당첨되었어요",
             "사진을 보냈습니다\\.",
             "사진 2장을 보냈습니다\\.",
             "사진 3장을 보냈습니다\\.",
@@ -117,10 +121,8 @@ public class MessageCleanupService
             "^!"     // Commands starting with !
         };
 
-        foreach (var pattern in patterns)
-        {
+        foreach (var pattern in contentPatterns)
             filters.Add(filterBuilder.Regex(x => x.Content, new MongoDB.Bson.BsonRegularExpression(pattern, "i")));
-        }
 
         return filterBuilder.Or(filters);
     }

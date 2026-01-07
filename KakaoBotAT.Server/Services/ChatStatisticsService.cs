@@ -41,7 +41,7 @@ public class ChatStatisticsService : IChatStatisticsService
     public async Task RecordMessageAsync(KakaoMessageData data)
     {
         // Filter out blacklisted messages (emoticons, photos, etc.)
-        if (MessageBlacklist.IsBlacklisted(data.Content))
+        if (MessageBlacklist.IsBlacklisted(data.Content, data.SenderName))
             return;
 
         var chatStatsFilter = Builders<ChatStatistics>.Filter.And(
