@@ -31,6 +31,9 @@ builder.Services.AddSingleton<IRequestLimitService, RequestLimitService>();
 // Register User Preference service
 builder.Services.AddSingleton<IUserPreferenceService, UserPreferenceService>();
 
+// Register Hot Deal service
+builder.Services.AddSingleton<IHotDealService, HotDealService>();
+
 // Register background services
 builder.Services.AddHostedService<ApprovalCodeCleanupService>();
 
@@ -92,6 +95,7 @@ builder.Services.AddSingleton<ICommandHandler, SetRequestLimitCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RemoveRequestLimitCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, EnableRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DisableRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, HotDealCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
