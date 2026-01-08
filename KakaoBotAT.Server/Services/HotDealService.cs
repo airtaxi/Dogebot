@@ -1,14 +1,18 @@
 using System.Text.RegularExpressions;
+using HtmlAgilityPack;
 
 namespace KakaoBotAT.Server.Services;
 
-public partial class HotDealService : IHotDealService
+public class HotDealService : IHotDealService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<HotDealService> _logger;
-    private readonly Random _random = new();
+    private static DateTime _lastFetchTime = DateTime.MinValue;
+    private static List<HotDealItem>? _cachedDeals;
+    private static readonly object _cacheLock = new();
 
     private const string HotDealUrl = "https://arca.live/b/hotdeal";
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(3);
 
     public HotDealService(IHttpClientFactory httpClientFactory, ILogger<HotDealService> logger)
     {
@@ -23,24 +27,51 @@ public partial class HotDealService : IHotDealService
     {
         try
         {
-            var response = await _httpClient.GetAsync(HotDealUrl);
+            List<HotDealItem> deals;
 
-            if (!response.IsSuccessStatusCode)
+            lock (_cacheLock)
             {
-                _logger.LogError("[HOTDEAL] Failed to fetch hot deals. Status code: {StatusCode}", response.StatusCode);
-                return null;
+                // Check if cache is still valid
+                if (_cachedDeals != null && DateTime.UtcNow - _lastFetchTime < CacheDuration)
+                {
+                    _logger.LogInformation("[HOTDEAL] Using cached deals (age: {Age}s)", (DateTime.UtcNow - _lastFetchTime).TotalSeconds);
+                    deals = _cachedDeals;
+                }
+                else
+                {
+                    deals = null!;
+                }
             }
 
-            var html = await response.Content.ReadAsStringAsync();
-            var deals = ParseHotDeals(html);
-
-            if (deals.Count == 0)
+            // Fetch new deals if cache is invalid
+            if (deals == null)
             {
-                _logger.LogWarning("[HOTDEAL] No hot deals found on the page");
-                return null;
+                var response = await _httpClient.GetAsync(HotDealUrl);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("[HOTDEAL] Failed to fetch hot deals. Status code: {StatusCode}", response.StatusCode);
+                    return null;
+                }
+
+                var html = await response.Content.ReadAsStringAsync();
+                deals = ParseHotDeals(html);
+
+                if (deals.Count == 0)
+                {
+                    _logger.LogWarning("[HOTDEAL] No hot deals found on the page");
+                    return null;
+                }
+
+                // Update cache
+                lock (_cacheLock)
+                {
+                    _cachedDeals = deals;
+                    _lastFetchTime = DateTime.UtcNow;
+                }
             }
 
-            var randomDeal = deals[_random.Next(deals.Count)];
+            var randomDeal = deals[Random.Shared.Next(deals.Count)];
             return randomDeal;
         }
         catch (Exception ex)
@@ -56,57 +87,76 @@ public partial class HotDealService : IHotDealService
 
         try
         {
-            // Match article list items with hotdeal info
-            // Pattern: <a class="vrow hybrid" href="/b/hotdeal/..." ...>
-            var articlePattern = ArticleRegex();
-            var articleMatches = articlePattern.Matches(html);
+            var doc = new HtmlDocument();
+            doc.LoadHtml(html);
 
-            foreach (Match match in articleMatches)
+            // Select all deal rows (excluding notices)
+            var dealRows = doc.DocumentNode.SelectNodes("//div[contains(@class, 'vrow') and contains(@class, 'hybrid') and not(contains(@class, 'notice'))]");
+
+            if (dealRows == null)
             {
-                var articleHtml = match.Value;
-                var href = match.Groups[1].Value;
+                _logger.LogWarning("[HOTDEAL] No deal rows found in HTML");
+                return deals;
+            }
 
-                // Skip notice/pinned posts
-                if (articleHtml.Contains("vrow-top") || articleHtml.Contains("notice"))
-                    continue;
-
-                var deal = new HotDealItem
+            foreach (var row in dealRows)
+            {
+                try
                 {
-                    Link = $"https://arca.live{href}"
-                };
+                    // Skip closed deals (deal-close class)
+                    if (row.InnerHtml.Contains("deal-close"))
+                        continue;
 
-                // Extract title from <span class="title">...</span>
-                var titleMatch = TitleRegex().Match(articleHtml);
-                if (titleMatch.Success)
-                {
-                    deal.Title = CleanHtml(titleMatch.Groups[1].Value).Trim();
+                    var deal = new HotDealItem();
+
+                    // Extract link and title from <a class="title hybrid-title">
+                    var titleLink = row.SelectSingleNode(".//a[contains(@class, 'hybrid-title')]");
+                    if (titleLink != null)
+                    {
+                        var href = titleLink.GetAttributeValue("href", "");
+                        if (!string.IsNullOrEmpty(href))
+                        {
+                            deal.Link = $"https://arca.live{href.Split('?')[0]}";
+                        }
+
+                        // Get title text (exclude child elements like comment count)
+                        var titleText = titleLink.InnerText;
+                        // Clean up the title
+                        deal.Title = System.Net.WebUtility.HtmlDecode(titleText).Trim();
+                        // Remove comment count like [5]
+                        deal.Title = System.Text.RegularExpressions.Regex.Replace(deal.Title, @"\[\d+\]", "").Trim();
+                    }
+
+                    // Extract price from <span class="deal-price">
+                    var priceNode = row.SelectSingleNode(".//span[contains(@class, 'deal-price')]");
+                    if (priceNode != null)
+                    {
+                        deal.Price = System.Net.WebUtility.HtmlDecode(priceNode.InnerText).Trim();
+                    }
+
+                    // Extract shipping from <span class="deal-delivery">
+                    var deliveryNode = row.SelectSingleNode(".//span[contains(@class, 'deal-delivery')]");
+                    if (deliveryNode != null)
+                    {
+                        deal.ShippingCost = System.Net.WebUtility.HtmlDecode(deliveryNode.InnerText).Trim();
+                    }
+
+                    // Extract store from <span class="deal-store">
+                    var storeNode = row.SelectSingleNode(".//span[contains(@class, 'deal-store')]");
+                    if (storeNode != null)
+                    {
+                        deal.Mall = System.Net.WebUtility.HtmlDecode(storeNode.InnerText).Trim();
+                    }
+
+                    // Only add if we have at least a title
+                    if (!string.IsNullOrEmpty(deal.Title))
+                    {
+                        deals.Add(deal);
+                    }
                 }
-
-                // Extract price from deal-price span
-                var priceMatch = PriceRegex().Match(articleHtml);
-                if (priceMatch.Success)
+                catch (Exception ex)
                 {
-                    deal.Price = CleanHtml(priceMatch.Groups[1].Value).Trim();
-                }
-
-                // Extract shipping from deal-ship span
-                var shippingMatch = ShippingRegex().Match(articleHtml);
-                if (shippingMatch.Success)
-                {
-                    deal.ShippingCost = CleanHtml(shippingMatch.Groups[1].Value).Trim();
-                }
-
-                // Extract mall from deal-store span
-                var mallMatch = MallRegex().Match(articleHtml);
-                if (mallMatch.Success)
-                {
-                    deal.Mall = CleanHtml(mallMatch.Groups[1].Value).Trim();
-                }
-
-                // Only add if we have at least a title
-                if (!string.IsNullOrEmpty(deal.Title))
-                {
-                    deals.Add(deal);
+                    _logger.LogWarning(ex, "[HOTDEAL] Error parsing individual deal row");
                 }
             }
 
@@ -119,28 +169,4 @@ public partial class HotDealService : IHotDealService
 
         return deals;
     }
-
-    private static string CleanHtml(string html)
-    {
-        // Remove HTML tags
-        var result = Regex.Replace(html, "<[^>]+>", "");
-        // Decode HTML entities
-        result = System.Net.WebUtility.HtmlDecode(result);
-        return result.Trim();
-    }
-
-    [GeneratedRegex(@"<a[^>]*class=""[^""]*vrow[^""]*hybrid[^""]*""[^>]*href=""(/b/hotdeal/\d+)""[^>]*>.*?</a>", RegexOptions.Singleline)]
-    private static partial Regex ArticleRegex();
-
-    [GeneratedRegex(@"<span[^>]*class=""[^""]*title[^""]*""[^>]*>(.*?)</span>", RegexOptions.Singleline)]
-    private static partial Regex TitleRegex();
-
-    [GeneratedRegex(@"<span[^>]*class=""[^""]*deal-price[^""]*""[^>]*>(.*?)</span>", RegexOptions.Singleline)]
-    private static partial Regex PriceRegex();
-
-    [GeneratedRegex(@"<span[^>]*class=""[^""]*deal-ship[^""]*""[^>]*>(.*?)</span>", RegexOptions.Singleline)]
-    private static partial Regex ShippingRegex();
-
-    [GeneratedRegex(@"<span[^>]*class=""[^""]*deal-store[^""]*""[^>]*>(.*?)</span>", RegexOptions.Singleline)]
-    private static partial Regex MallRegex();
 }

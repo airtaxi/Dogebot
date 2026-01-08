@@ -51,7 +51,8 @@ public class HotDealCommandHandler : ICommandHandler
                          $"💰 가격: {priceInfo}\n" +
                          $"🚚 배송비: {shippingInfo}\n" +
                          mallInfo +
-                         $"\n🔗 {deal.Link}";
+                         $"\n🔗 {deal.Link}\n\n" +
+                         $"ℹ️ 핫딜 목록은 3시간마다 갱신됩니다.";
 
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("[HOTDEAL] Recommended deal '{Title}' to {Sender} in room {RoomId}",
