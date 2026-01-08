@@ -3,14 +3,6 @@ using System.Text.Json;
 
 namespace KakaoBotAT.Server.Services;
 
-public interface IWeatherService
-{
-    Task<WeatherResponse?> GetWeatherAsync(string city = "Seoul");
-    Task<WeatherResponse?> GetWeatherByCoordinatesAsync(double lat, double lon);
-    Task<ForecastResponse?> GetForecastByCoordinatesAsync(double lat, double lon);
-    Task<GeocodingResponse?> GetCityCoordinatesAsync(string cityName);
-}
-
 public class WeatherService : IWeatherService
 {
     private readonly HttpClient _httpClient;
@@ -35,7 +27,7 @@ public class WeatherService : IWeatherService
         try
         {
             var encodedCityName = Uri.EscapeDataString(cityName);
-            var url = $"http://api.openweathermap.org/geo/1.0/direct?q={encodedCityName}&limit=1&appid={_apiKey}";
+            var url = $"http://api.openweathermap.org/geo/1.0/direct?q={encodedCityName}&limit=5&appid={_apiKey}";
             var response = await _httpClient.GetAsync(url);
 
             if (!response.IsSuccessStatusCode)
@@ -47,7 +39,38 @@ public class WeatherService : IWeatherService
             var content = await response.Content.ReadAsStringAsync();
             var geocodingData = JsonSerializer.Deserialize<List<GeocodingResponse>>(content);
 
-            return geocodingData?.FirstOrDefault();
+            if (geocodingData == null || geocodingData.Count == 0)
+                return null;
+
+            // Priority 1: Check for exact match with administrative suffixes in Korean name
+            var administrativeSuffixes = new[] { "시", "군", "구", "면", "읍", "동" };
+            
+            foreach (var suffix in administrativeSuffixes)
+            {
+                var cityNameWithSuffix = cityName + suffix;
+                var exactMatchWithSuffix = geocodingData.FirstOrDefault(g => 
+                    g.LocalNames?.GetValueOrDefault("ko")?.Equals(cityNameWithSuffix, StringComparison.OrdinalIgnoreCase) == true);
+                
+                if (exactMatchWithSuffix != null)
+                {
+                    _logger.LogInformation("[WEATHER] Found exact match with '{Suffix}' suffix: {Name}", suffix, exactMatchWithSuffix.LocalNames?.GetValueOrDefault("ko"));
+                    return exactMatchWithSuffix;
+                }
+            }
+
+            // Priority 2: Check for exact match in Korean name
+            var exactMatch = geocodingData.FirstOrDefault(g => 
+                g.LocalNames?.GetValueOrDefault("ko")?.Equals(cityName, StringComparison.OrdinalIgnoreCase) == true);
+            
+            if (exactMatch != null)
+            {
+                _logger.LogInformation("[WEATHER] Found exact match: {Name}", exactMatch.LocalNames?.GetValueOrDefault("ko"));
+                return exactMatch;
+            }
+
+            // Priority 3: Return first result
+            _logger.LogInformation("[WEATHER] Using first result: {Name}", geocodingData[0].Name);
+            return geocodingData[0];
         }
         catch (Exception ex)
         {
