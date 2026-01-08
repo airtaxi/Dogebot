@@ -46,13 +46,19 @@ public class HotDealCommandHandler : ICommandHandler
             var shippingInfo = string.IsNullOrEmpty(deal.ShippingCost) ? "배송비 정보 없음" : deal.ShippingCost;
             var mallInfo = string.IsNullOrEmpty(deal.Mall) ? "" : $"🏪 판매처: {deal.Mall}\n";
 
+            var lastCacheTime = _hotDealService.GetLastCacheTime();
+            var cacheInfo = lastCacheTime.HasValue
+                ? $"마지막 갱신: {lastCacheTime.Value.ToLocalTime():yyyy-MM-dd HH:mm:ss}"
+                : "첫 조회";
+
             var message = $"🔥 오늘의 핫딜!\n\n" +
                          $"📦 {deal.Title}\n\n" +
                          $"💰 가격: {priceInfo}\n" +
                          $"🚚 배송비: {shippingInfo}\n" +
                          mallInfo +
                          $"\n🔗 {deal.Link}\n\n" +
-                         $"ℹ️ 핫딜 목록은 3시간마다 갱신됩니다.";
+                         $"ℹ️ 핫딜 목록은 3시간마다 갱신됩니다.\n" +
+                         $"📅 {cacheInfo}";
 
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("[HOTDEAL] Recommended deal '{Title}' to {Sender} in room {RoomId}",

@@ -81,6 +81,14 @@ public class HotDealService : IHotDealService
         }
     }
 
+    public DateTime? GetLastCacheTime()
+    {
+        lock (_cacheLock)
+        {
+            return _lastFetchTime == DateTime.MinValue ? null : _lastFetchTime;
+        }
+    }
+
     private List<HotDealItem> ParseHotDeals(string html)
     {
         var deals = new List<HotDealItem>();

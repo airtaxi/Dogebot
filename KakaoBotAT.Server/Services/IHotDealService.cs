@@ -3,6 +3,7 @@ namespace KakaoBotAT.Server.Services;
 public interface IHotDealService
 {
     Task<HotDealItem?> GetRandomHotDealAsync();
+    DateTime? GetLastCacheTime();
 }
 
 public class HotDealItem
