@@ -5,24 +5,18 @@ using OpenQA.Selenium.Chrome;
 
 namespace KakaoBotAT.Server.Services;
 
-public class HotDealService : IHotDealService, IDisposable
+public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealService, IDisposable
 {
-    private readonly ILogger<HotDealService> _logger;
     private static DateTime _lastFetchTime = DateTime.MinValue;
     private static List<HotDealItem>? _cachedDeals;
-    private static readonly object _cacheLock = new();
-    private static IWebDriver? _driver;
-    private static readonly object _driverLock = new();
+    private static ChromeDriver? _driver;
+    private static readonly Lock _cacheLock = new();
+    private static readonly Lock _driverLock = new();
 
     private const string HotDealUrl = "https://arca.live/b/hotdeal";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(3);
 
-    public HotDealService(ILogger<HotDealService> logger)
-    {
-        _logger = logger;
-    }
-
-    private static IWebDriver GetOrCreateDriver()
+    private static ChromeDriver GetOrCreateDriver()
     {
         lock (_driverLock)
         {
@@ -58,7 +52,7 @@ public class HotDealService : IHotDealService, IDisposable
                 // Check if cache is still valid
                 if (_cachedDeals != null && DateTime.UtcNow - _lastFetchTime < CacheDuration)
                 {
-                    _logger.LogInformation("[HOTDEAL] Using cached deals (age: {Age}s)", (DateTime.UtcNow - _lastFetchTime).TotalSeconds);
+                    logger.LogInformation("[HOTDEAL] Using cached deals (age: {Age}s)", (DateTime.UtcNow - _lastFetchTime).TotalSeconds);
                     deals = _cachedDeals;
                 }
                 else
@@ -70,11 +64,11 @@ public class HotDealService : IHotDealService, IDisposable
             // Fetch new deals if cache is invalid
             if (deals == null)
             {
-                var html = await Task.Run(() => FetchPageWithSelenium());
+                var html = await Task.Run(FetchPageWithSelenium);
 
                 if (string.IsNullOrEmpty(html))
                 {
-                    _logger.LogError("[HOTDEAL] Failed to fetch hot deals page");
+                    logger.LogError("[HOTDEAL] Failed to fetch hot deals page");
                     return null;
                 }
 
@@ -82,7 +76,7 @@ public class HotDealService : IHotDealService, IDisposable
 
                 if (deals.Count == 0)
                 {
-                    _logger.LogWarning("[HOTDEAL] No hot deals found on the page");
+                    logger.LogWarning("[HOTDEAL] No hot deals found on the page");
                     return null;
                 }
 
@@ -99,7 +93,7 @@ public class HotDealService : IHotDealService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[HOTDEAL] Error fetching hot deals");
+            logger.LogError(ex, "[HOTDEAL] Error fetching hot deals");
             return null;
         }
     }
@@ -118,13 +112,13 @@ public class HotDealService : IHotDealService, IDisposable
                 Thread.Sleep(3000);
                 
                 var html = driver.PageSource;
-                _logger.LogInformation("[HOTDEAL] Successfully fetched page with Selenium");
+                logger.LogInformation("[HOTDEAL] Successfully fetched page with Selenium");
                 return html;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[HOTDEAL] Error fetching page with Selenium");
+            logger.LogError(ex, "[HOTDEAL] Error fetching page with Selenium");
             
             // Try to recreate driver on error
             lock (_driverLock)
@@ -163,7 +157,7 @@ public class HotDealService : IHotDealService, IDisposable
 
             if (dealRows == null)
             {
-                _logger.LogWarning("[HOTDEAL] No deal rows found in HTML");
+                logger.LogWarning("[HOTDEAL] No deal rows found in HTML");
                 return deals;
             }
 
@@ -192,7 +186,7 @@ public class HotDealService : IHotDealService, IDisposable
                         // Clean up the title
                         deal.Title = System.Net.WebUtility.HtmlDecode(titleText).Trim();
                         // Remove comment count like [5]
-                        deal.Title = System.Text.RegularExpressions.Regex.Replace(deal.Title, @"\[\d+\]", "").Trim();
+                        deal.Title = CommentCountRegex().Replace(deal.Title, "").Trim();
                     }
 
                     // Extract price from <span class="deal-price">
@@ -224,15 +218,15 @@ public class HotDealService : IHotDealService, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "[HOTDEAL] Error parsing individual deal row");
+                    logger.LogWarning(ex, "[HOTDEAL] Error parsing individual deal row");
                 }
             }
 
-            _logger.LogInformation("[HOTDEAL] Parsed {Count} hot deals from page", deals.Count);
+            logger.LogInformation("[HOTDEAL] Parsed {Count} hot deals from page", deals.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[HOTDEAL] Error parsing hot deals HTML");
+            logger.LogError(ex, "[HOTDEAL] Error parsing hot deals HTML");
         }
 
         return deals;
@@ -253,4 +247,7 @@ public class HotDealService : IHotDealService, IDisposable
 
         GC.SuppressFinalize(this);
     }
+
+    [GeneratedRegex(@"\[\d+\]")]
+    private static partial Regex CommentCountRegex();
 }
