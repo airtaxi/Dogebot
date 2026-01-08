@@ -1,26 +1,50 @@
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
 
 namespace KakaoBotAT.Server.Services;
 
-public class HotDealService : IHotDealService
+public class HotDealService : IHotDealService, IDisposable
 {
-    private readonly HttpClient _httpClient;
     private readonly ILogger<HotDealService> _logger;
     private static DateTime _lastFetchTime = DateTime.MinValue;
     private static List<HotDealItem>? _cachedDeals;
     private static readonly object _cacheLock = new();
+    private static IWebDriver? _driver;
+    private static readonly object _driverLock = new();
 
     private const string HotDealUrl = "https://arca.live/b/hotdeal";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(3);
 
-    public HotDealService(IHttpClientFactory httpClientFactory, ILogger<HotDealService> logger)
+    public HotDealService(ILogger<HotDealService> logger)
     {
-        _httpClient = httpClientFactory.CreateClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-        _httpClient.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-        _httpClient.DefaultRequestHeaders.Add("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7");
         _logger = logger;
+    }
+
+    private static IWebDriver GetOrCreateDriver()
+    {
+        lock (_driverLock)
+        {
+            if (_driver == null)
+            {
+                var options = new ChromeOptions();
+                options.AddArgument("--headless");
+                options.AddArgument("--no-sandbox");
+                options.AddArgument("--disable-dev-shm-usage");
+                options.AddArgument("--disable-gpu");
+                options.AddArgument("--window-size=1920,1080");
+                options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                options.AddArgument("--disable-blink-features=AutomationControlled");
+                options.AddExcludedArgument("enable-automation");
+                options.AddAdditionalOption("useAutomationExtension", false);
+
+                _driver = new ChromeDriver(options);
+                _driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
+                _driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
+            }
+            return _driver;
+        }
     }
 
     public async Task<HotDealItem?> GetRandomHotDealAsync()
@@ -46,15 +70,14 @@ public class HotDealService : IHotDealService
             // Fetch new deals if cache is invalid
             if (deals == null)
             {
-                var response = await _httpClient.GetAsync(HotDealUrl);
+                var html = await Task.Run(() => FetchPageWithSelenium());
 
-                if (!response.IsSuccessStatusCode)
+                if (string.IsNullOrEmpty(html))
                 {
-                    _logger.LogError("[HOTDEAL] Failed to fetch hot deals. Status code: {StatusCode}", response.StatusCode);
+                    _logger.LogError("[HOTDEAL] Failed to fetch hot deals page");
                     return null;
                 }
 
-                var html = await response.Content.ReadAsStringAsync();
                 deals = ParseHotDeals(html);
 
                 if (deals.Count == 0)
@@ -77,6 +100,43 @@ public class HotDealService : IHotDealService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[HOTDEAL] Error fetching hot deals");
+            return null;
+        }
+    }
+
+    private string? FetchPageWithSelenium()
+    {
+        try
+        {
+            var driver = GetOrCreateDriver();
+            
+            lock (_driverLock)
+            {
+                driver.Navigate().GoToUrl(HotDealUrl);
+                
+                // Wait for the page to load
+                Thread.Sleep(3000);
+                
+                var html = driver.PageSource;
+                _logger.LogInformation("[HOTDEAL] Successfully fetched page with Selenium");
+                return html;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[HOTDEAL] Error fetching page with Selenium");
+            
+            // Try to recreate driver on error
+            lock (_driverLock)
+            {
+                try
+                {
+                    _driver?.Quit();
+                }
+                catch { }
+                _driver = null;
+            }
+            
             return null;
         }
     }
@@ -176,5 +236,21 @@ public class HotDealService : IHotDealService
         }
 
         return deals;
+    }
+
+    public void Dispose()
+    {
+        lock (_driverLock)
+        {
+            try
+            {
+                _driver?.Quit();
+                _driver?.Dispose();
+            }
+            catch { }
+            _driver = null;
+        }
+
+        GC.SuppressFinalize(this);
     }
 }
