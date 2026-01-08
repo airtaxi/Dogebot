@@ -48,7 +48,7 @@ public class HotDealCommandHandler : ICommandHandler
 
             var lastCacheTime = _hotDealService.GetLastCacheTime();
             var cacheInfo = lastCacheTime.HasValue
-                ? $"마지막 갱신: {lastCacheTime.Value.ToLocalTime():yyyy-MM-dd HH:mm:ss}"
+                ? $"마지막 갱신: {TimeZoneInfo.ConvertTimeFromUtc(lastCacheTime.Value, TimeZoneInfo.FindSystemTimeZoneById("Korea Standard Time")):yyyy-MM-dd HH:mm:ss}"
                 : "첫 조회";
 
             var message = $"🔥 오늘의 핫딜!\n\n" +
