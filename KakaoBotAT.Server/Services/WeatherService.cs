@@ -3,24 +3,16 @@ using System.Text.Json;
 
 namespace KakaoBotAT.Server.Services;
 
-public class WeatherService : IWeatherService
+public class WeatherService(IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<WeatherService> logger) : IWeatherService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<WeatherService> _logger;
-    private readonly string? _apiKey;
-
-    public WeatherService(IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<WeatherService> logger)
-    {
-        _httpClient = httpClientFactory.CreateClient();
-        _logger = logger;
-        _apiKey = Environment.GetEnvironmentVariable("WEATHER_API_KEY") ?? configuration["Weather:ApiKey"];
-    }
+    private readonly HttpClient _httpClient = httpClientFactory.CreateClient();
+    private readonly string? _apiKey = Environment.GetEnvironmentVariable("WEATHER_API_KEY") ?? configuration["Weather:ApiKey"];
 
     public async Task<GeocodingResponse?> GetCityCoordinatesAsync(string cityName)
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
-            _logger.LogError("[WEATHER] API key is not configured");
+            logger.LogError("[WEATHER] API key is not configured");
             return null;
         }
 
@@ -34,18 +26,18 @@ public class WeatherService : IWeatherService
             
             if (koreaResult != null)
             {
-                _logger.LogInformation("[WEATHER] Found result in Korea: {Name}", koreaResult.Name);
+                logger.LogInformation("[WEATHER] Found result in Korea: {Name}", koreaResult.Name);
                 return koreaResult;
             }
 
             // Fallback to global search
-            _logger.LogInformation("[WEATHER] No result found in Korea, falling back to global search for {CityName}", cityName);
+            logger.LogInformation("[WEATHER] No result found in Korea, falling back to global search for {CityName}", cityName);
             var globalUrl = $"http://api.openweathermap.org/geo/1.0/direct?q={encodedCityName}&limit=5&appid={_apiKey}";
             return await TryGetGeocodingResultAsync(globalUrl, cityName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[WEATHER] Error fetching geocoding data for {CityName}", cityName);
+            logger.LogError(ex, "[WEATHER] Error fetching geocoding data for {CityName}", cityName);
             return null;
         }
     }
@@ -56,7 +48,7 @@ public class WeatherService : IWeatherService
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError("[WEATHER] Geocoding API request failed with status code {StatusCode}", response.StatusCode);
+            logger.LogError("[WEATHER] Geocoding API request failed with status code {StatusCode}", response.StatusCode);
             return null;
         }
 
@@ -77,7 +69,7 @@ public class WeatherService : IWeatherService
             
             if (exactMatchWithSuffix != null)
             {
-                _logger.LogInformation("[WEATHER] Found exact match with '{Suffix}' suffix: {Name}", suffix, exactMatchWithSuffix.LocalNames?.GetValueOrDefault("ko"));
+                logger.LogInformation("[WEATHER] Found exact match with '{Suffix}' suffix: {Name}", suffix, exactMatchWithSuffix.LocalNames?.GetValueOrDefault("ko"));
                 return exactMatchWithSuffix;
             }
         }
@@ -88,12 +80,12 @@ public class WeatherService : IWeatherService
         
         if (exactMatch != null)
         {
-            _logger.LogInformation("[WEATHER] Found exact match: {Name}", exactMatch.LocalNames?.GetValueOrDefault("ko"));
+            logger.LogInformation("[WEATHER] Found exact match: {Name}", exactMatch.LocalNames?.GetValueOrDefault("ko"));
             return exactMatch;
         }
 
         // Priority 3: Return first result
-        _logger.LogInformation("[WEATHER] Using first result: {Name}", geocodingData[0].Name);
+        logger.LogInformation("[WEATHER] Using first result: {Name}", geocodingData[0].Name);
         return geocodingData[0];
     }
 
@@ -101,7 +93,7 @@ public class WeatherService : IWeatherService
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
-            _logger.LogError("[WEATHER] API key is not configured");
+            logger.LogError("[WEATHER] API key is not configured");
             return null;
         }
 
@@ -112,7 +104,7 @@ public class WeatherService : IWeatherService
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("[WEATHER] Weather API request failed with status code {StatusCode}", response.StatusCode);
+                logger.LogError("[WEATHER] Weather API request failed with status code {StatusCode}", response.StatusCode);
                 return null;
             }
 
@@ -123,7 +115,7 @@ public class WeatherService : IWeatherService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[WEATHER] Error fetching weather data for coordinates ({Lat}, {Lon})", lat, lon);
+            logger.LogError(ex, "[WEATHER] Error fetching weather data for coordinates ({Lat}, {Lon})", lat, lon);
             return null;
         }
     }
@@ -132,7 +124,7 @@ public class WeatherService : IWeatherService
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
-            _logger.LogError("[WEATHER] API key is not configured");
+            logger.LogError("[WEATHER] API key is not configured");
             return null;
         }
 
@@ -143,7 +135,7 @@ public class WeatherService : IWeatherService
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("[WEATHER] Forecast API request failed with status code {StatusCode}", response.StatusCode);
+                logger.LogError("[WEATHER] Forecast API request failed with status code {StatusCode}", response.StatusCode);
                 return null;
             }
 
@@ -154,7 +146,7 @@ public class WeatherService : IWeatherService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[WEATHER] Error fetching forecast data for coordinates ({Lat}, {Lon})", lat, lon);
+            logger.LogError(ex, "[WEATHER] Error fetching forecast data for coordinates ({Lat}, {Lon})", lat, lon);
             return null;
         }
     }
@@ -163,7 +155,7 @@ public class WeatherService : IWeatherService
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
-            _logger.LogError("[WEATHER] API key is not configured");
+            logger.LogError("[WEATHER] API key is not configured");
             return null;
         }
 
@@ -174,7 +166,7 @@ public class WeatherService : IWeatherService
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("[WEATHER] API request failed with status code {StatusCode}", response.StatusCode);
+                logger.LogError("[WEATHER] API request failed with status code {StatusCode}", response.StatusCode);
                 return null;
             }
 
@@ -185,7 +177,7 @@ public class WeatherService : IWeatherService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[WEATHER] Error fetching weather data for {City}", city);
+            logger.LogError(ex, "[WEATHER] Error fetching weather data for {City}", city);
             return null;
         }
     }
