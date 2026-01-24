@@ -44,18 +44,15 @@ public class RequestLimitService : IRequestLimitService
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-        var roomLimit = new RoomRequestLimit
-        {
-            Id = Guid.NewGuid().ToString("N"),
-            RoomId = roomId,
-            RoomName = roomName,
-            DailyLimit = dailyLimit,
-            SetBy = setBy,
-            SetAt = now
-        };
-
         var filter = Builders<RoomRequestLimit>.Filter.Eq(x => x.RoomId, roomId);
-        await _roomLimits.ReplaceOneAsync(filter, roomLimit, new ReplaceOptions { IsUpsert = true });
+        var update = Builders<RoomRequestLimit>.Update
+            .Set(x => x.RoomId, roomId)
+            .Set(x => x.RoomName, roomName)
+            .Set(x => x.DailyLimit, dailyLimit)
+            .Set(x => x.SetBy, setBy)
+            .Set(x => x.SetAt, now);
+
+        await _roomLimits.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
 
         return true;
     }
