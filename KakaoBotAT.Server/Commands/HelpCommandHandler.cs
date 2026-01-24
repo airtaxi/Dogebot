@@ -1,4 +1,4 @@
-﻿using KakaoBotAT.Commons;
+using KakaoBotAT.Commons;
 
 namespace KakaoBotAT.Server.Commands;
 
@@ -53,6 +53,7 @@ public class HelpCommandHandler : ICommandHandler
                          "🎮 게임 & 랜덤\n" +
                          "• !홀 / !짝 - 홀짝 게임\n" +
                          "• !주사위 (범위) - 1~범위 사이 랜덤 숫자 (최대: 2,147,483,647)\n" +
+                         "• !로또 - 로또 번호 6개 추첨 (1~45)\n" +
                          "• 확률 - 0~100% 랜덤 확률\n" +
                          "• !선택 (항목1) (항목2) ... - 랜덤 선택\n" +
                          "• !뭐먹지 - 음식 추천\n" +
