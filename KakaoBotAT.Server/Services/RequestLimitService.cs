@@ -46,6 +46,7 @@ public class RequestLimitService : IRequestLimitService
 
         var roomLimit = new RoomRequestLimit
         {
+            Id = Guid.NewGuid().ToString("N"),
             RoomId = roomId,
             RoomName = roomName,
             DailyLimit = dailyLimit,
