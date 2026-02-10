@@ -73,6 +73,7 @@ builder.Services.AddSingleton<ICommandHandler, ProbabilityCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, JudgeCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, OddEvenCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DiceCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, LottoCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MagicConchCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HelpCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RoomInfoCommandHandler>();
