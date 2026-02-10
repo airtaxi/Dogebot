@@ -73,7 +73,6 @@ builder.Services.AddSingleton<ICommandHandler, ProbabilityCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, JudgeCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, OddEvenCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DiceCommandHandler>();
-builder.Services.AddSingleton<ICommandHandler, LottoCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MagicConchCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HelpCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RoomInfoCommandHandler>();
@@ -96,6 +95,8 @@ builder.Services.AddSingleton<ICommandHandler, SetRequestLimitCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RemoveRequestLimitCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, EnableRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DisableRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, HourlyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MyHourlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HotDealCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();

@@ -9,12 +9,14 @@ public class ChatStatisticsService : IChatStatisticsService
     private readonly IMongoCollection<ChatStatistics> _chatStatistics;
     private readonly IMongoCollection<MessageContent> _messageContents;
     private readonly IMongoCollection<RoomRankingSettings> _roomRankingSettings;
+    private readonly IMongoCollection<HourlyChatStatistics> _hourlyChatStatistics;
 
     public ChatStatisticsService(IMongoDbService mongoDbService)
     {
         _chatStatistics = mongoDbService.Database.GetCollection<ChatStatistics>("chatStatistics");
         _messageContents = mongoDbService.Database.GetCollection<MessageContent>("messageContents");
         _roomRankingSettings = mongoDbService.Database.GetCollection<RoomRankingSettings>("roomRankingSettings");
+        _hourlyChatStatistics = mongoDbService.Database.GetCollection<HourlyChatStatistics>("hourlyChatStatistics");
 
         CreateIndexes();
     }
@@ -36,6 +38,13 @@ public class ChatStatisticsService : IChatStatisticsService
         var roomRankingSettingsIndexKeys = Builders<RoomRankingSettings>.IndexKeys.Ascending(x => x.RoomId);
         var roomRankingSettingsIndexModel = new CreateIndexModel<RoomRankingSettings>(roomRankingSettingsIndexKeys, new CreateIndexOptions { Unique = true });
         _roomRankingSettings.Indexes.CreateOne(roomRankingSettingsIndexModel);
+
+        var hourlyStatsIndexKeys = Builders<HourlyChatStatistics>.IndexKeys
+            .Ascending(x => x.RoomId)
+            .Ascending(x => x.SenderHash)
+            .Ascending(x => x.DateTime);
+        var hourlyStatsIndexModel = new CreateIndexModel<HourlyChatStatistics>(hourlyStatsIndexKeys, new CreateIndexOptions { Unique = true });
+        _hourlyChatStatistics.Indexes.CreateOne(hourlyStatsIndexModel);
     }
 
     public async Task RecordMessageAsync(KakaoMessageData data)
@@ -57,6 +66,21 @@ public class ChatStatisticsService : IChatStatisticsService
         await _chatStatistics.UpdateOneAsync(
             chatStatsFilter,
             chatStatsUpdate,
+            new UpdateOptions { IsUpsert = true }
+        );
+
+        // Record per-minute statistics (truncated to minute for future granularity)
+        var dateTime = DateTimeOffset.FromUnixTimeSeconds(data.Time).UtcDateTime;
+        var truncatedToMinute = new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, dateTime.Minute, 0, DateTimeKind.Utc);
+        var hourlyFilter = Builders<HourlyChatStatistics>.Filter.And(
+            Builders<HourlyChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId),
+            Builders<HourlyChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash),
+            Builders<HourlyChatStatistics>.Filter.Eq(x => x.DateTime, truncatedToMinute)
+        );
+        var hourlyUpdate = Builders<HourlyChatStatistics>.Update.Inc(x => x.MessageCount, 1);
+        await _hourlyChatStatistics.UpdateOneAsync(
+            hourlyFilter,
+            hourlyUpdate,
             new UpdateOptions { IsUpsert = true }
         );
 
@@ -91,7 +115,7 @@ public class ChatStatisticsService : IChatStatisticsService
             .Limit(limit)
             .ToListAsync();
 
-        return results.Select(r => (r.SenderName, r.MessageCount)).ToList();
+        return [.. results.Select(r => (r.SenderName, r.MessageCount))];
     }
 
     public async Task<(int Rank, long MessageCount)?> GetUserRankAsync(string roomId, string senderHash)
@@ -123,7 +147,7 @@ public class ChatStatisticsService : IChatStatisticsService
             .Limit(limit)
             .ToListAsync();
 
-        return results.Select(r => (r.Content, r.Count)).ToList();
+        return [.. results.Select(r => (r.Content, r.Count))];
     }
 
     public async Task<(long TotalMessages, int UniqueUsers)> GetRoomStatisticsAsync(string roomId)
@@ -189,5 +213,38 @@ public class ChatStatisticsService : IChatStatisticsService
         await _messageContents.DeleteManyAsync(deleteFilter);
 
         return true;
+    }
+
+    private static readonly TimeSpan KstOffset = TimeSpan.FromHours(9);
+
+    public async Task<List<(int Hour, long MessageCount)>> GetHourlyStatisticsAsync(string roomId)
+    {
+        var filter = Builders<HourlyChatStatistics>.Filter.Eq(x => x.RoomId, roomId);
+
+        var results = await _hourlyChatStatistics
+            .Find(filter)
+            .ToListAsync();
+
+        return [.. results
+            .GroupBy(r => new DateTimeOffset(r.DateTime, TimeSpan.Zero).ToOffset(KstOffset).Hour)
+            .Select(g => (Hour: g.Key, MessageCount: g.Sum(r => r.MessageCount)))
+            .OrderBy(x => x.Hour)];
+    }
+
+    public async Task<List<(int Hour, long MessageCount)>> GetUserHourlyStatisticsAsync(string roomId, string senderHash)
+    {
+        var filter = Builders<HourlyChatStatistics>.Filter.And(
+            Builders<HourlyChatStatistics>.Filter.Eq(x => x.RoomId, roomId),
+            Builders<HourlyChatStatistics>.Filter.Eq(x => x.SenderHash, senderHash)
+        );
+
+        var results = await _hourlyChatStatistics
+            .Find(filter)
+            .ToListAsync();
+
+        return [.. results
+            .GroupBy(r => new DateTimeOffset(r.DateTime, TimeSpan.Zero).ToOffset(KstOffset).Hour)
+            .Select(g => (Hour: g.Key, MessageCount: g.Sum(r => r.MessageCount)))
+            .OrderBy(x => x.Hour)];
     }
 }

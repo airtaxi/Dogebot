@@ -12,4 +12,12 @@ public interface IChatStatisticsService
     Task<bool> IsMessageContentEnabledAsync(string roomId);
     Task<bool> EnableMessageContentAsync(string roomId, string roomName, string setBy);
     Task<bool> DisableMessageContentAsync(string roomId, string roomName, string setBy);
+    /// <summary>
+    /// Gets message counts grouped by hour (0-23) for a room.
+    /// </summary>
+    Task<List<(int Hour, long MessageCount)>> GetHourlyStatisticsAsync(string roomId);
+    /// <summary>
+    /// Gets message counts grouped by hour (0-23) for a specific user in a room.
+    /// </summary>
+    Task<List<(int Hour, long MessageCount)>> GetUserHourlyStatisticsAsync(string roomId, string senderHash);
 }
