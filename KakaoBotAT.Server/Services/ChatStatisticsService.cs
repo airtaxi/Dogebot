@@ -10,6 +10,8 @@ public class ChatStatisticsService : IChatStatisticsService
     private readonly IMongoCollection<MessageContent> _messageContents;
     private readonly IMongoCollection<RoomRankingSettings> _roomRankingSettings;
     private readonly IMongoCollection<HourlyChatStatistics> _hourlyChatStatistics;
+    private readonly IMongoCollection<DailyChatStatistics> _dailyChatStatistics;
+    private readonly IMongoCollection<MonthlyChatStatistics> _monthlyChatStatistics;
 
     public ChatStatisticsService(IMongoDbService mongoDbService)
     {
@@ -17,6 +19,8 @@ public class ChatStatisticsService : IChatStatisticsService
         _messageContents = mongoDbService.Database.GetCollection<MessageContent>("messageContents");
         _roomRankingSettings = mongoDbService.Database.GetCollection<RoomRankingSettings>("roomRankingSettings");
         _hourlyChatStatistics = mongoDbService.Database.GetCollection<HourlyChatStatistics>("hourlyChatStatistics");
+        _dailyChatStatistics = mongoDbService.Database.GetCollection<DailyChatStatistics>("dailyChatStatistics");
+        _monthlyChatStatistics = mongoDbService.Database.GetCollection<MonthlyChatStatistics>("monthlyChatStatistics");
 
         CreateIndexes();
     }
@@ -45,6 +49,20 @@ public class ChatStatisticsService : IChatStatisticsService
             .Ascending(x => x.DateTime);
         var hourlyStatsIndexModel = new CreateIndexModel<HourlyChatStatistics>(hourlyStatsIndexKeys, new CreateIndexOptions { Unique = true });
         _hourlyChatStatistics.Indexes.CreateOne(hourlyStatsIndexModel);
+
+        var dailyStatsIndexKeys = Builders<DailyChatStatistics>.IndexKeys
+            .Ascending(x => x.RoomId)
+            .Ascending(x => x.SenderHash)
+            .Ascending(x => x.DayOfWeek);
+        var dailyStatsIndexModel = new CreateIndexModel<DailyChatStatistics>(dailyStatsIndexKeys, new CreateIndexOptions { Unique = true });
+        _dailyChatStatistics.Indexes.CreateOne(dailyStatsIndexModel);
+
+        var monthlyStatsIndexKeys = Builders<MonthlyChatStatistics>.IndexKeys
+            .Ascending(x => x.RoomId)
+            .Ascending(x => x.SenderHash)
+            .Ascending(x => x.Month);
+        var monthlyStatsIndexModel = new CreateIndexModel<MonthlyChatStatistics>(monthlyStatsIndexKeys, new CreateIndexOptions { Unique = true });
+        _monthlyChatStatistics.Indexes.CreateOne(monthlyStatsIndexModel);
     }
 
     public async Task RecordMessageAsync(KakaoMessageData data)
@@ -81,6 +99,34 @@ public class ChatStatisticsService : IChatStatisticsService
         await _hourlyChatStatistics.UpdateOneAsync(
             hourlyFilter,
             hourlyUpdate,
+            new UpdateOptions { IsUpsert = true }
+        );
+
+        // Record day-of-week statistics (KST)
+        var kstDayOfWeek = (int)DateTimeOffset.FromUnixTimeMilliseconds(data.Time).ToOffset(KstOffset).DayOfWeek;
+        var dailyFilter = Builders<DailyChatStatistics>.Filter.And(
+            Builders<DailyChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId),
+            Builders<DailyChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash),
+            Builders<DailyChatStatistics>.Filter.Eq(x => x.DayOfWeek, kstDayOfWeek)
+        );
+        var dailyUpdate = Builders<DailyChatStatistics>.Update.Inc(x => x.MessageCount, 1);
+        await _dailyChatStatistics.UpdateOneAsync(
+            dailyFilter,
+            dailyUpdate,
+            new UpdateOptions { IsUpsert = true }
+        );
+
+        // Record monthly statistics (KST)
+        var kstMonth = DateTimeOffset.FromUnixTimeMilliseconds(data.Time).ToOffset(KstOffset).Month;
+        var monthlyFilter = Builders<MonthlyChatStatistics>.Filter.And(
+            Builders<MonthlyChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId),
+            Builders<MonthlyChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash),
+            Builders<MonthlyChatStatistics>.Filter.Eq(x => x.Month, kstMonth)
+        );
+        var monthlyUpdate = Builders<MonthlyChatStatistics>.Update.Inc(x => x.MessageCount, 1);
+        await _monthlyChatStatistics.UpdateOneAsync(
+            monthlyFilter,
+            monthlyUpdate,
             new UpdateOptions { IsUpsert = true }
         );
 
@@ -246,5 +292,67 @@ public class ChatStatisticsService : IChatStatisticsService
             .GroupBy(r => new DateTimeOffset(r.DateTime, TimeSpan.Zero).ToOffset(KstOffset).Hour)
             .Select(g => (Hour: g.Key, MessageCount: g.Sum(r => r.MessageCount)))
             .OrderBy(x => x.Hour)];
+    }
+
+    public async Task<List<(DayOfWeek Day, long MessageCount)>> GetDailyStatisticsAsync(string roomId)
+    {
+        var filter = Builders<DailyChatStatistics>.Filter.Eq(x => x.RoomId, roomId);
+
+        var results = await _dailyChatStatistics
+            .Find(filter)
+            .ToListAsync();
+
+        return [.. results
+            .GroupBy(r => (DayOfWeek)r.DayOfWeek)
+            .Select(g => (Day: g.Key, MessageCount: g.Sum(r => r.MessageCount)))
+            .OrderBy(x => x.Day)];
+    }
+
+    public async Task<List<(DayOfWeek Day, long MessageCount)>> GetUserDailyStatisticsAsync(string roomId, string senderHash)
+    {
+        var filter = Builders<DailyChatStatistics>.Filter.And(
+            Builders<DailyChatStatistics>.Filter.Eq(x => x.RoomId, roomId),
+            Builders<DailyChatStatistics>.Filter.Eq(x => x.SenderHash, senderHash)
+        );
+
+        var results = await _dailyChatStatistics
+            .Find(filter)
+            .ToListAsync();
+
+        return [.. results
+            .GroupBy(r => (DayOfWeek)r.DayOfWeek)
+            .Select(g => (Day: g.Key, MessageCount: g.Sum(r => r.MessageCount)))
+            .OrderBy(x => x.Day)];
+    }
+
+    public async Task<List<(int Month, long MessageCount)>> GetMonthlyStatisticsAsync(string roomId)
+    {
+        var filter = Builders<MonthlyChatStatistics>.Filter.Eq(x => x.RoomId, roomId);
+
+        var results = await _monthlyChatStatistics
+            .Find(filter)
+            .ToListAsync();
+
+        return [.. results
+            .GroupBy(r => r.Month)
+            .Select(g => (Month: g.Key, MessageCount: g.Sum(r => r.MessageCount)))
+            .OrderBy(x => x.Month)];
+    }
+
+    public async Task<List<(int Month, long MessageCount)>> GetUserMonthlyStatisticsAsync(string roomId, string senderHash)
+    {
+        var filter = Builders<MonthlyChatStatistics>.Filter.And(
+            Builders<MonthlyChatStatistics>.Filter.Eq(x => x.RoomId, roomId),
+            Builders<MonthlyChatStatistics>.Filter.Eq(x => x.SenderHash, senderHash)
+        );
+
+        var results = await _monthlyChatStatistics
+            .Find(filter)
+            .ToListAsync();
+
+        return [.. results
+            .GroupBy(r => r.Month)
+            .Select(g => (Month: g.Key, MessageCount: g.Sum(r => r.MessageCount)))
+            .OrderBy(x => x.Month)];
     }
 }

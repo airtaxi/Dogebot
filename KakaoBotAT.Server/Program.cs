@@ -98,6 +98,10 @@ builder.Services.AddSingleton<ICommandHandler, EnableRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DisableRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HourlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MyHourlyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DailyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MyDailyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MonthlyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MyMonthlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HotDealCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
