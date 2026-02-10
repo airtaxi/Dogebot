@@ -70,7 +70,7 @@ public class ChatStatisticsService : IChatStatisticsService
         );
 
         // Record per-minute statistics (truncated to minute for future granularity)
-        var dateTime = DateTimeOffset.FromUnixTimeSeconds(data.Time).UtcDateTime;
+        var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(data.Time).UtcDateTime;
         var truncatedToMinute = new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, dateTime.Minute, 0, DateTimeKind.Utc);
         var hourlyFilter = Builders<HourlyChatStatistics>.Filter.And(
             Builders<HourlyChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId),
