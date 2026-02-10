@@ -70,7 +70,7 @@ public class HourlyStatsCommandHandler : ICommandHandler
     {
         var lookup = hourlyStats.ToDictionary(x => x.Hour, x => x.MessageCount);
         var maxCount = hourlyStats.Max(x => x.MessageCount);
-        const int maxBarLength = 6;
+        const int maxBarLength = 8;
 
         var lines = new List<string>();
         for (var hour = 0; hour < 24; hour++)
