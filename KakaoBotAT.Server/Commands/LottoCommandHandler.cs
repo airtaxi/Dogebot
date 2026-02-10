@@ -23,14 +23,28 @@ public class LottoCommandHandler : ICommandHandler
     {
         try
         {
-            // 1부터 45까지 숫자를 셔플하여 6개 선택
-            var numbers = Enumerable.Range(1, 45).OrderBy(_ => _random.Next()).Take(6).OrderBy(n => n).ToArray();
+            var parts = data.Content.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var count = 1;
 
-            var message = $"🎱 로또 번호\n{string.Join(", ", numbers)}";
+            if (parts.Length > 1 && int.TryParse(parts[1], out var parsedCount))
+            {
+                count = Math.Max(1, Math.Min(parsedCount, 10));
+            }
+
+            var lines = new string[count];
+            for (var i = 0; i < count; i++)
+            {
+                var numbers = Enumerable.Range(1, 45).OrderBy(_ => _random.Next()).Take(6).OrderBy(n => n).ToArray();
+                lines[i] = $"{i + 1}회: {string.Join(", ", numbers)}";
+            }
+
+            var message = count == 1
+                ? $"🎱 로또 번호\n{lines[0][4..]}"
+                : $"🎱 로또 번호 ({count}회)\n\n{string.Join('\n', lines)}";
 
             if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[LOTTO] Generated numbers for {Sender} in room {RoomId}: {Numbers}", 
-                    data.SenderName, data.RoomId, string.Join(", ", numbers));
+                _logger.LogInformation("[LOTTO] Generated {Count} set(s) for {Sender} in room {RoomId}",
+                    count, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {
