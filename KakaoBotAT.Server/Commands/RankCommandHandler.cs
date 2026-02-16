@@ -73,9 +73,13 @@ public class RankCommandHandler : ICommandHandler
                     _ => $"{i + 1}."
                 };
                 
-                var displayContent = content.Length > 30 
-                    ? content.Substring(0, 27) + "..." 
-                    : content;
+                var displayContent = content switch
+                {
+                    "ㅋㅋㅋ" => "ㅋ, ㅋㅋ 등",
+                    "ㅎㅎㅎ" => "ㅎ, ㅎㅎ 등",
+                    _ when content.Length > 30 => content[..27] + "...",
+                    _ => content
+                };
                 
                 message += $"{medal} {displayContent} ({count:N0}회)\n";
             }

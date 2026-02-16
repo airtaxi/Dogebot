@@ -186,20 +186,28 @@ public class ChatStatisticsService : IChatStatisticsService
 
     public async Task<List<(string Content, long Count)>> GetTopMessagesAsync(string roomId, int limit = 10)
     {
-        // Aggregation pipeline that normalizes ㅋ-only messages into a single group
+        // Aggregation pipeline that normalizes repeated-character messages (ㅋ, ㅎ) into single groups
         PipelineDefinition<MessageContent, BsonDocument> pipeline = new BsonDocument[]
         {
             new BsonDocument("$match", new BsonDocument("roomId", roomId)),
             new BsonDocument("$addFields", new BsonDocument("normalizedContent",
-                new BsonDocument("$cond", new BsonArray
+                new BsonDocument("$switch", new BsonDocument
                 {
-                    new BsonDocument("$regexMatch", new BsonDocument
-                    {
-                        { "input", "$content" },
-                        { "regex", "^ㅋ+$" }
-                    }),
-                    "ㅋㅋㅋ",
-                    "$content"
+                    { "branches", new BsonArray
+                        {
+                            new BsonDocument
+                            {
+                                { "case", new BsonDocument("$regexMatch", new BsonDocument { { "input", "$content" }, { "regex", "^ㅋ+$" } }) },
+                                { "then", "ㅋㅋㅋ" }
+                            },
+                            new BsonDocument
+                            {
+                                { "case", new BsonDocument("$regexMatch", new BsonDocument { { "input", "$content" }, { "regex", "^ㅎ+$" } }) },
+                                { "then", "ㅎㅎㅎ" }
+                            }
+                        }
+                    },
+                    { "default", "$content" }
                 })
             )),
             new BsonDocument("$group", new BsonDocument
@@ -287,6 +295,8 @@ public class ChatStatisticsService : IChatStatisticsService
     {
         if (content.Length > 0 && content.AsSpan().IndexOfAnyExcept('ㅋ') == -1)
             return "ㅋㅋㅋ";
+        if (content.Length > 0 && content.AsSpan().IndexOfAnyExcept('ㅎ') == -1)
+            return "ㅎㅎㅎ";
         return content;
     }
 
