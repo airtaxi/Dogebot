@@ -1,5 +1,6 @@
 ﻿using KakaoBotAT.Commons;
 using KakaoBotAT.Server.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace KakaoBotAT.Server.Services;
@@ -133,9 +134,10 @@ public class ChatStatisticsService : IChatStatisticsService
         // Only record message content if enabled for this room
         if (await IsMessageContentEnabledAsync(data.RoomId))
         {
+            var normalizedContent = NormalizeMessageContent(data.Content);
             var messageContentFilter = Builders<MessageContent>.Filter.And(
                 Builders<MessageContent>.Filter.Eq(x => x.RoomId, data.RoomId),
-                Builders<MessageContent>.Filter.Eq(x => x.Content, data.Content)
+                Builders<MessageContent>.Filter.Eq(x => x.Content, normalizedContent)
             );
 
             var messageContentUpdate = Builders<MessageContent>.Update
@@ -184,16 +186,33 @@ public class ChatStatisticsService : IChatStatisticsService
 
     public async Task<List<(string Content, long Count)>> GetTopMessagesAsync(string roomId, int limit = 10)
     {
-        var filter = Builders<MessageContent>.Filter.Eq(x => x.RoomId, roomId);
-        var sort = Builders<MessageContent>.Sort.Descending(x => x.Count);
+        // Aggregation pipeline that normalizes ㅋ-only messages into a single group
+        PipelineDefinition<MessageContent, BsonDocument> pipeline = new BsonDocument[]
+        {
+            new BsonDocument("$match", new BsonDocument("roomId", roomId)),
+            new BsonDocument("$addFields", new BsonDocument("normalizedContent",
+                new BsonDocument("$cond", new BsonArray
+                {
+                    new BsonDocument("$regexMatch", new BsonDocument
+                    {
+                        { "input", "$content" },
+                        { "regex", "^ㅋ+$" }
+                    }),
+                    "ㅋㅋㅋ",
+                    "$content"
+                })
+            )),
+            new BsonDocument("$group", new BsonDocument
+            {
+                { "_id", "$normalizedContent" },
+                { "count", new BsonDocument("$sum", "$count") }
+            }),
+            new BsonDocument("$sort", new BsonDocument("count", -1)),
+            new BsonDocument("$limit", limit)
+        };
 
-        var results = await _messageContents
-            .Find(filter)
-            .Sort(sort)
-            .Limit(limit)
-            .ToListAsync();
-
-        return [.. results.Select(r => (r.Content, r.Count))];
+        var results = await _messageContents.Aggregate(pipeline).ToListAsync();
+        return [.. results.Select(r => (Content: r["_id"].AsString, Count: r["count"].ToInt64()))];
     }
 
     public async Task<(long TotalMessages, int UniqueUsers)> GetRoomStatisticsAsync(string roomId)
@@ -259,6 +278,16 @@ public class ChatStatisticsService : IChatStatisticsService
         await _messageContents.DeleteManyAsync(deleteFilter);
 
         return true;
+    }
+
+    /// <summary>
+    /// Normalizes message content for consistent grouping (e.g., all ㅋ-only messages become "ㅋㅋㅋ").
+    /// </summary>
+    private static string NormalizeMessageContent(string content)
+    {
+        if (content.Length > 0 && content.AsSpan().IndexOfAnyExcept('ㅋ') == -1)
+            return "ㅋㅋㅋ";
+        return content;
     }
 
     private static readonly TimeSpan KstOffset = TimeSpan.FromHours(9);
