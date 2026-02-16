@@ -186,28 +186,25 @@ public class ChatStatisticsService : IChatStatisticsService
 
     public async Task<List<(string Content, long Count)>> GetTopMessagesAsync(string roomId, int limit = 10)
     {
-        // Aggregation pipeline that normalizes repeated-character messages (ㅋ, ㅎ) into single groups
+        // Aggregation pipeline that normalizes repeated Korean consonant messages (ㄱ-ㅎ) into single groups
         PipelineDefinition<MessageContent, BsonDocument> pipeline = new BsonDocument[]
         {
             new BsonDocument("$match", new BsonDocument("roomId", roomId)),
             new BsonDocument("$addFields", new BsonDocument("normalizedContent",
-                new BsonDocument("$switch", new BsonDocument
+                new BsonDocument("$cond", new BsonArray
                 {
-                    { "branches", new BsonArray
-                        {
-                            new BsonDocument
-                            {
-                                { "case", new BsonDocument("$regexMatch", new BsonDocument { { "input", "$content" }, { "regex", "^ㅋ+$" } }) },
-                                { "then", "ㅋㅋㅋ" }
-                            },
-                            new BsonDocument
-                            {
-                                { "case", new BsonDocument("$regexMatch", new BsonDocument { { "input", "$content" }, { "regex", "^ㅎ+$" } }) },
-                                { "then", "ㅎㅎㅎ" }
-                            }
-                        }
-                    },
-                    { "default", "$content" }
+                    new BsonDocument("$regexMatch", new BsonDocument
+                    {
+                        { "input", "$content" },
+                        { "regex", "^([ㄱ-ㅎ])\\1*$" }
+                    }),
+                    new BsonDocument("$concat", new BsonArray
+                    {
+                        new BsonDocument("$substrCP", new BsonArray { "$content", 0, 1 }),
+                        new BsonDocument("$substrCP", new BsonArray { "$content", 0, 1 }),
+                        new BsonDocument("$substrCP", new BsonArray { "$content", 0, 1 })
+                    }),
+                    "$content"
                 })
             )),
             new BsonDocument("$group", new BsonDocument
@@ -289,14 +286,13 @@ public class ChatStatisticsService : IChatStatisticsService
     }
 
     /// <summary>
-    /// Normalizes message content for consistent grouping (e.g., all ㅋ-only messages become "ㅋㅋㅋ").
+    /// Normalizes message content for consistent grouping.
+    /// Messages consisting of a single repeated Korean consonant (ㄱ-ㅎ) are normalized to 3 characters.
     /// </summary>
     private static string NormalizeMessageContent(string content)
     {
-        if (content.Length > 0 && content.AsSpan().IndexOfAnyExcept('ㅋ') == -1)
-            return "ㅋㅋㅋ";
-        if (content.Length > 0 && content.AsSpan().IndexOfAnyExcept('ㅎ') == -1)
-            return "ㅎㅎㅎ";
+        if (content.Length > 0 && content[0] is >= 'ㄱ' and <= 'ㅎ' && content.AsSpan().IndexOfAnyExcept(content[0]) == -1)
+            return new string(content[0], 3);
         return content;
     }
 

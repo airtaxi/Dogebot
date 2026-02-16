@@ -75,8 +75,8 @@ public class RankCommandHandler : ICommandHandler
                 
                 var displayContent = content switch
                 {
-                    "ㅋㅋㅋ" => "ㅋ, ㅋㅋ 등",
-                    "ㅎㅎㅎ" => "ㅎ, ㅎㅎ 등",
+                    [var c, var c2, var c3] when c == c2 && c2 == c3 && c is >= 'ㄱ' and <= 'ㅎ'
+                        => $"{c}, {c}{c} 등",
                     _ when content.Length > 30 => content[..27] + "...",
                     _ => content
                 };
