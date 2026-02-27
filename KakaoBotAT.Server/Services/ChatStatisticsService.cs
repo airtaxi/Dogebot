@@ -13,6 +13,7 @@ public class ChatStatisticsService : IChatStatisticsService
     private readonly IMongoCollection<HourlyChatStatistics> _hourlyChatStatistics;
     private readonly IMongoCollection<DailyChatStatistics> _dailyChatStatistics;
     private readonly IMongoCollection<MonthlyChatStatistics> _monthlyChatStatistics;
+    private readonly IMongoCollection<WordContent> _wordContents;
 
     public ChatStatisticsService(IMongoDbService mongoDbService)
     {
@@ -22,6 +23,7 @@ public class ChatStatisticsService : IChatStatisticsService
         _hourlyChatStatistics = mongoDbService.Database.GetCollection<HourlyChatStatistics>("hourlyChatStatistics");
         _dailyChatStatistics = mongoDbService.Database.GetCollection<DailyChatStatistics>("dailyChatStatistics");
         _monthlyChatStatistics = mongoDbService.Database.GetCollection<MonthlyChatStatistics>("monthlyChatStatistics");
+        _wordContents = mongoDbService.Database.GetCollection<WordContent>("wordContents");
 
         CreateIndexes();
     }
@@ -64,6 +66,12 @@ public class ChatStatisticsService : IChatStatisticsService
             .Ascending(x => x.Month);
         var monthlyStatsIndexModel = new CreateIndexModel<MonthlyChatStatistics>(monthlyStatsIndexKeys, new CreateIndexOptions { Unique = true });
         _monthlyChatStatistics.Indexes.CreateOne(monthlyStatsIndexModel);
+
+        var wordContentIndexKeys = Builders<WordContent>.IndexKeys
+            .Ascending(x => x.RoomId)
+            .Ascending(x => x.Word);
+        var wordContentIndexModel = new CreateIndexModel<WordContent>(wordContentIndexKeys);
+        _wordContents.Indexes.CreateOne(wordContentIndexModel);
     }
 
     public async Task RecordMessageAsync(KakaoMessageData data)
@@ -149,6 +157,25 @@ public class ChatStatisticsService : IChatStatisticsService
                 messageContentUpdate,
                 new UpdateOptions { IsUpsert = true }
             );
+
+            // Record word-level statistics
+            var words = data.Content
+                .Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
+                .Where(w => w.Length >= 2)
+                .Select(w => w.ToLowerInvariant())
+                .Distinct();
+
+            foreach (var word in words)
+            {
+                var wordFilter = Builders<WordContent>.Filter.And(
+                    Builders<WordContent>.Filter.Eq(x => x.RoomId, data.RoomId),
+                    Builders<WordContent>.Filter.Eq(x => x.Word, word)
+                );
+                var wordUpdate = Builders<WordContent>.Update
+                    .Inc(x => x.Count, 1)
+                    .Set(x => x.LastTime, data.Time);
+                await _wordContents.UpdateOneAsync(wordFilter, wordUpdate, new UpdateOptions { IsUpsert = true });
+            }
         }
     }
 
@@ -220,6 +247,20 @@ public class ChatStatisticsService : IChatStatisticsService
         return [.. results.Select(r => (Content: r["_id"].AsString, Count: r["count"].ToInt64()))];
     }
 
+    public async Task<List<(string Word, long Count)>> GetTopWordsAsync(string roomId, int limit = 10)
+    {
+        var filter = Builders<WordContent>.Filter.Eq(x => x.RoomId, roomId);
+        var sort = Builders<WordContent>.Sort.Descending(x => x.Count);
+
+        var results = await _wordContents
+            .Find(filter)
+            .Sort(sort)
+            .Limit(limit)
+            .ToListAsync();
+
+        return [.. results.Select(r => (r.Word, r.Count))];
+    }
+
     public async Task<(long TotalMessages, int UniqueUsers)> GetRoomStatisticsAsync(string roomId)
     {
         var filter = Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, roomId);
@@ -278,9 +319,12 @@ public class ChatStatisticsService : IChatStatisticsService
         var filter = Builders<RoomRankingSettings>.Filter.Eq(x => x.RoomId, roomId);
         await _roomRankingSettings.ReplaceOneAsync(filter, settings, new ReplaceOptions { IsUpsert = true });
 
-        // Delete all message content records for this room
+        // Delete all message content and word content records for this room
         var deleteFilter = Builders<MessageContent>.Filter.Eq(x => x.RoomId, roomId);
         await _messageContents.DeleteManyAsync(deleteFilter);
+
+        var deleteWordFilter = Builders<WordContent>.Filter.Eq(x => x.RoomId, roomId);
+        await _wordContents.DeleteManyAsync(deleteWordFilter);
 
         return true;
     }

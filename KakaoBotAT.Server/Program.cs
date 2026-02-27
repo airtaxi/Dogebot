@@ -34,6 +34,9 @@ builder.Services.AddSingleton<IUserPreferenceService, UserPreferenceService>();
 // Register Hot Deal service
 builder.Services.AddSingleton<IHotDealService, HotDealService>();
 
+// Register Migration service
+builder.Services.AddSingleton<IMigrationService, MigrationService>();
+
 // Register background services
 builder.Services.AddHostedService<ApprovalCodeCleanupService>();
 
@@ -103,6 +106,7 @@ builder.Services.AddSingleton<ICommandHandler, MyDailyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MonthlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MyMonthlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HotDealCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, WordRankCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
@@ -120,6 +124,19 @@ using (var scope = app.Services.CreateScope())
     var adminService = scope.ServiceProvider.GetRequiredService<IAdminService>();
     var requestLimitService = scope.ServiceProvider.GetRequiredService<IRequestLimitService>();
     
+    // Run database migrations
+    try
+    {
+        var migrationService = scope.ServiceProvider.GetRequiredService<IMigrationService>();
+        logger.LogInformation("[STARTUP] Running database migrations...");
+        await migrationService.RunMigrationsAsync();
+        logger.LogInformation("[STARTUP] Database migrations completed.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "[STARTUP] Error during database migrations");
+    }
+
     try
     {
         logger.LogInformation("[STARTUP] Starting cleanup of blacklisted messages...");
