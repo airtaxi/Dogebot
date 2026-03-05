@@ -72,7 +72,13 @@ public class WordRankCommandHandler : ICommandHandler
                     _ => $"{i + 1}."
                 };
 
-                var displayWord = word.Length > 30 ? word[..27] + "..." : word;
+                var displayWord = word switch
+                {
+                    [var c, var c2, var c3] when c == c2 && c2 == c3 && c is >= 'ㄱ' and <= 'ㅎ'
+                        => $"{c}, {c}{c} 등",
+                    _ when word.Length > 30 => word[..27] + "...",
+                    _ => word
+                };
                 message += $"{medal} {displayWord} ({count:N0}회)\n";
             }
 

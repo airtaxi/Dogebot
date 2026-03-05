@@ -158,11 +158,11 @@ public class ChatStatisticsService : IChatStatisticsService
                 new UpdateOptions { IsUpsert = true }
             );
 
-            // Record word-level statistics
+            // Record word-level statistics (normalize repeated Korean consonants)
             var words = data.Content
                 .Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
                 .Where(w => w.Length >= 2)
-                .Select(w => w.ToLowerInvariant())
+                .Select(w => NormalizeMessageContent(w.ToLowerInvariant()))
                 .Distinct();
 
             foreach (var word in words)

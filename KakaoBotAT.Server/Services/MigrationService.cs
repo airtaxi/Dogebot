@@ -26,6 +26,7 @@ public class MigrationService : IMigrationService
     public async Task RunMigrationsAsync()
     {
         await ApplyMigrationAsync(1, "SplitMessageContentsToWords", MigrateMessageContentsToWordsAsync);
+        await ApplyMigrationAsync(2, "NormalizeKoreanConsonantWords", NormalizeKoreanConsonantWordsAsync);
     }
 
     private async Task ApplyMigrationAsync(int version, string name, Func<Task> migration)
@@ -105,6 +106,76 @@ public class MigrationService : IMigrationService
         }
 
         _logger.LogInformation("[MIGRATION] Migrated {Count} unique word entries.", wordAggregation.Count);
+    }
+
+    /// <summary>
+    /// v2: Normalize repeated Korean consonant words (e.g., ㅋㅋ, ㅋㅋㅋㅋ → ㅋㅋㅋ) and merge counts.
+    /// </summary>
+    private async Task NormalizeKoreanConsonantWordsAsync()
+    {
+        var allWords = await _wordContents.Find(Builders<WordContent>.Filter.Empty).ToListAsync();
+        _logger.LogInformation("[MIGRATION] Processing {Count} word content records for consonant normalization...", allWords.Count);
+
+        var wordsToNormalize = allWords
+            .Where(w => IsRepeatedKoreanConsonant(w.Word) && w.Word != NormalizeKoreanConsonant(w.Word))
+            .ToList();
+
+        if (wordsToNormalize.Count == 0)
+        {
+            _logger.LogInformation("[MIGRATION] No Korean consonant words to normalize.");
+            return;
+        }
+
+        // Group by (RoomId, NormalizedWord) to merge counts
+        var mergeGroups = wordsToNormalize
+            .GroupBy(w => (w.RoomId, NormalizedWord: NormalizeKoreanConsonant(w.Word)))
+            .ToList();
+
+        var bulkOps = new List<WriteModel<WordContent>>();
+
+        // Delete old un-normalized entries
+        foreach (var word in wordsToNormalize)
+        {
+            var deleteFilter = Builders<WordContent>.Filter.Eq(x => x.Id, word.Id);
+            bulkOps.Add(new DeleteOneModel<WordContent>(deleteFilter));
+        }
+
+        // Upsert merged counts into normalized entries
+        foreach (var group in mergeGroups)
+        {
+            var totalCount = group.Sum(w => w.Count);
+            var maxLastTime = group.Max(w => w.LastTime);
+
+            var upsertFilter = Builders<WordContent>.Filter.And(
+                Builders<WordContent>.Filter.Eq(x => x.RoomId, group.Key.RoomId),
+                Builders<WordContent>.Filter.Eq(x => x.Word, group.Key.NormalizedWord)
+            );
+            var upsertUpdate = Builders<WordContent>.Update
+                .Inc(x => x.Count, totalCount)
+                .Max(x => x.LastTime, maxLastTime);
+            bulkOps.Add(new UpdateOneModel<WordContent>(upsertFilter, upsertUpdate) { IsUpsert = true });
+        }
+
+        const int batchSize = 1000;
+        for (int i = 0; i < bulkOps.Count; i += batchSize)
+        {
+            var batch = bulkOps.Skip(i).Take(batchSize).ToList();
+            await _wordContents.BulkWriteAsync(batch);
+        }
+
+        _logger.LogInformation("[MIGRATION] Normalized {Count} Korean consonant word entries.", wordsToNormalize.Count);
+    }
+
+    private static bool IsRepeatedKoreanConsonant(string word)
+    {
+        return word.Length > 0 && word[0] is >= 'ㄱ' and <= 'ㅎ' && word.AsSpan().IndexOfAnyExcept(word[0]) == -1;
+    }
+
+    private static string NormalizeKoreanConsonant(string word)
+    {
+        if (IsRepeatedKoreanConsonant(word))
+            return new string(word[0], 3);
+        return word;
     }
 
     internal static string[] SplitIntoWords(string content)
