@@ -1,4 +1,5 @@
 using KakaoBotAT.Server.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace KakaoBotAT.Server.Services;
@@ -7,6 +8,7 @@ public class RoomMigrationService : IRoomMigrationService
 {
     private readonly IMongoDatabase _database;
     private readonly IMongoCollection<RoomMigrationCode> _migrationCodes;
+    private readonly IMongoCollection<RoomMigrationMapping> _migrationMappings;
     private readonly ILogger<RoomMigrationService> _logger;
     private readonly Random _random = new();
 
@@ -14,11 +16,18 @@ public class RoomMigrationService : IRoomMigrationService
     {
         _database = mongoDbService.Database;
         _migrationCodes = _database.GetCollection<RoomMigrationCode>("roomMigrationCodes");
+        _migrationMappings = _database.GetCollection<RoomMigrationMapping>("roomMigrationMappings");
         _logger = logger;
 
         var indexKeys = Builders<RoomMigrationCode>.IndexKeys.Ascending(x => x.Code);
         var indexModel = new CreateIndexModel<RoomMigrationCode>(indexKeys);
         _migrationCodes.Indexes.CreateOne(indexModel);
+
+        var mappingIndexKeys = Builders<RoomMigrationMapping>.IndexKeys
+            .Ascending(x => x.TargetRoomId)
+            .Ascending(x => x.SenderName);
+        var mappingIndexModel = new CreateIndexModel<RoomMigrationMapping>(mappingIndexKeys);
+        _migrationMappings.Indexes.CreateOne(mappingIndexModel);
     }
 
     public async Task<string> CreateMigrationCodeAsync(string sourceRoomId, string sourceRoomName, string senderHash, string senderName)
@@ -76,6 +85,11 @@ public class RoomMigrationService : IRoomMigrationService
         await UpdateRoomNameAsync<RoomRankingSettings>("roomRankingSettings", targetRoomId, targetRoomName);
         await UpdateRoomNameAsync<RoomRequestLimit>("roomRequestLimits", targetRoomId, targetRoomName);
 
+        // Record senderName→oldSenderHash mappings for lazy hash migration.
+        // When a user sends a message in the target room, their old hash data
+        // will be merged into their new hash.
+        await RecordSenderHashMappingsAsync(targetRoomId);
+
         // Delete the used migration code
         await _migrationCodes.DeleteOneAsync(Builders<RoomMigrationCode>.Filter.Eq(x => x.Id, migrationCode.Id));
 
@@ -91,6 +105,169 @@ public class RoomMigrationService : IRoomMigrationService
         var filter = Builders<RoomMigrationCode>.Filter.Lte(x => x.ExpiresAt, now);
         var result = await _migrationCodes.DeleteManyAsync(filter);
         return (int)result.DeletedCount;
+    }
+
+    /// <summary>
+    /// Records senderName→oldSenderHash mappings from chatStatistics for the target room.
+    /// These are used for lazy senderHash migration when users send new messages.
+    /// </summary>
+    private async Task RecordSenderHashMappingsAsync(string targetRoomId)
+    {
+        try
+        {
+            var chatStatsCollection = _database.GetCollection<ChatStatistics>("chatStatistics");
+            var users = await chatStatsCollection
+                .Find(Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, targetRoomId))
+                .ToListAsync();
+
+            if (users.Count == 0) return;
+
+            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var mappings = users.Select(u => new RoomMigrationMapping
+            {
+                TargetRoomId = targetRoomId,
+                SenderName = u.SenderName,
+                OldSenderHash = u.SenderHash,
+                CreatedAt = now
+            }).ToList();
+
+            await _migrationMappings.InsertManyAsync(mappings);
+
+            _logger.LogInformation("[ROOM_MIGRATION] Recorded {Count} senderHash mappings for room {RoomId}",
+                mappings.Count, targetRoomId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[ROOM_MIGRATION] Failed to record senderHash mappings");
+        }
+    }
+
+    public async Task<bool> TryMigrateUserHashAsync(string targetRoomId, string senderName, string newSenderHash)
+    {
+        var filter = Builders<RoomMigrationMapping>.Filter.And(
+            Builders<RoomMigrationMapping>.Filter.Eq(x => x.TargetRoomId, targetRoomId),
+            Builders<RoomMigrationMapping>.Filter.Eq(x => x.SenderName, senderName)
+        );
+
+        var mapping = await _migrationMappings.Find(filter).FirstOrDefaultAsync();
+        if (mapping is null || mapping.OldSenderHash == newSenderHash)
+            return false;
+
+        // Merge old senderHash data into new senderHash across all stats collections
+        await MergeUserHashAsync(targetRoomId, mapping.OldSenderHash, newSenderHash);
+
+        // Delete the mapping (this user's migration is complete)
+        await _migrationMappings.DeleteManyAsync(filter);
+
+        _logger.LogInformation(
+            "[ROOM_MIGRATION] Merged senderHash for {SenderName} in room {RoomId}",
+            senderName, targetRoomId);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Merges all statistics from oldSenderHash into newSenderHash for the given room.
+    /// Uses $inc for counts, $max for timestamps, then deletes old documents.
+    /// </summary>
+    private async Task MergeUserHashAsync(string roomId, string oldSenderHash, string newSenderHash)
+    {
+        // chatStatistics: merge messageCount, lastMessageTime, senderName
+        await MergeHashInCollectionAsync("chatStatistics", roomId, oldSenderHash, newSenderHash,
+            additionalKeyFields: [],
+            incrementFields: ["messageCount"],
+            maxFields: ["lastMessageTime"],
+            setFields: ["senderName"]);
+
+        // hourlyChatStatistics: merge by dateTime
+        await MergeHashInCollectionAsync("hourlyChatStatistics", roomId, oldSenderHash, newSenderHash,
+            additionalKeyFields: ["dateTime"],
+            incrementFields: ["messageCount"]);
+
+        // dailyChatStatistics: merge by dayOfWeek
+        await MergeHashInCollectionAsync("dailyChatStatistics", roomId, oldSenderHash, newSenderHash,
+            additionalKeyFields: ["dayOfWeek"],
+            incrementFields: ["messageCount"]);
+
+        // monthlyChatStatistics: merge by month
+        await MergeHashInCollectionAsync("monthlyChatStatistics", roomId, oldSenderHash, newSenderHash,
+            additionalKeyFields: ["month"],
+            incrementFields: ["messageCount"]);
+    }
+
+    /// <summary>
+    /// Merges documents from oldSenderHash into newSenderHash within a single collection.
+    /// </summary>
+    private async Task MergeHashInCollectionAsync(
+        string collectionName,
+        string roomId,
+        string oldSenderHash,
+        string newSenderHash,
+        string[] additionalKeyFields,
+        string[] incrementFields,
+        string[]? maxFields = null,
+        string[]? setFields = null)
+    {
+        try
+        {
+            var collection = _database.GetCollection<BsonDocument>(collectionName);
+            var oldFilter = new BsonDocument
+            {
+                { "roomId", roomId },
+                { "senderHash", oldSenderHash }
+            };
+
+            var oldDocs = await collection.Find(oldFilter).ToListAsync();
+            if (oldDocs.Count == 0) return;
+
+            foreach (var doc in oldDocs)
+            {
+                var targetFilter = new BsonDocument
+                {
+                    { "roomId", roomId },
+                    { "senderHash", newSenderHash }
+                };
+                foreach (var key in additionalKeyFields)
+                    targetFilter.Add(key, doc[key]);
+
+                var updateDoc = new BsonDocument();
+
+                var incDoc = new BsonDocument();
+                foreach (var field in incrementFields)
+                    if (doc.Contains(field))
+                        incDoc.Add(field, doc[field]);
+                if (incDoc.ElementCount > 0)
+                    updateDoc.Add("$inc", incDoc);
+
+                if (maxFields is not null)
+                {
+                    var maxDoc = new BsonDocument();
+                    foreach (var field in maxFields)
+                        if (doc.Contains(field))
+                            maxDoc.Add(field, doc[field]);
+                    if (maxDoc.ElementCount > 0)
+                        updateDoc.Add("$max", maxDoc);
+                }
+
+                if (setFields is not null)
+                {
+                    var setDoc = new BsonDocument();
+                    foreach (var field in setFields)
+                        if (doc.Contains(field))
+                            setDoc.Add(field, doc[field]);
+                    if (setDoc.ElementCount > 0)
+                        updateDoc.Add("$set", setDoc);
+                }
+
+                await collection.UpdateOneAsync(targetFilter, updateDoc, new UpdateOptions { IsUpsert = true });
+            }
+
+            await collection.DeleteManyAsync(oldFilter);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[ROOM_MIGRATION] Failed to merge senderHash in {Collection}", collectionName);
+        }
     }
 
     /// <summary>

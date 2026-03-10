@@ -14,8 +14,9 @@ public class ChatStatisticsService : IChatStatisticsService
     private readonly IMongoCollection<DailyChatStatistics> _dailyChatStatistics;
     private readonly IMongoCollection<MonthlyChatStatistics> _monthlyChatStatistics;
     private readonly IMongoCollection<WordContent> _wordContents;
+    private readonly IRoomMigrationService _roomMigrationService;
 
-    public ChatStatisticsService(IMongoDbService mongoDbService)
+    public ChatStatisticsService(IMongoDbService mongoDbService, IRoomMigrationService roomMigrationService)
     {
         _chatStatistics = mongoDbService.Database.GetCollection<ChatStatistics>("chatStatistics");
         _messageContents = mongoDbService.Database.GetCollection<MessageContent>("messageContents");
@@ -24,6 +25,7 @@ public class ChatStatisticsService : IChatStatisticsService
         _dailyChatStatistics = mongoDbService.Database.GetCollection<DailyChatStatistics>("dailyChatStatistics");
         _monthlyChatStatistics = mongoDbService.Database.GetCollection<MonthlyChatStatistics>("monthlyChatStatistics");
         _wordContents = mongoDbService.Database.GetCollection<WordContent>("wordContents");
+        _roomMigrationService = roomMigrationService;
 
         CreateIndexes();
     }
@@ -79,6 +81,9 @@ public class ChatStatisticsService : IChatStatisticsService
         // Filter out blacklisted messages (emoticons, photos, etc.)
         if (MessageBlacklist.IsBlacklisted(data.Content, data.SenderName))
             return;
+
+        // Lazy senderHash migration: merge old hash data into new hash if a mapping exists
+        await _roomMigrationService.TryMigrateUserHashAsync(data.RoomId, data.SenderName, data.SenderHash);
 
         var chatStatsFilter = Builders<ChatStatistics>.Filter.And(
             Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId),

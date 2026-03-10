@@ -5,6 +5,7 @@ namespace KakaoBotAT.Server.Services;
 
 public class MigrationService : IMigrationService
 {
+    private readonly IMongoDatabase _database;
     private readonly IMongoCollection<MigrationRecord> _migrations;
     private readonly IMongoCollection<MessageContent> _messageContents;
     private readonly IMongoCollection<WordContent> _wordContents;
@@ -12,9 +13,10 @@ public class MigrationService : IMigrationService
 
     public MigrationService(IMongoDbService mongoDbService, ILogger<MigrationService> logger)
     {
-        _migrations = mongoDbService.Database.GetCollection<MigrationRecord>("migrations");
-        _messageContents = mongoDbService.Database.GetCollection<MessageContent>("messageContents");
-        _wordContents = mongoDbService.Database.GetCollection<WordContent>("wordContents");
+        _database = mongoDbService.Database;
+        _migrations = _database.GetCollection<MigrationRecord>("migrations");
+        _messageContents = _database.GetCollection<MessageContent>("messageContents");
+        _wordContents = _database.GetCollection<WordContent>("wordContents");
         _logger = logger;
 
         // Ensure unique index on version
@@ -27,6 +29,7 @@ public class MigrationService : IMigrationService
     {
         await ApplyMigrationAsync(1, "SplitMessageContentsToWords", MigrateMessageContentsToWordsAsync);
         await ApplyMigrationAsync(2, "NormalizeKoreanConsonantWords", NormalizeKoreanConsonantWordsAsync);
+        await ApplyMigrationAsync(3, "ManualSenderHashMappings", InsertManualSenderHashMappingsAsync);
     }
 
     private async Task ApplyMigrationAsync(int version, string name, Func<Task> migration)
@@ -176,6 +179,59 @@ public class MigrationService : IMigrationService
         if (IsRepeatedKoreanConsonant(word))
             return new string(word[0], 3);
         return word;
+    }
+
+    /// <summary>
+    /// v3: Manually insert RoomMigrationMapping records for users with duplicate senderHash
+    /// in room ***REMOVED***. The hash with higher message count is the old room hash.
+    /// </summary>
+    private async Task InsertManualSenderHashMappingsAsync()
+    {
+        const string targetRoomId = "***REMOVED***";
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        var mappings = new List<RoomMigrationMapping>
+        {
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+            new() { TargetRoomId = targetRoomId, SenderName = "***REMOVED***", OldSenderHash = "***REMOVED***", CreatedAt = now },
+        };
+
+        var migrationMappings = _database.GetCollection<RoomMigrationMapping>("roomMigrationMappings");
+
+        foreach (var mapping in mappings)
+        {
+            var existingFilter = Builders<RoomMigrationMapping>.Filter.And(
+                Builders<RoomMigrationMapping>.Filter.Eq(x => x.TargetRoomId, mapping.TargetRoomId),
+                Builders<RoomMigrationMapping>.Filter.Eq(x => x.SenderName, mapping.SenderName)
+            );
+            var existing = await migrationMappings.Find(existingFilter).FirstOrDefaultAsync();
+            if (existing is not null)
+            {
+                _logger.LogInformation("[MIGRATION] Mapping for {SenderName} already exists, skipping.", mapping.SenderName);
+                continue;
+            }
+
+            await migrationMappings.InsertOneAsync(mapping);
+        }
+
+        _logger.LogInformation("[MIGRATION] Inserted {Count} manual senderHash mappings for room {RoomId}.",
+            mappings.Count, targetRoomId);
     }
 
     internal static string[] SplitIntoWords(string content)

@@ -17,6 +17,13 @@ public interface IRoomMigrationService
     /// Deletes expired migration codes.
     /// </summary>
     Task<int> DeleteExpiredMigrationCodesAsync();
+
+    /// <summary>
+    /// Attempts to migrate a user's old senderHash data to their new senderHash
+    /// when they send a message in a migrated room. Matches by senderName.
+    /// Returns true if a mapping was found and merged.
+    /// </summary>
+    Task<bool> TryMigrateUserHashAsync(string targetRoomId, string senderName, string newSenderHash);
 }
 
 public record RoomMigrationResult(
