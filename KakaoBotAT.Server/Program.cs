@@ -40,6 +40,9 @@ builder.Services.AddSingleton<IMigrationService, MigrationService>();
 // Register Scheduled Message service
 builder.Services.AddSingleton<IScheduledMessageService, ScheduledMessageService>();
 
+// Register Room Migration service
+builder.Services.AddSingleton<IRoomMigrationService, RoomMigrationService>();
+
 // Register background services
 builder.Services.AddHostedService<ApprovalCodeCleanupService>();
 builder.Services.AddHostedService<ScheduledMessageSessionCleanupService>();
@@ -114,6 +117,8 @@ builder.Services.AddSingleton<ICommandHandler, WordRankCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageSetCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageRemoveCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageListCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, RoomBackupCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, RoomRestoreCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 

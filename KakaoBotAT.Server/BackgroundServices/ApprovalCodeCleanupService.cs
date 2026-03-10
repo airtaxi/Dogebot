@@ -21,14 +21,16 @@ public class ApprovalCodeCleanupService(
                 using var scope = serviceProvider.CreateScope();
                 var adminService = scope.ServiceProvider.GetRequiredService<IAdminService>();
                 var requestLimitService = scope.ServiceProvider.GetRequiredService<IRequestLimitService>();
+                var roomMigrationService = scope.ServiceProvider.GetRequiredService<IRoomMigrationService>();
 
                 var deletedAdminCodes = await adminService.DeleteExpiredApprovalCodesAsync();
                 var deletedLimitCodes = await requestLimitService.DeleteExpiredApprovalCodesAsync();
+                var deletedMigrationCodes = await roomMigrationService.DeleteExpiredMigrationCodesAsync();
 
-                if (deletedAdminCodes > 0 || deletedLimitCodes > 0)
+                if (deletedAdminCodes > 0 || deletedLimitCodes > 0 || deletedMigrationCodes > 0)
                 {
-                    logger.LogInformation("[CLEANUP_SERVICE] Deleted {AdminCodes} admin codes and {LimitCodes} limit codes",
-                        deletedAdminCodes, deletedLimitCodes);
+                    logger.LogInformation("[CLEANUP_SERVICE] Deleted {AdminCodes} admin codes, {LimitCodes} limit codes, and {MigrationCodes} migration codes",
+                        deletedAdminCodes, deletedLimitCodes, deletedMigrationCodes);
                 }
             }
             catch (OperationCanceledException)

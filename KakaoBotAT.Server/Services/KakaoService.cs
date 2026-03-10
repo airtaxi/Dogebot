@@ -50,7 +50,9 @@ public class KakaoService(
                                 handler.Command == "!심삭제" ||
                                 handler.Command == "!반복설정" ||
                                 handler.Command == "!반복해제" ||
-                                handler.Command == "!반복목록";
+                                handler.Command == "!반복목록" ||
+                                handler.Command == "!방백업" ||
+                                handler.Command == "!방복원";
 
             if (!isAdminCommand)
             {
