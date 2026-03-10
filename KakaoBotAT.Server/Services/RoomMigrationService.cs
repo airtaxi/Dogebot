@@ -1,4 +1,5 @@
 using KakaoBotAT.Server.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace KakaoBotAT.Server.Services;
@@ -60,13 +61,21 @@ public class RoomMigrationService : IRoomMigrationService
 
         var totalMigrated = 0;
 
-        // Migrate all collections that contain roomId
-        totalMigrated += await UpdateRoomIdAsync<ChatStatistics>("chatStatistics", sourceRoomId, targetRoomId);
-        totalMigrated += await UpdateRoomIdAsync<MessageContent>("messageContents", sourceRoomId, targetRoomId);
-        totalMigrated += await UpdateRoomIdAsync<WordContent>("wordContents", sourceRoomId, targetRoomId);
-        totalMigrated += await UpdateRoomIdAsync<HourlyChatStatistics>("hourlyChatStatistics", sourceRoomId, targetRoomId);
-        totalMigrated += await UpdateRoomIdAsync<DailyChatStatistics>("dailyChatStatistics", sourceRoomId, targetRoomId);
-        totalMigrated += await UpdateRoomIdAsync<MonthlyChatStatistics>("monthlyChatStatistics", sourceRoomId, targetRoomId);
+        // Merge count-based collections (upsert with $inc to avoid duplicate key conflicts)
+        totalMigrated += await MergeRoomDocumentsAsync("chatStatistics", sourceRoomId, targetRoomId,
+            ["senderHash"], ["messageCount"], maxFields: ["lastMessageTime"], setFields: ["senderName"]);
+        totalMigrated += await MergeRoomDocumentsAsync("messageContents", sourceRoomId, targetRoomId,
+            ["content"], ["count"], maxFields: ["lastTime"]);
+        totalMigrated += await MergeRoomDocumentsAsync("wordContents", sourceRoomId, targetRoomId,
+            ["word"], ["count"], maxFields: ["lastTime"]);
+        totalMigrated += await MergeRoomDocumentsAsync("hourlyChatStatistics", sourceRoomId, targetRoomId,
+            ["senderHash", "dateTime"], ["messageCount"]);
+        totalMigrated += await MergeRoomDocumentsAsync("dailyChatStatistics", sourceRoomId, targetRoomId,
+            ["senderHash", "dayOfWeek"], ["messageCount"]);
+        totalMigrated += await MergeRoomDocumentsAsync("monthlyChatStatistics", sourceRoomId, targetRoomId,
+            ["senderHash", "month"], ["messageCount"]);
+
+        // Simple roomId update for non-count collections
         totalMigrated += await UpdateRoomIdAsync<RoomRankingSettings>("roomRankingSettings", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<ScheduledMessage>("scheduledMessages", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<RoomRequestLimit>("roomRequestLimits", sourceRoomId, targetRoomId);
@@ -91,6 +100,77 @@ public class RoomMigrationService : IRoomMigrationService
         var filter = Builders<RoomMigrationCode>.Filter.Lte(x => x.ExpiresAt, now);
         var result = await _migrationCodes.DeleteManyAsync(filter);
         return (int)result.DeletedCount;
+    }
+
+    /// <summary>
+    /// Merges documents from source room into target room by upserting with $inc for count fields.
+    /// Avoids duplicate key conflicts on collections with unique compound indexes.
+    /// </summary>
+    private async Task<int> MergeRoomDocumentsAsync(
+        string collectionName,
+        string sourceRoomId,
+        string targetRoomId,
+        string[] uniqueKeyFields,
+        string[] incrementFields,
+        string[]? maxFields = null,
+        string[]? setFields = null)
+    {
+        try
+        {
+            var collection = _database.GetCollection<BsonDocument>(collectionName);
+            var sourceFilter = new BsonDocument("roomId", sourceRoomId);
+            var sourceDocs = await collection.Find(sourceFilter).ToListAsync();
+
+            if (sourceDocs.Count == 0) return 0;
+
+            foreach (var doc in sourceDocs)
+            {
+                var targetFilter = new BsonDocument("roomId", targetRoomId);
+                foreach (var key in uniqueKeyFields)
+                    targetFilter.Add(key, doc[key]);
+
+                var updateDoc = new BsonDocument();
+
+                var incDoc = new BsonDocument();
+                foreach (var field in incrementFields)
+                    if (doc.Contains(field))
+                        incDoc.Add(field, doc[field]);
+                if (incDoc.ElementCount > 0)
+                    updateDoc.Add("$inc", incDoc);
+
+                if (maxFields is not null)
+                {
+                    var maxDoc = new BsonDocument();
+                    foreach (var field in maxFields)
+                        if (doc.Contains(field))
+                            maxDoc.Add(field, doc[field]);
+                    if (maxDoc.ElementCount > 0)
+                        updateDoc.Add("$max", maxDoc);
+                }
+
+                if (setFields is not null)
+                {
+                    var setDoc = new BsonDocument();
+                    foreach (var field in setFields)
+                        if (doc.Contains(field))
+                            setDoc.Add(field, doc[field]);
+                    if (setDoc.ElementCount > 0)
+                        updateDoc.Add("$set", setDoc);
+                }
+
+                await collection.UpdateOneAsync(targetFilter, updateDoc, new UpdateOptions { IsUpsert = true });
+            }
+
+            await collection.DeleteManyAsync(sourceFilter);
+
+            _logger.LogInformation("[ROOM_MIGRATION] {Collection}: {Count} documents merged", collectionName, sourceDocs.Count);
+            return sourceDocs.Count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[ROOM_MIGRATION] {Collection}: Error during merge migration", collectionName);
+            return 0;
+        }
     }
 
     /// <summary>
