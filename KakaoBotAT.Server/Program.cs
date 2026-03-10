@@ -37,8 +37,12 @@ builder.Services.AddSingleton<IHotDealService, HotDealService>();
 // Register Migration service
 builder.Services.AddSingleton<IMigrationService, MigrationService>();
 
+// Register Scheduled Message service
+builder.Services.AddSingleton<IScheduledMessageService, ScheduledMessageService>();
+
 // Register background services
 builder.Services.AddHostedService<ApprovalCodeCleanupService>();
+builder.Services.AddHostedService<ScheduledMessageSessionCleanupService>();
 
 // ⚠️ Register command handlers
 // 
@@ -107,6 +111,9 @@ builder.Services.AddSingleton<ICommandHandler, MonthlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MyMonthlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HotDealCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WordRankCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ScheduledMessageSetCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ScheduledMessageRemoveCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ScheduledMessageListCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 

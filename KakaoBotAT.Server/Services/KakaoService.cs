@@ -13,17 +13,20 @@ public class KakaoService : IKakaoService
     private readonly CommandHandlerFactory _commandHandlerFactory;
     private readonly IChatStatisticsService _chatStatisticsService;
     private readonly IRequestLimitService _requestLimitService;
+    private readonly IScheduledMessageService _scheduledMessageService;
 
     public KakaoService(
         ILogger<KakaoService> logger, 
         CommandHandlerFactory commandHandlerFactory,
         IChatStatisticsService chatStatisticsService,
-        IRequestLimitService requestLimitService)
+        IRequestLimitService requestLimitService,
+        IScheduledMessageService scheduledMessageService)
     {
         _logger = logger;
         _commandHandlerFactory = commandHandlerFactory;
         _chatStatisticsService = chatStatisticsService;
         _requestLimitService = requestLimitService;
+        _scheduledMessageService = scheduledMessageService;
     }
 
     /// <summary>
@@ -40,6 +43,11 @@ public class KakaoService : IKakaoService
         // Record message statistics
         await _chatStatisticsService.RecordMessageAsync(data);
 
+        // Check for active scheduled message setup sessions
+        var sessionResponse = await _scheduledMessageService.HandleSessionInputAsync(data);
+        if (sessionResponse is not null)
+            return sessionResponse;
+
         // Find and execute appropriate command handler
         var handler = _commandHandlerFactory.FindHandler(data.Content);
         if (handler != null)
@@ -53,7 +61,10 @@ public class KakaoService : IKakaoService
                                 handler.Command == "!관리목록" ||
                                 handler.Command == "!랭크활성화" ||
                                 handler.Command == "!랭크비활성화" ||
-                                handler.Command == "!심삭제";
+                                handler.Command == "!심삭제" ||
+                                handler.Command == "!반복설정" ||
+                                handler.Command == "!반복해제" ||
+                                handler.Command == "!반복목록";
 
             if (!isAdminCommand)
             {
@@ -85,6 +96,11 @@ public class KakaoService : IKakaoService
 
             return await handler.HandleAsync(data);
         }
+
+        // Check for scheduled messages to trigger
+        var scheduledResponse = await _scheduledMessageService.CheckAndSendScheduledMessageAsync(data);
+        if (scheduledResponse is not null)
+            return scheduledResponse;
 
         return new ServerResponse();
     }
