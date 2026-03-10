@@ -88,6 +88,7 @@ public class ScheduledMessageService : IScheduledMessageService
         return session.Stage switch
         {
             SetupStage.AwaitingMessage => HandleAwaitingMessage(session, data),
+            SetupStage.AwaitingDays => HandleAwaitingDays(session, data),
             SetupStage.AwaitingHours => await HandleAwaitingHoursAsync(session, data),
             _ => null
         };
@@ -96,7 +97,7 @@ public class ScheduledMessageService : IScheduledMessageService
     private ServerResponse HandleAwaitingMessage(SetupSession session, KakaoMessageData data)
     {
         session.Message = data.Content;
-        session.Stage = SetupStage.AwaitingHours;
+        session.Stage = SetupStage.AwaitingDays;
 
         var preview = session.Message.Length > 50
             ? session.Message[..47] + "..."
@@ -108,6 +109,110 @@ public class ScheduledMessageService : IScheduledMessageService
             RoomId = data.RoomId,
             Message = $"✅ 메시지 저장됨\n\n" +
                      $"📝 \"{preview}\"\n\n" +
+                     $"📅 보낼 요일을 입력해주세요.\n" +
+                     $"공백으로 구분 (월 화 수 목 금 토 일)\n" +
+                     $"매일 보내려면: 전체\n\n" +
+                     $"예: 월 수 금\n\n" +
+                     $"❌ 취소: !취소"
+        };
+    }
+
+    private ServerResponse HandleAwaitingDays(SetupSession session, KakaoMessageData data)
+    {
+        var input = data.Content.Trim();
+        var parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        // "전체" handling
+        if (parts.Length == 1 && parts[0].Equals("전체", StringComparison.OrdinalIgnoreCase))
+        {
+            session.Days = AllDays;
+            session.Stage = SetupStage.AwaitingHours;
+
+            return new ServerResponse
+            {
+                Action = "send_text",
+                RoomId = data.RoomId,
+                Message = $"✅ 요일 저장됨: 전체\n\n" +
+                         $"⏰ 보낼 시간을 입력해주세요. (0~23시)\n" +
+                         $"여러 시간은 공백으로 구분\n" +
+                         $"예: 9 15 21\n\n" +
+                         $"❌ 취소: !취소"
+            };
+        }
+
+        // Validate: "전체" cannot be mixed with individual days
+        if (parts.Any(p => p.Equals("전체", StringComparison.OrdinalIgnoreCase)) && parts.Length > 1)
+        {
+            return new ServerResponse
+            {
+                Action = "send_text",
+                RoomId = data.RoomId,
+                Message = "❌ '전체'는 다른 요일과 함께 사용할 수 없습니다.\n" +
+                         "'전체' 또는 개별 요일만 입력해주세요.\n\n" +
+                         "예: 월 수 금\n" +
+                         "예: 전체\n\n" +
+                         "❌ 취소: !취소"
+            };
+        }
+
+        var days = new List<int>();
+
+        foreach (var part in parts)
+        {
+            if (!DayNameMap.TryGetValue(part, out var dayOfWeek))
+            {
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = $"❌ \"{part}\"은(는) 유효하지 않은 요일입니다.\n" +
+                             $"월 화 수 목 금 토 일 중에서 입력해주세요.\n\n" +
+                             $"예: 월 수 금\n" +
+                             $"예: 전체\n\n" +
+                             $"❌ 취소: !취소"
+                };
+            }
+
+            var dayValue = (int)dayOfWeek;
+            if (days.Contains(dayValue))
+            {
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = $"❌ \"{part}\"이(가) 중복되었습니다.\n" +
+                             $"각 요일은 한 번만 입력해주세요.\n\n" +
+                             $"❌ 취소: !취소"
+                };
+            }
+
+            days.Add(dayValue);
+        }
+
+        if (days.Count == 0)
+        {
+            return new ServerResponse
+            {
+                Action = "send_text",
+                RoomId = data.RoomId,
+                Message = "❌ 최소 1개의 요일을 입력해주세요.\n" +
+                         "예: 월 수 금\n" +
+                         "예: 전체\n\n" +
+                         "❌ 취소: !취소"
+            };
+        }
+
+        days.Sort();
+        session.Days = days;
+        session.Stage = SetupStage.AwaitingHours;
+
+        var daysDisplay = FormatDays(days);
+
+        return new ServerResponse
+        {
+            Action = "send_text",
+            RoomId = data.RoomId,
+            Message = $"✅ 요일 저장됨: {daysDisplay}\n\n" +
                      $"⏰ 보낼 시간을 입력해주세요. (0~23시)\n" +
                      $"여러 시간은 공백으로 구분\n" +
                      $"예: 9 15 21\n\n" +
@@ -175,6 +280,7 @@ public class ScheduledMessageService : IScheduledMessageService
         {
             RoomId = session.RoomId,
             Message = session.Message!,
+            Days = session.Days!,
             Hours = hours,
             CreatedBy = session.SenderHash,
             CreatedByName = session.SenderName,
@@ -184,6 +290,7 @@ public class ScheduledMessageService : IScheduledMessageService
         await _scheduledMessages.InsertOneAsync(scheduledMessage);
         _sessions.TryRemove(key, out _);
 
+        var daysDisplay = FormatDays(session.Days!);
         var hoursDisplay = string.Join(", ", hours.Select(h => $"{h}시"));
         var messagePreview = session.Message!.Length > 50
             ? session.Message[..47] + "..."
@@ -195,8 +302,9 @@ public class ScheduledMessageService : IScheduledMessageService
             RoomId = data.RoomId,
             Message = $"✅ 반복 메시지 설정 완료!\n\n" +
                      $"📝 메시지: \"{messagePreview}\"\n" +
+                     $"📅 요일: {daysDisplay}\n" +
                      $"⏰ 시간: {hoursDisplay}\n\n" +
-                     $"설정된 시간에 채팅이 오면 자동으로 답장합니다."
+                     $"설정된 요일/시간에 채팅이 오면 자동으로 답장합니다."
         };
     }
 
@@ -204,6 +312,7 @@ public class ScheduledMessageService : IScheduledMessageService
     {
         var now = DateTimeOffset.UtcNow.ToOffset(KstOffset);
         var currentHour = now.Hour;
+        var currentDay = (int)now.DayOfWeek;
         var dateKey = now.ToString("yyyy-MM-dd");
         var trackingKey = $"{data.RoomId}:{dateKey}:{currentHour}";
 
@@ -213,7 +322,8 @@ public class ScheduledMessageService : IScheduledMessageService
 
         var filter = Builders<ScheduledMessage>.Filter.And(
             Builders<ScheduledMessage>.Filter.Eq(x => x.RoomId, data.RoomId),
-            Builders<ScheduledMessage>.Filter.AnyEq(x => x.Hours, currentHour)
+            Builders<ScheduledMessage>.Filter.AnyEq(x => x.Hours, currentHour),
+            Builders<ScheduledMessage>.Filter.AnyEq(x => x.Days, currentDay)
         );
 
         var messages = await _scheduledMessages.Find(filter).ToListAsync();
@@ -287,9 +397,32 @@ public class ScheduledMessageService : IScheduledMessageService
         return staleKeys.Count;
     }
 
+    private static readonly Dictionary<string, DayOfWeek> DayNameMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["월"] = DayOfWeek.Monday,
+        ["화"] = DayOfWeek.Tuesday,
+        ["수"] = DayOfWeek.Wednesday,
+        ["목"] = DayOfWeek.Thursday,
+        ["금"] = DayOfWeek.Friday,
+        ["토"] = DayOfWeek.Saturday,
+        ["일"] = DayOfWeek.Sunday,
+    };
+
+    private static readonly List<int> AllDays = [0, 1, 2, 3, 4, 5, 6];
+
+    private static string FormatDays(List<int> days)
+    {
+        if (days.Count == 7)
+            return "전체";
+
+        var dayNames = new[] { "일", "월", "화", "수", "목", "금", "토" };
+        return string.Join(", ", days.Order().Select(d => dayNames[d]));
+    }
+
     private enum SetupStage
     {
         AwaitingMessage,
+        AwaitingDays,
         AwaitingHours
     }
 
@@ -301,6 +434,7 @@ public class ScheduledMessageService : IScheduledMessageService
         public required string RoomName { get; init; }
         public SetupStage Stage { get; set; }
         public string? Message { get; set; }
+        public List<int>? Days { get; set; }
         public DateTimeOffset LastActivityAt { get; set; }
     }
 }

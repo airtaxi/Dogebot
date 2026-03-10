@@ -6,19 +6,11 @@ namespace KakaoBotAT.Server.Commands;
 /// <summary>
 /// Handles the 심심아 command to get a random response for a message.
 /// </summary>
-public class SimSimQueryCommandHandler : ICommandHandler
+public class SimSimQueryCommandHandler(
+    ISimSimService simSimService,
+    ILogger<SimSimQueryCommandHandler> logger) : ICommandHandler
 {
-    private readonly ISimSimService _simSimService;
-    private readonly ILogger<SimSimQueryCommandHandler> _logger;
     private readonly Random _random = new();
-
-    public SimSimQueryCommandHandler(
-        ISimSimService simSimService,
-        ILogger<SimSimQueryCommandHandler> logger)
-    {
-        _simSimService = simSimService;
-        _logger = logger;
-    }
 
     public string Command => "심심아";
 
@@ -44,7 +36,7 @@ public class SimSimQueryCommandHandler : ICommandHandler
             }
 
             var message = parts[1];
-            var responses = await _simSimService.GetResponsesAsync(message);
+            var responses = await simSimService.GetResponsesAsync(message);
 
             if (responses.Count == 0)
             {
@@ -59,8 +51,8 @@ public class SimSimQueryCommandHandler : ICommandHandler
 
             var randomResponse = responses[_random.Next(responses.Count)];
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[SIMSIM_QUERY] Message '{Message}' got response '{Response}' for {Sender} in room {RoomId}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[SIMSIM_QUERY] Message '{Message}' got response '{Response}' for {Sender} in room {RoomId}",
                     message, randomResponse, data.SenderName, data.RoomId);
 
             return new ServerResponse
@@ -72,7 +64,7 @@ public class SimSimQueryCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[SIMSIM_QUERY] Error processing simsim query command");
+            logger.LogError(ex, "[SIMSIM_QUERY] Error processing simsim query command");
             return new ServerResponse
             {
                 Action = "send_text",

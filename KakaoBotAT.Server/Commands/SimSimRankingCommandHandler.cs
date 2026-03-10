@@ -6,19 +6,10 @@ namespace KakaoBotAT.Server.Commands;
 /// <summary>
 /// Handles the !심랭킹 command to show top messages with most responses.
 /// </summary>
-public class SimSimRankingCommandHandler : ICommandHandler
+public class SimSimRankingCommandHandler(
+    ISimSimService simSimService,
+    ILogger<SimSimRankingCommandHandler> logger) : ICommandHandler
 {
-    private readonly ISimSimService _simSimService;
-    private readonly ILogger<SimSimRankingCommandHandler> _logger;
-
-    public SimSimRankingCommandHandler(
-        ISimSimService simSimService,
-        ILogger<SimSimRankingCommandHandler> logger)
-    {
-        _simSimService = simSimService;
-        _logger = logger;
-    }
-
     public string Command => "!심랭킹";
 
     public bool CanHandle(string content)
@@ -40,7 +31,7 @@ public class SimSimRankingCommandHandler : ICommandHandler
                 limit = Math.Max(1, Math.Min(parsedLimit, 50));
             }
 
-            var topMessages = await _simSimService.GetTopMessagesAsync(limit);
+            var topMessages = await simSimService.GetTopMessagesAsync(limit);
 
             if (topMessages.Count == 0)
             {
@@ -71,8 +62,8 @@ public class SimSimRankingCommandHandler : ICommandHandler
                 message += $"{medal} {displayMsg} ({count:N0}개)\n";
             }
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[SIMSIM_RANKING] Showing top {Limit} simsim messages for {Sender}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[SIMSIM_RANKING] Showing top {Limit} simsim messages for {Sender}",
                     limit, data.SenderName);
 
             return new ServerResponse
@@ -84,7 +75,7 @@ public class SimSimRankingCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[SIMSIM_RANKING] Error processing simsim ranking command");
+            logger.LogError(ex, "[SIMSIM_RANKING] Error processing simsim ranking command");
             return new ServerResponse
             {
                 Action = "send_text",

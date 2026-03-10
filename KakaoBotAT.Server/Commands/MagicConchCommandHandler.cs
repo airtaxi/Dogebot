@@ -2,9 +2,8 @@
 
 namespace KakaoBotAT.Server.Commands;
 
-public class MagicConchCommandHandler : ICommandHandler
+public class MagicConchCommandHandler(ILogger<MagicConchCommandHandler> logger) : ICommandHandler
 {
-    private readonly ILogger<MagicConchCommandHandler> _logger;
     private readonly Random _random = new();
 
     private static readonly string[] Answers =
@@ -23,11 +22,6 @@ public class MagicConchCommandHandler : ICommandHandler
         "별로야"
     ];
 
-    public MagicConchCommandHandler(ILogger<MagicConchCommandHandler> logger)
-    {
-        _logger = logger;
-    }
-
     public string Command => "소라고동님";
 
     public bool CanHandle(string content)
@@ -42,8 +36,8 @@ public class MagicConchCommandHandler : ICommandHandler
             var answer = Answers[_random.Next(Answers.Length)];
             var message = $"🐚 소라고동님: {answer}";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[MAGIC_CONCH] Answer '{Answer}' for {Sender} in room {RoomId}", 
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[MAGIC_CONCH] Answer '{Answer}' for {Sender} in room {RoomId}", 
                     answer, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
@@ -55,7 +49,7 @@ public class MagicConchCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[MAGIC_CONCH] Error processing magic conch command");
+            logger.LogError(ex, "[MAGIC_CONCH] Error processing magic conch command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

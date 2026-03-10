@@ -2,15 +2,9 @@
 
 namespace KakaoBotAT.Server.Commands;
 
-public class OddEvenCommandHandler : ICommandHandler
+public class OddEvenCommandHandler(ILogger<OddEvenCommandHandler> logger) : ICommandHandler
 {
-    private readonly ILogger<OddEvenCommandHandler> _logger;
     private readonly Random _random = new();
-
-    public OddEvenCommandHandler(ILogger<OddEvenCommandHandler> logger)
-    {
-        _logger = logger;
-    }
 
     public string Command => "!홀짝";
 
@@ -31,8 +25,8 @@ public class OddEvenCommandHandler : ICommandHandler
             var isWin = userChoice.Equals(result, StringComparison.OrdinalIgnoreCase);
             var message = $"🎲 결과: {result}\n{(isWin ? "✅ 맞췄습니다!" : "❌ 틀렸습니다!")}";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[ODDEVEN] User chose '{UserChoice}', result was '{Result}' ({WinLose}) for {Sender} in room {RoomId}", 
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[ODDEVEN] User chose '{UserChoice}', result was '{Result}' ({WinLose}) for {Sender} in room {RoomId}", 
                     userChoice, result, isWin ? "WIN" : "LOSE", data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
@@ -44,7 +38,7 @@ public class OddEvenCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ODDEVEN] Error processing odd/even command");
+            logger.LogError(ex, "[ODDEVEN] Error processing odd/even command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

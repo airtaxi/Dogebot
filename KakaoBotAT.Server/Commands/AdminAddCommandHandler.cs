@@ -3,19 +3,10 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class AdminAddCommandHandler : ICommandHandler
+public class AdminAddCommandHandler(
+    IAdminService adminService,
+    ILogger<AdminAddCommandHandler> logger) : ICommandHandler
 {
-    private readonly IAdminService _adminService;
-    private readonly ILogger<AdminAddCommandHandler> _logger;
-
-    public AdminAddCommandHandler(
-        IAdminService adminService,
-        ILogger<AdminAddCommandHandler> logger)
-    {
-        _adminService = adminService;
-        _logger = logger;
-    }
-
     public string Command => "!관리추가";
 
     public bool CanHandle(string content)
@@ -31,14 +22,14 @@ public class AdminAddCommandHandler : ICommandHandler
 
             if (parts.Length == 1)
             {
-                var approvalCode = await _adminService.CreateApprovalCodeAsync(
+                var approvalCode = await adminService.CreateApprovalCodeAsync(
                     data.SenderHash,
                     data.SenderName,
                     data.RoomId,
                     data.RoomName);
 
-                if (_logger.IsEnabled(LogLevel.Information))
-                    _logger.LogInformation("[ADMIN_ADD] {Sender} requested admin approval code: {Code}",
+                if (logger.IsEnabled(LogLevel.Information))
+                    logger.LogInformation("[ADMIN_ADD] {Sender} requested admin approval code: {Code}",
                         data.SenderName, approvalCode);
 
                 return new ServerResponse
@@ -57,7 +48,7 @@ public class AdminAddCommandHandler : ICommandHandler
 
             if (parts.Length == 2)
             {
-                if (data.SenderHash != _adminService.ChiefAdminHash)
+                if (data.SenderHash != adminService.ChiefAdminHash)
                 {
                     return new ServerResponse
                     {
@@ -68,12 +59,12 @@ public class AdminAddCommandHandler : ICommandHandler
                 }
 
                 var code = parts[1];
-                var approved = await _adminService.ApproveAdminAsync(code, data.SenderHash);
+                var approved = await adminService.ApproveAdminAsync(code, data.SenderHash);
 
                 if (!approved)
                 {
-                    if (_logger.IsEnabled(LogLevel.Warning))
-                        _logger.LogWarning("[ADMIN_ADD] Failed to approve code {Code} by {Sender}",
+                    if (logger.IsEnabled(LogLevel.Warning))
+                        logger.LogWarning("[ADMIN_ADD] Failed to approve code {Code} by {Sender}",
                             code, data.SenderName);
 
                     return new ServerResponse
@@ -87,8 +78,8 @@ public class AdminAddCommandHandler : ICommandHandler
                     };
                 }
 
-                if (_logger.IsEnabled(LogLevel.Warning))
-                    _logger.LogWarning("[ADMIN_ADD] Code {Code} approved by {Sender}",
+                if (logger.IsEnabled(LogLevel.Warning))
+                    logger.LogWarning("[ADMIN_ADD] Code {Code} approved by {Sender}",
                         code, data.SenderName);
 
                 return new ServerResponse
@@ -115,7 +106,7 @@ public class AdminAddCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN_ADD] Error processing admin add command");
+            logger.LogError(ex, "[ADMIN_ADD] Error processing admin add command");
             return new ServerResponse
             {
                 Action = "send_text",

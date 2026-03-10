@@ -6,19 +6,10 @@ namespace KakaoBotAT.Server.Commands;
 /// <summary>
 /// Handles the !심몇개 command to show how many responses exist for a message.
 /// </summary>
-public class SimSimCountCommandHandler : ICommandHandler
+public class SimSimCountCommandHandler(
+    ISimSimService simSimService,
+    ILogger<SimSimCountCommandHandler> logger) : ICommandHandler
 {
-    private readonly ISimSimService _simSimService;
-    private readonly ILogger<SimSimCountCommandHandler> _logger;
-
-    public SimSimCountCommandHandler(
-        ISimSimService simSimService,
-        ILogger<SimSimCountCommandHandler> logger)
-    {
-        _simSimService = simSimService;
-        _logger = logger;
-    }
-
     public string Command => "!심몇개";
 
     public bool CanHandle(string content)
@@ -43,10 +34,10 @@ public class SimSimCountCommandHandler : ICommandHandler
             }
 
             var message = parts[1];
-            var count = await _simSimService.GetResponseCountAsync(message);
+            var count = await simSimService.GetResponseCountAsync(message);
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[SIMSIM_COUNT] Message '{Message}' has {Count} responses, queried by {Sender}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[SIMSIM_COUNT] Message '{Message}' has {Count} responses, queried by {Sender}",
                     message, count, data.SenderName);
 
             return new ServerResponse
@@ -58,7 +49,7 @@ public class SimSimCountCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[SIMSIM_COUNT] Error processing simsim count command");
+            logger.LogError(ex, "[SIMSIM_COUNT] Error processing simsim count command");
             return new ServerResponse
             {
                 Action = "send_text",

@@ -7,14 +7,9 @@ namespace KakaoBotAT.Server.Services;
 /// Service for cleaning up blacklisted messages from the database.
 /// This is useful for removing historical data that should not have been recorded.
 /// </summary>
-public class MessageCleanupService
+public class MessageCleanupService(IMongoDbService mongoDbService)
 {
-    private readonly IMongoCollection<MessageContent> _messageContents;
-
-    public MessageCleanupService(IMongoDbService mongoDbService)
-    {
-        _messageContents = mongoDbService.Database.GetCollection<MessageContent>("messageContents");
-    }
+    private readonly IMongoCollection<MessageContent> _messageContents = mongoDbService.Database.GetCollection<MessageContent>("messageContents");
 
     /// <summary>
     /// Counts how many blacklisted messages exist in the database.

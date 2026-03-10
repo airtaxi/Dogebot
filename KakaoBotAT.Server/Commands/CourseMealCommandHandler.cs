@@ -6,9 +6,8 @@ namespace KakaoBotAT.Server.Commands;
 /// Handles the !코스요리 command to create a random course meal.
 /// Selects appetizer, main dish, and dessert from a fantasy-themed menu.
 /// </summary>
-public class CourseMealCommandHandler : ICommandHandler
+public class CourseMealCommandHandler(ILogger<CourseMealCommandHandler> logger) : ICommandHandler
 {
-    private readonly ILogger<CourseMealCommandHandler> _logger;
     private readonly Random _random = new();
 
     private static readonly string[] Dishes =
@@ -55,11 +54,6 @@ public class CourseMealCommandHandler : ICommandHandler
         "사령관의 피묻은 전투식량 볶음밥"
     ];
 
-    public CourseMealCommandHandler(ILogger<CourseMealCommandHandler> logger)
-    {
-        _logger = logger;
-    }
-
     public string Command => "!코스요리";
 
     public bool CanHandle(string content)
@@ -85,8 +79,8 @@ public class CourseMealCommandHandler : ICommandHandler
                          $"🍖 메인: {dishes[1]}\n\n" +
                          $"🍰 디저트: {dishes[2]}";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[COURSE_MEAL] Generated course meal for {Sender} in room {RoomId}: [{Appetizer}], [{Main}], [{Dessert}]",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[COURSE_MEAL] Generated course meal for {Sender} in room {RoomId}: [{Appetizer}], [{Main}], [{Dessert}]",
                     data.SenderName, data.RoomId, dishes[0], dishes[1], dishes[2]);
 
             return Task.FromResult(new ServerResponse
@@ -98,7 +92,7 @@ public class CourseMealCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[COURSE_MEAL] Error processing course meal command");
+            logger.LogError(ex, "[COURSE_MEAL] Error processing course meal command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

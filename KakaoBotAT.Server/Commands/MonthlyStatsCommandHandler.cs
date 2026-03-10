@@ -3,20 +3,11 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class MonthlyStatsCommandHandler : ICommandHandler
+public class MonthlyStatsCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<MonthlyStatsCommandHandler> logger) : ICommandHandler
 {
     private static readonly string[] MonthNames = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
-
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<MonthlyStatsCommandHandler> _logger;
-
-    public MonthlyStatsCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<MonthlyStatsCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
 
     public string Command => "!월별통계";
 
@@ -29,7 +20,7 @@ public class MonthlyStatsCommandHandler : ICommandHandler
     {
         try
         {
-            var monthlyStats = await _statisticsService.GetMonthlyStatisticsAsync(data.RoomId);
+            var monthlyStats = await statisticsService.GetMonthlyStatisticsAsync(data.RoomId);
 
             if (monthlyStats.Count == 0)
             {
@@ -43,8 +34,8 @@ public class MonthlyStatsCommandHandler : ICommandHandler
 
             var message = "📆 월별 채팅 통계 (KST)\n\n" + FormatMonthlyStats(monthlyStats);
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[MONTHLY_STATS] Showing room monthly stats for room {RoomId}", data.RoomId);
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[MONTHLY_STATS] Showing room monthly stats for room {RoomId}", data.RoomId);
 
             return new ServerResponse
             {
@@ -55,7 +46,7 @@ public class MonthlyStatsCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[MONTHLY_STATS] Error processing monthly stats command");
+            logger.LogError(ex, "[MONTHLY_STATS] Error processing monthly stats command");
             return new ServerResponse
             {
                 Action = "send_text",

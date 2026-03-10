@@ -3,22 +3,11 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class EnableRankingCommandHandler : ICommandHandler
+public class EnableRankingCommandHandler(
+    IChatStatisticsService chatStatisticsService,
+    IAdminService adminService,
+    ILogger<EnableRankingCommandHandler> logger) : ICommandHandler
 {
-    private readonly IChatStatisticsService _chatStatisticsService;
-    private readonly IAdminService _adminService;
-    private readonly ILogger<EnableRankingCommandHandler> _logger;
-
-    public EnableRankingCommandHandler(
-        IChatStatisticsService chatStatisticsService,
-        IAdminService adminService,
-        ILogger<EnableRankingCommandHandler> logger)
-    {
-        _chatStatisticsService = chatStatisticsService;
-        _adminService = adminService;
-        _logger = logger;
-    }
-
     public string Command => "!랭크활성화";
 
     public bool CanHandle(string content)
@@ -30,7 +19,7 @@ public class EnableRankingCommandHandler : ICommandHandler
     {
         try
         {
-            if (!await _adminService.IsAdminAsync(data.SenderHash))
+            if (!await adminService.IsAdminAsync(data.SenderHash))
             {
                 return new ServerResponse
                 {
@@ -40,7 +29,7 @@ public class EnableRankingCommandHandler : ICommandHandler
                 };
             }
 
-            var isEnabled = await _chatStatisticsService.IsMessageContentEnabledAsync(data.RoomId);
+            var isEnabled = await chatStatisticsService.IsMessageContentEnabledAsync(data.RoomId);
 
             if (isEnabled)
             {
@@ -52,10 +41,10 @@ public class EnableRankingCommandHandler : ICommandHandler
                 };
             }
 
-            await _chatStatisticsService.EnableMessageContentAsync(data.RoomId, data.RoomName, data.SenderHash);
+            await chatStatisticsService.EnableMessageContentAsync(data.RoomId, data.RoomName, data.SenderHash);
 
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning("[RANKING_ENABLE] Ranking enabled for room {RoomName} by {Sender}",
+            if (logger.IsEnabled(LogLevel.Warning))
+                logger.LogWarning("[RANKING_ENABLE] Ranking enabled for room {RoomName} by {Sender}",
                     data.RoomName, data.SenderName);
 
             return new ServerResponse
@@ -69,7 +58,7 @@ public class EnableRankingCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[RANKING_ENABLE] Error processing enable ranking command");
+            logger.LogError(ex, "[RANKING_ENABLE] Error processing enable ranking command");
             return new ServerResponse
             {
                 Action = "send_text",

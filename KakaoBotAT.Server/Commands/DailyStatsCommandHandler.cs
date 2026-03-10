@@ -3,20 +3,11 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class DailyStatsCommandHandler : ICommandHandler
+public class DailyStatsCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<DailyStatsCommandHandler> logger) : ICommandHandler
 {
     private static readonly string[] DayNames = ["일", "월", "화", "수", "목", "금", "토"];
-
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<DailyStatsCommandHandler> _logger;
-
-    public DailyStatsCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<DailyStatsCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
 
     public string Command => "!요일통계";
 
@@ -29,7 +20,7 @@ public class DailyStatsCommandHandler : ICommandHandler
     {
         try
         {
-            var dailyStats = await _statisticsService.GetDailyStatisticsAsync(data.RoomId);
+            var dailyStats = await statisticsService.GetDailyStatisticsAsync(data.RoomId);
 
             if (dailyStats.Count == 0)
             {
@@ -43,8 +34,8 @@ public class DailyStatsCommandHandler : ICommandHandler
 
             var message = "📅 요일별 채팅 통계 (KST)\n\n" + FormatDailyStats(dailyStats);
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[DAILY_STATS] Showing room daily stats for room {RoomId}", data.RoomId);
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[DAILY_STATS] Showing room daily stats for room {RoomId}", data.RoomId);
 
             return new ServerResponse
             {
@@ -55,7 +46,7 @@ public class DailyStatsCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[DAILY_STATS] Error processing daily stats command");
+            logger.LogError(ex, "[DAILY_STATS] Error processing daily stats command");
             return new ServerResponse
             {
                 Action = "send_text",

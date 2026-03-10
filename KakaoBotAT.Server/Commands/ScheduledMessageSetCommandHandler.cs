@@ -3,22 +3,11 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class ScheduledMessageSetCommandHandler : ICommandHandler
+public class ScheduledMessageSetCommandHandler(
+    IScheduledMessageService scheduledMessageService,
+    IAdminService adminService,
+    ILogger<ScheduledMessageSetCommandHandler> logger) : ICommandHandler
 {
-    private readonly IScheduledMessageService _scheduledMessageService;
-    private readonly IAdminService _adminService;
-    private readonly ILogger<ScheduledMessageSetCommandHandler> _logger;
-
-    public ScheduledMessageSetCommandHandler(
-        IScheduledMessageService scheduledMessageService,
-        IAdminService adminService,
-        ILogger<ScheduledMessageSetCommandHandler> logger)
-    {
-        _scheduledMessageService = scheduledMessageService;
-        _adminService = adminService;
-        _logger = logger;
-    }
-
     public string Command => "!반복설정";
 
     public bool CanHandle(string content)
@@ -30,7 +19,7 @@ public class ScheduledMessageSetCommandHandler : ICommandHandler
     {
         try
         {
-            if (!await _adminService.IsAdminAsync(data.SenderHash))
+            if (!await adminService.IsAdminAsync(data.SenderHash))
             {
                 return new ServerResponse
                 {
@@ -40,10 +29,10 @@ public class ScheduledMessageSetCommandHandler : ICommandHandler
                 };
             }
 
-            _scheduledMessageService.StartSession(data.RoomId, data.SenderHash, data.SenderName, data.RoomName);
+            scheduledMessageService.StartSession(data.RoomId, data.SenderHash, data.SenderName, data.RoomName);
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[SCHEDULED_SET] Session started by {Sender} in room {RoomName}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[SCHEDULED_SET] Session started by {Sender} in room {RoomName}",
                     data.SenderName, data.RoomName);
 
             return new ServerResponse
@@ -59,7 +48,7 @@ public class ScheduledMessageSetCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[SCHEDULED_SET] Error processing scheduled message set command");
+            logger.LogError(ex, "[SCHEDULED_SET] Error processing scheduled message set command");
             return new ServerResponse
             {
                 Action = "send_text",

@@ -16,6 +16,13 @@ public class ScheduledMessage
     public string Message { get; set; } = string.Empty;
 
     /// <summary>
+    /// Days of week (0=Sunday .. 6=Saturday) on which this message should be sent.
+    /// All 7 days means "전체" (every day).
+    /// </summary>
+    [BsonElement("days")]
+    public List<int> Days { get; set; } = [];
+
+    /// <summary>
     /// Hours (0-23, KST) at which this message should be sent.
     /// </summary>
     [BsonElement("hours")]

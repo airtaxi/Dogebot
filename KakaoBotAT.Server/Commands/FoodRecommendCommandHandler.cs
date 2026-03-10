@@ -2,9 +2,8 @@
 
 namespace KakaoBotAT.Server.Commands;
 
-public class FoodRecommendCommandHandler : ICommandHandler
+public class FoodRecommendCommandHandler(ILogger<FoodRecommendCommandHandler> logger) : ICommandHandler
 {
-    private readonly ILogger<FoodRecommendCommandHandler> _logger;
     private readonly Random _random = new();
 
     private static readonly string[] Foods =
@@ -21,11 +20,6 @@ public class FoodRecommendCommandHandler : ICommandHandler
         "파스타", "스테이크", "샐러드", "샌드위치"
     ];
 
-    public FoodRecommendCommandHandler(ILogger<FoodRecommendCommandHandler> logger)
-    {
-        _logger = logger;
-    }
-
     public string Command => "!뭐먹지";
 
     public bool CanHandle(string content)
@@ -40,8 +34,8 @@ public class FoodRecommendCommandHandler : ICommandHandler
             var recommendedFood = Foods[_random.Next(Foods.Length)];
             var message = $"🍴 오늘의 추천 메뉴: {recommendedFood}";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[FOOD] Recommended '{Food}' to {Sender} in room {RoomId}", 
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[FOOD] Recommended '{Food}' to {Sender} in room {RoomId}", 
                     recommendedFood, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
@@ -53,7 +47,7 @@ public class FoodRecommendCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[FOOD] Error processing food recommendation command");
+            logger.LogError(ex, "[FOOD] Error processing food recommendation command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

@@ -7,22 +7,11 @@ namespace KakaoBotAT.Server.Commands;
 /// Handles the !내일날씨 [지역명] command to show tomorrow's weather forecast.
 /// Uses OpenWeatherMap API. If no city is specified, uses the user's preferred city or defaults to Seoul.
 /// </summary>
-public class TomorrowWeatherCommandHandler : ICommandHandler
+public class TomorrowWeatherCommandHandler(
+    IWeatherService weatherService,
+    IUserPreferenceService userPreferenceService,
+    ILogger<TomorrowWeatherCommandHandler> logger) : ICommandHandler
 {
-    private readonly IWeatherService _weatherService;
-    private readonly IUserPreferenceService _userPreferenceService;
-    private readonly ILogger<TomorrowWeatherCommandHandler> _logger;
-
-    public TomorrowWeatherCommandHandler(
-        IWeatherService weatherService,
-        IUserPreferenceService userPreferenceService,
-        ILogger<TomorrowWeatherCommandHandler> logger)
-    {
-        _weatherService = weatherService;
-        _userPreferenceService = userPreferenceService;
-        _logger = logger;
-    }
-
     public string Command => "!내일날씨";
 
     public bool CanHandle(string content)
@@ -52,7 +41,7 @@ public class TomorrowWeatherCommandHandler : ICommandHandler
             // If no city specified, try to get user's preferred city
             if (cityName == null)
             {
-                cityName = await _userPreferenceService.GetUserPreferredCityAsync(data.SenderHash);
+                cityName = await userPreferenceService.GetUserPreferredCityAsync(data.SenderHash);
                 
                 // If no preference found, use default
                 if (cityName == null)
@@ -62,7 +51,7 @@ public class TomorrowWeatherCommandHandler : ICommandHandler
             }
 
             // Get city information using Geocoding API
-            var geoData = await _weatherService.GetCityCoordinatesAsync(cityName);
+            var geoData = await weatherService.GetCityCoordinatesAsync(cityName);
 
             if (geoData == null)
             {
@@ -77,11 +66,11 @@ public class TomorrowWeatherCommandHandler : ICommandHandler
             // If user specified a city, save it as their preference
             if (userSpecifiedCity)
             {
-                await _userPreferenceService.SetUserPreferredCityAsync(data.SenderHash, cityName);
+                await userPreferenceService.SetUserPreferredCityAsync(data.SenderHash, cityName);
             }
 
             // Get forecast using coordinates
-            var forecast = await _weatherService.GetForecastByCoordinatesAsync(geoData.Lat, geoData.Lon);
+            var forecast = await weatherService.GetForecastByCoordinatesAsync(geoData.Lat, geoData.Lon);
 
             if (forecast == null || forecast.List.Count == 0)
             {
@@ -133,8 +122,8 @@ public class TomorrowWeatherCommandHandler : ICommandHandler
                          $"🌬️ 풍속: {noonForecast.Wind.Speed:F1}m/s\n" +
                          $"🔽 기압: {noonForecast.Main.Pressure}hPa";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[WEATHER] Tomorrow's weather info requested by {Sender} in room {RoomId} for {City}: {MinTemp}°C~{MaxTemp}°C, {Description}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[WEATHER] Tomorrow's weather info requested by {Sender} in room {RoomId} for {City}: {MinTemp}°C~{MaxTemp}°C, {Description}",
                     data.SenderName, data.RoomId, displayCityName, minTemp, maxTemp, description);
 
             return new ServerResponse
@@ -146,7 +135,7 @@ public class TomorrowWeatherCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[WEATHER] Error processing tomorrow weather command");
+            logger.LogError(ex, "[WEATHER] Error processing tomorrow weather command");
             return new ServerResponse
             {
                 Action = "send_text",

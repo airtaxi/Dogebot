@@ -7,27 +7,13 @@ namespace KakaoBotAT.Server.Services;
 /// <summary>
 /// Service implementation that handles bot logic.
 /// </summary>
-public class KakaoService : IKakaoService
+public class KakaoService(
+    ILogger<KakaoService> logger,
+    CommandHandlerFactory commandHandlerFactory,
+    IChatStatisticsService chatStatisticsService,
+    IRequestLimitService requestLimitService,
+    IScheduledMessageService scheduledMessageService) : IKakaoService
 {
-    private readonly ILogger<KakaoService> _logger;
-    private readonly CommandHandlerFactory _commandHandlerFactory;
-    private readonly IChatStatisticsService _chatStatisticsService;
-    private readonly IRequestLimitService _requestLimitService;
-    private readonly IScheduledMessageService _scheduledMessageService;
-
-    public KakaoService(
-        ILogger<KakaoService> logger, 
-        CommandHandlerFactory commandHandlerFactory,
-        IChatStatisticsService chatStatisticsService,
-        IRequestLimitService requestLimitService,
-        IScheduledMessageService scheduledMessageService)
-    {
-        _logger = logger;
-        _commandHandlerFactory = commandHandlerFactory;
-        _chatStatisticsService = chatStatisticsService;
-        _requestLimitService = requestLimitService;
-        _scheduledMessageService = scheduledMessageService;
-    }
 
     /// <summary>
     /// Processes received notifications and executes appropriate command handlers.
@@ -36,20 +22,20 @@ public class KakaoService : IKakaoService
     {
         var data = notification.Data;
 
-        if (_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", 
+        if (logger.IsEnabled(LogLevel.Information))
+            logger.LogInformation("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", 
                 data.RoomName, data.SenderName, data.Content);
 
         // Record message statistics
-        await _chatStatisticsService.RecordMessageAsync(data);
+        await chatStatisticsService.RecordMessageAsync(data);
 
         // Check for active scheduled message setup sessions
-        var sessionResponse = await _scheduledMessageService.HandleSessionInputAsync(data);
+        var sessionResponse = await scheduledMessageService.HandleSessionInputAsync(data);
         if (sessionResponse is not null)
             return sessionResponse;
 
         // Find and execute appropriate command handler
-        var handler = _commandHandlerFactory.FindHandler(data.Content);
+        var handler = commandHandlerFactory.FindHandler(data.Content);
         if (handler != null)
         {
             // Check if the command should be rate-limited
@@ -69,14 +55,14 @@ public class KakaoService : IKakaoService
             if (!isAdminCommand)
             {
                 // Check request limit
-                var canExecute = await _requestLimitService.CheckRequestLimitAsync(data.RoomId, data.SenderHash);
+                var canExecute = await requestLimitService.CheckRequestLimitAsync(data.RoomId, data.SenderHash);
 
                 if (!canExecute)
                 {
-                    var limitInfo = await _requestLimitService.GetLimitInfoAsync(data.RoomId, data.SenderHash);
+                    var limitInfo = await requestLimitService.GetLimitInfoAsync(data.RoomId, data.SenderHash);
 
-                    if (_logger.IsEnabled(LogLevel.Warning))
-                        _logger.LogWarning("[REQUEST_LIMIT] User {Sender} exceeded daily limit in room {RoomName}",
+                    if (logger.IsEnabled(LogLevel.Warning))
+                        logger.LogWarning("[REQUEST_LIMIT] User {Sender} exceeded daily limit in room {RoomName}",
                             data.SenderName, data.RoomName);
 
                     return new ServerResponse
@@ -91,14 +77,14 @@ public class KakaoService : IKakaoService
                 }
 
                 // Increment request count
-                await _requestLimitService.IncrementRequestCountAsync(data.RoomId, data.SenderHash);
+                await requestLimitService.IncrementRequestCountAsync(data.RoomId, data.SenderHash);
             }
 
             return await handler.HandleAsync(data);
         }
 
         // Check for scheduled messages to trigger
-        var scheduledResponse = await _scheduledMessageService.CheckAndSendScheduledMessageAsync(data);
+        var scheduledResponse = await scheduledMessageService.CheckAndSendScheduledMessageAsync(data);
         if (scheduledResponse is not null)
             return scheduledResponse;
 

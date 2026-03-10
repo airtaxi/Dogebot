@@ -3,19 +3,10 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class MyHourlyStatsCommandHandler : ICommandHandler
+public class MyHourlyStatsCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<MyHourlyStatsCommandHandler> logger) : ICommandHandler
 {
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<MyHourlyStatsCommandHandler> _logger;
-
-    public MyHourlyStatsCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<MyHourlyStatsCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
-
     public string Command => "!내시간통계";
 
     public bool CanHandle(string content)
@@ -27,7 +18,7 @@ public class MyHourlyStatsCommandHandler : ICommandHandler
     {
         try
         {
-            var hourlyStats = await _statisticsService.GetUserHourlyStatisticsAsync(data.RoomId, data.SenderHash);
+            var hourlyStats = await statisticsService.GetUserHourlyStatisticsAsync(data.RoomId, data.SenderHash);
 
             if (hourlyStats.Count == 0)
             {
@@ -42,8 +33,8 @@ public class MyHourlyStatsCommandHandler : ICommandHandler
             var message = $"⏰ {data.SenderName}님의 시간대별 채팅 통계 (KST)\n\n" +
                           HourlyStatsCommandHandler.FormatHourlyStats(hourlyStats);
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[MY_HOURLY_STATS] Showing personal hourly stats for {SenderName} in room {RoomId}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[MY_HOURLY_STATS] Showing personal hourly stats for {SenderName} in room {RoomId}",
                     data.SenderName, data.RoomId);
 
             return new ServerResponse
@@ -55,7 +46,7 @@ public class MyHourlyStatsCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[MY_HOURLY_STATS] Error processing personal hourly stats command");
+            logger.LogError(ex, "[MY_HOURLY_STATS] Error processing personal hourly stats command");
             return new ServerResponse
             {
                 Action = "send_text",

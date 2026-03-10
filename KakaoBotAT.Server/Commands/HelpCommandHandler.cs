@@ -26,15 +26,8 @@ namespace KakaoBotAT.Server.Commands;
 /// 
 /// This ensures users can discover your new command through !도움말 or !help
 /// </summary>
-public class HelpCommandHandler : ICommandHandler
+public class HelpCommandHandler(ILogger<HelpCommandHandler> logger) : ICommandHandler
 {
-    private readonly ILogger<HelpCommandHandler> _logger;
-
-    public HelpCommandHandler(ILogger<HelpCommandHandler> logger)
-    {
-        _logger = logger;
-    }
-
     public string Command => "!도움말";
 
     public bool CanHandle(string content)
@@ -106,8 +99,8 @@ public class HelpCommandHandler : ICommandHandler
                          "📦 소스코드:\n" +
                          "github.com/airtaxi-fork/Dogebot";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[HELP] Showing help message to {Sender} in room {RoomId}", 
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[HELP] Showing help message to {Sender} in room {RoomId}", 
                     data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
@@ -119,7 +112,7 @@ public class HelpCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[HELP] Error processing help command");
+            logger.LogError(ex, "[HELP] Error processing help command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

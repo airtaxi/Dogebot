@@ -3,19 +3,10 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class ViewRankingCommandHandler : ICommandHandler
+public class ViewRankingCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<ViewRankingCommandHandler> logger) : ICommandHandler
 {
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<ViewRankingCommandHandler> _logger;
-
-    public ViewRankingCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<ViewRankingCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
-
     public string Command => "!조회";
 
     public bool CanHandle(string content)
@@ -42,7 +33,7 @@ public class ViewRankingCommandHandler : ICommandHandler
             }
 
             var targetRoomId = parts[1];
-            var topUsers = await _statisticsService.GetTopUsersAsync(targetRoomId, 10);
+            var topUsers = await statisticsService.GetTopUsersAsync(targetRoomId, 10);
 
             if (topUsers.Count == 0)
             {
@@ -68,8 +59,8 @@ public class ViewRankingCommandHandler : ICommandHandler
                 message += $"{medal} {senderName}: {messageCount:N0}회\n";
             }
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[VIEW_RANKING] Showing rankings for room {TargetRoomId} requested by {Sender} in room {RoomId}", 
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[VIEW_RANKING] Showing rankings for room {TargetRoomId} requested by {Sender} in room {RoomId}", 
                     targetRoomId, data.SenderName, data.RoomId);
 
             return new ServerResponse
@@ -81,7 +72,7 @@ public class ViewRankingCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[VIEW_RANKING] Error processing view ranking command");
+            logger.LogError(ex, "[VIEW_RANKING] Error processing view ranking command");
             return new ServerResponse
             {
                 Action = "send_text",

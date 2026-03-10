@@ -7,22 +7,11 @@ namespace KakaoBotAT.Server.Commands;
 /// Handles the !날씨 [지역명] command to show current weather.
 /// Uses OpenWeatherMap API. If no city is specified, uses the user's preferred city or defaults to Seoul.
 /// </summary>
-public class WeatherCommandHandler : ICommandHandler
+public class WeatherCommandHandler(
+    IWeatherService weatherService,
+    IUserPreferenceService userPreferenceService,
+    ILogger<WeatherCommandHandler> logger) : ICommandHandler
 {
-    private readonly IWeatherService _weatherService;
-    private readonly IUserPreferenceService _userPreferenceService;
-    private readonly ILogger<WeatherCommandHandler> _logger;
-
-    public WeatherCommandHandler(
-        IWeatherService weatherService,
-        IUserPreferenceService userPreferenceService,
-        ILogger<WeatherCommandHandler> logger)
-    {
-        _weatherService = weatherService;
-        _userPreferenceService = userPreferenceService;
-        _logger = logger;
-    }
-
     public string Command => "!날씨";
 
     public bool CanHandle(string content)
@@ -52,7 +41,7 @@ public class WeatherCommandHandler : ICommandHandler
             // If no city specified, try to get user's preferred city
             if (cityName == null)
             {
-                cityName = await _userPreferenceService.GetUserPreferredCityAsync(data.SenderHash);
+                cityName = await userPreferenceService.GetUserPreferredCityAsync(data.SenderHash);
                 
                 // If no preference found, use default
                 if (cityName == null)
@@ -62,7 +51,7 @@ public class WeatherCommandHandler : ICommandHandler
             }
 
             // Get city information using Geocoding API
-            var geoData = await _weatherService.GetCityCoordinatesAsync(cityName);
+            var geoData = await weatherService.GetCityCoordinatesAsync(cityName);
 
             if (geoData == null)
             {
@@ -77,11 +66,11 @@ public class WeatherCommandHandler : ICommandHandler
             // If user specified a city, save it as their preference
             if (userSpecifiedCity)
             {
-                await _userPreferenceService.SetUserPreferredCityAsync(data.SenderHash, cityName);
+                await userPreferenceService.SetUserPreferredCityAsync(data.SenderHash, cityName);
             }
 
             // Get weather using coordinates (more accurate and stable)
-            var weather = await _weatherService.GetWeatherByCoordinatesAsync(geoData.Lat, geoData.Lon);
+            var weather = await weatherService.GetWeatherByCoordinatesAsync(geoData.Lat, geoData.Lon);
 
             if (weather == null)
             {
@@ -107,8 +96,8 @@ public class WeatherCommandHandler : ICommandHandler
                          $"🌬️ 풍속: {weather.Wind.Speed:F1}m/s\n" +
                          $"🔽 기압: {weather.Main.Pressure}hPa";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[WEATHER] Weather info requested by {Sender} in room {RoomId} for {City}: {Temp}°C, {Description}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[WEATHER] Weather info requested by {Sender} in room {RoomId} for {City}: {Temp}°C, {Description}",
                     data.SenderName, data.RoomId, displayCityName, weather.Main.Temp, description);
 
             return new ServerResponse
@@ -120,7 +109,7 @@ public class WeatherCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[WEATHER] Error processing weather command");
+            logger.LogError(ex, "[WEATHER] Error processing weather command");
             return new ServerResponse
             {
                 Action = "send_text",

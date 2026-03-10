@@ -3,22 +3,11 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class ScheduledMessageListCommandHandler : ICommandHandler
+public class ScheduledMessageListCommandHandler(
+    IScheduledMessageService scheduledMessageService,
+    IAdminService adminService,
+    ILogger<ScheduledMessageListCommandHandler> logger) : ICommandHandler
 {
-    private readonly IScheduledMessageService _scheduledMessageService;
-    private readonly IAdminService _adminService;
-    private readonly ILogger<ScheduledMessageListCommandHandler> _logger;
-
-    public ScheduledMessageListCommandHandler(
-        IScheduledMessageService scheduledMessageService,
-        IAdminService adminService,
-        ILogger<ScheduledMessageListCommandHandler> logger)
-    {
-        _scheduledMessageService = scheduledMessageService;
-        _adminService = adminService;
-        _logger = logger;
-    }
-
     public string Command => "!반복목록";
 
     public bool CanHandle(string content)
@@ -30,7 +19,7 @@ public class ScheduledMessageListCommandHandler : ICommandHandler
     {
         try
         {
-            if (!await _adminService.IsAdminAsync(data.SenderHash))
+            if (!await adminService.IsAdminAsync(data.SenderHash))
             {
                 return new ServerResponse
                 {
@@ -40,7 +29,7 @@ public class ScheduledMessageListCommandHandler : ICommandHandler
                 };
             }
 
-            var messages = await _scheduledMessageService.GetScheduledMessagesAsync(data.RoomId);
+            var messages = await scheduledMessageService.GetScheduledMessagesAsync(data.RoomId);
 
             if (messages.Count == 0)
             {
@@ -61,14 +50,15 @@ public class ScheduledMessageListCommandHandler : ICommandHandler
                     ? message.Message[..27] + "..."
                     : message.Message;
                 preview = preview.Replace("\n", " ").Replace("\r", "");
+                var daysDisplay = FormatDays(message.Days);
                 var hoursDisplay = string.Join(", ", message.Hours.Select(h => $"{h}시"));
-                result += $"{i + 1}. \"{preview}\"\n   ⏰ {hoursDisplay} | 👤 {message.CreatedByName}\n\n";
+                result += $"{i + 1}. \"{preview}\"\n   📅 {daysDisplay} | ⏰ {hoursDisplay} | 👤 {message.CreatedByName}\n\n";
             }
 
             result = result.TrimEnd();
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[SCHEDULED_LIST] Showing {Count} scheduled messages for room {RoomName}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[SCHEDULED_LIST] Showing {Count} scheduled messages for room {RoomName}",
                     messages.Count, data.RoomName);
 
             return new ServerResponse
@@ -80,7 +70,7 @@ public class ScheduledMessageListCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[SCHEDULED_LIST] Error processing scheduled message list command");
+            logger.LogError(ex, "[SCHEDULED_LIST] Error processing scheduled message list command");
             return new ServerResponse
             {
                 Action = "send_text",
@@ -88,5 +78,14 @@ public class ScheduledMessageListCommandHandler : ICommandHandler
                 Message = "반복 메시지 목록 조회 중 오류가 발생했습니다."
             };
         }
+    }
+
+    private static string FormatDays(List<int> days)
+    {
+        if (days.Count == 7)
+            return "전체";
+
+        var dayNames = new[] { "일", "월", "화", "수", "목", "금", "토" };
+        return string.Join(", ", days.Order().Select(d => dayNames[d]));
     }
 }

@@ -8,22 +8,11 @@ namespace KakaoBotAT.Server.Commands;
 /// Admin only command.
 /// Can delete specific message/response pair or all responses for a message.
 /// </summary>
-public class SimSimDeleteCommandHandler : ICommandHandler
+public class SimSimDeleteCommandHandler(
+    ISimSimService simSimService,
+    IAdminService adminService,
+    ILogger<SimSimDeleteCommandHandler> logger) : ICommandHandler
 {
-    private readonly ISimSimService _simSimService;
-    private readonly IAdminService _adminService;
-    private readonly ILogger<SimSimDeleteCommandHandler> _logger;
-
-    public SimSimDeleteCommandHandler(
-        ISimSimService simSimService,
-        IAdminService adminService,
-        ILogger<SimSimDeleteCommandHandler> logger)
-    {
-        _simSimService = simSimService;
-        _adminService = adminService;
-        _logger = logger;
-    }
-
     public string Command => "!심삭제";
 
     public bool CanHandle(string content)
@@ -36,7 +25,7 @@ public class SimSimDeleteCommandHandler : ICommandHandler
         try
         {
             // Check if user is admin
-            if (!await _adminService.IsAdminAsync(data.SenderHash))
+            if (!await adminService.IsAdminAsync(data.SenderHash))
             {
                 return new ServerResponse
                 {
@@ -81,7 +70,7 @@ public class SimSimDeleteCommandHandler : ICommandHandler
                     };
                 }
 
-                var deletedCount = await _simSimService.DeleteAllResponsesForMessageAsync(message);
+                var deletedCount = await simSimService.DeleteAllResponsesForMessageAsync(message);
 
                 if (deletedCount == 0)
                 {
@@ -93,8 +82,8 @@ public class SimSimDeleteCommandHandler : ICommandHandler
                     };
                 }
 
-                if (_logger.IsEnabled(LogLevel.Warning))
-                    _logger.LogWarning("[SIMSIM_DELETE] Admin {Sender} deleted ALL {Count} responses for message '{Message}'",
+                if (logger.IsEnabled(LogLevel.Warning))
+                    logger.LogWarning("[SIMSIM_DELETE] Admin {Sender} deleted ALL {Count} responses for message '{Message}'",
                         data.SenderName, deletedCount, message);
 
                 return new ServerResponse
@@ -119,7 +108,7 @@ public class SimSimDeleteCommandHandler : ICommandHandler
                 };
             }
 
-            var deleted = await _simSimService.DeleteResponseAsync(msg, response);
+            var deleted = await simSimService.DeleteResponseAsync(msg, response);
 
             if (!deleted)
             {
@@ -131,8 +120,8 @@ public class SimSimDeleteCommandHandler : ICommandHandler
                 };
             }
 
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning("[SIMSIM_DELETE] Admin {Sender} deleted '{Message}' / '{Response}'",
+            if (logger.IsEnabled(LogLevel.Warning))
+                logger.LogWarning("[SIMSIM_DELETE] Admin {Sender} deleted '{Message}' / '{Response}'",
                     data.SenderName, msg, response);
 
             return new ServerResponse
@@ -144,7 +133,7 @@ public class SimSimDeleteCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[SIMSIM_DELETE] Error processing simsim delete command");
+            logger.LogError(ex, "[SIMSIM_DELETE] Error processing simsim delete command");
             return new ServerResponse
             {
                 Action = "send_text",
