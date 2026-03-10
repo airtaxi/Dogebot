@@ -3,19 +3,10 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class MyDailyStatsCommandHandler : ICommandHandler
+public class MyDailyStatsCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<MyDailyStatsCommandHandler> logger) : ICommandHandler
 {
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<MyDailyStatsCommandHandler> _logger;
-
-    public MyDailyStatsCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<MyDailyStatsCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
-
     public string Command => "!내요일통계";
 
     public bool CanHandle(string content)
@@ -27,7 +18,7 @@ public class MyDailyStatsCommandHandler : ICommandHandler
     {
         try
         {
-            var dailyStats = await _statisticsService.GetUserDailyStatisticsAsync(data.RoomId, data.SenderHash);
+            var dailyStats = await statisticsService.GetUserDailyStatisticsAsync(data.RoomId, data.SenderHash);
 
             if (dailyStats.Count == 0)
             {
@@ -42,8 +33,8 @@ public class MyDailyStatsCommandHandler : ICommandHandler
             var message = $"📅 {data.SenderName}님의 요일별 채팅 통계 (KST)\n\n" +
                           DailyStatsCommandHandler.FormatDailyStats(dailyStats);
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[MY_DAILY_STATS] Showing personal daily stats for {SenderName} in room {RoomId}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[MY_DAILY_STATS] Showing personal daily stats for {SenderName} in room {RoomId}",
                     data.SenderName, data.RoomId);
 
             return new ServerResponse
@@ -55,7 +46,7 @@ public class MyDailyStatsCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[MY_DAILY_STATS] Error processing personal daily stats command");
+            logger.LogError(ex, "[MY_DAILY_STATS] Error processing personal daily stats command");
             return new ServerResponse
             {
                 Action = "send_text",

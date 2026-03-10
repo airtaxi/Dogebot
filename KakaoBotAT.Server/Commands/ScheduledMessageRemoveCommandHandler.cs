@@ -3,22 +3,11 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class ScheduledMessageRemoveCommandHandler : ICommandHandler
+public class ScheduledMessageRemoveCommandHandler(
+    IScheduledMessageService scheduledMessageService,
+    IAdminService adminService,
+    ILogger<ScheduledMessageRemoveCommandHandler> logger) : ICommandHandler
 {
-    private readonly IScheduledMessageService _scheduledMessageService;
-    private readonly IAdminService _adminService;
-    private readonly ILogger<ScheduledMessageRemoveCommandHandler> _logger;
-
-    public ScheduledMessageRemoveCommandHandler(
-        IScheduledMessageService scheduledMessageService,
-        IAdminService adminService,
-        ILogger<ScheduledMessageRemoveCommandHandler> logger)
-    {
-        _scheduledMessageService = scheduledMessageService;
-        _adminService = adminService;
-        _logger = logger;
-    }
-
     public string Command => "!반복해제";
 
     public bool CanHandle(string content)
@@ -32,7 +21,7 @@ public class ScheduledMessageRemoveCommandHandler : ICommandHandler
     {
         try
         {
-            if (!await _adminService.IsAdminAsync(data.SenderHash))
+            if (!await adminService.IsAdminAsync(data.SenderHash))
             {
                 return new ServerResponse
                 {
@@ -47,7 +36,7 @@ public class ScheduledMessageRemoveCommandHandler : ICommandHandler
             // !반복해제 (no args) → show list + usage
             if (parts.Length == 1)
             {
-                var messages = await _scheduledMessageService.GetScheduledMessagesAsync(data.RoomId);
+                var messages = await scheduledMessageService.GetScheduledMessagesAsync(data.RoomId);
                 if (messages.Count == 0)
                 {
                     return new ServerResponse
@@ -76,7 +65,7 @@ public class ScheduledMessageRemoveCommandHandler : ICommandHandler
             // !반복해제 전체
             if (arg.Equals("전체", StringComparison.OrdinalIgnoreCase))
             {
-                var deletedCount = await _scheduledMessageService.RemoveAllScheduledMessagesAsync(data.RoomId);
+                var deletedCount = await scheduledMessageService.RemoveAllScheduledMessagesAsync(data.RoomId);
 
                 if (deletedCount == 0)
                 {
@@ -88,8 +77,8 @@ public class ScheduledMessageRemoveCommandHandler : ICommandHandler
                     };
                 }
 
-                if (_logger.IsEnabled(LogLevel.Warning))
-                    _logger.LogWarning("[SCHEDULED_REMOVE] All {Count} scheduled messages removed from room {RoomName} by {Sender}",
+                if (logger.IsEnabled(LogLevel.Warning))
+                    logger.LogWarning("[SCHEDULED_REMOVE] All {Count} scheduled messages removed from room {RoomName} by {Sender}",
                         deletedCount, data.RoomName, data.SenderName);
 
                 return new ServerResponse
@@ -115,7 +104,7 @@ public class ScheduledMessageRemoveCommandHandler : ICommandHandler
                 };
             }
 
-            var success = await _scheduledMessageService.RemoveScheduledMessageAsync(data.RoomId, index);
+            var success = await scheduledMessageService.RemoveScheduledMessageAsync(data.RoomId, index);
             if (!success)
             {
                 return new ServerResponse
@@ -127,8 +116,8 @@ public class ScheduledMessageRemoveCommandHandler : ICommandHandler
                 };
             }
 
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning("[SCHEDULED_REMOVE] Scheduled message #{Index} removed from room {RoomName} by {Sender}",
+            if (logger.IsEnabled(LogLevel.Warning))
+                logger.LogWarning("[SCHEDULED_REMOVE] Scheduled message #{Index} removed from room {RoomName} by {Sender}",
                     index, data.RoomName, data.SenderName);
 
             return new ServerResponse
@@ -140,7 +129,7 @@ public class ScheduledMessageRemoveCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[SCHEDULED_REMOVE] Error processing scheduled message remove command");
+            logger.LogError(ex, "[SCHEDULED_REMOVE] Error processing scheduled message remove command");
             return new ServerResponse
             {
                 Action = "send_text",
@@ -161,9 +150,19 @@ public class ScheduledMessageRemoveCommandHandler : ICommandHandler
                 : message.Message;
             // Replace newlines for preview
             preview = preview.Replace("\n", " ").Replace("\r", "");
+            var daysDisplay = FormatDays(message.Days);
             var hoursDisplay = string.Join(", ", message.Hours.Select(h => $"{h}시"));
-            result += $"{i + 1}. \"{preview}\"\n   ⏰ {hoursDisplay} | 👤 {message.CreatedByName}\n\n";
+            result += $"{i + 1}. \"{preview}\"\n   📅 {daysDisplay} | ⏰ {hoursDisplay} | 👤 {message.CreatedByName}\n\n";
         }
         return result.TrimEnd();
+    }
+
+    private static string FormatDays(List<int> days)
+    {
+        if (days.Count == 7)
+            return "전체";
+
+        var dayNames = new[] { "일", "월", "화", "수", "목", "금", "토" };
+        return string.Join(", ", days.Order().Select(d => dayNames[d]));
     }
 }

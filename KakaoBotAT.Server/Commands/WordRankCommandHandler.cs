@@ -3,19 +3,10 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class WordRankCommandHandler : ICommandHandler
+public class WordRankCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<WordRankCommandHandler> logger) : ICommandHandler
 {
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<WordRankCommandHandler> _logger;
-
-    public WordRankCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<WordRankCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
-
     public string Command => "!단어랭크";
 
     public bool CanHandle(string content)
@@ -29,7 +20,7 @@ public class WordRankCommandHandler : ICommandHandler
     {
         try
         {
-            if (!await _statisticsService.IsMessageContentEnabledAsync(data.RoomId))
+            if (!await statisticsService.IsMessageContentEnabledAsync(data.RoomId))
             {
                 return new ServerResponse
                 {
@@ -48,7 +39,7 @@ public class WordRankCommandHandler : ICommandHandler
                 limit = Math.Max(1, Math.Min(parsedLimit, 50));
             }
 
-            var topWords = await _statisticsService.GetTopWordsAsync(data.RoomId, limit);
+            var topWords = await statisticsService.GetTopWordsAsync(data.RoomId, limit);
 
             if (topWords.Count == 0)
             {
@@ -82,8 +73,8 @@ public class WordRankCommandHandler : ICommandHandler
                 message += $"{medal} {displayWord} ({count:N0}회)\n";
             }
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[WORD_RANK] Showing top {Limit} words for room {RoomId}", limit, data.RoomId);
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[WORD_RANK] Showing top {Limit} words for room {RoomId}", limit, data.RoomId);
 
             return new ServerResponse
             {
@@ -94,7 +85,7 @@ public class WordRankCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[WORD_RANK] Error processing word rank command");
+            logger.LogError(ex, "[WORD_RANK] Error processing word rank command");
             return new ServerResponse
             {
                 Action = "send_text",

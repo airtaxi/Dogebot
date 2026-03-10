@@ -3,19 +3,10 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class AdminRemoveCommandHandler : ICommandHandler
+public class AdminRemoveCommandHandler(
+    IAdminService adminService,
+    ILogger<AdminRemoveCommandHandler> logger) : ICommandHandler
 {
-    private readonly IAdminService _adminService;
-    private readonly ILogger<AdminRemoveCommandHandler> _logger;
-
-    public AdminRemoveCommandHandler(
-        IAdminService adminService,
-        ILogger<AdminRemoveCommandHandler> logger)
-    {
-        _adminService = adminService;
-        _logger = logger;
-    }
-
     public string Command => "!관리제거";
 
     public bool CanHandle(string content)
@@ -27,7 +18,7 @@ public class AdminRemoveCommandHandler : ICommandHandler
     {
         try
         {
-            if (data.SenderHash != _adminService.ChiefAdminHash)
+            if (data.SenderHash != adminService.ChiefAdminHash)
             {
                 return new ServerResponse
                 {
@@ -53,12 +44,12 @@ public class AdminRemoveCommandHandler : ICommandHandler
             }
 
             var senderHash = parts[1];
-            var removed = await _adminService.RemoveAdminAsync(senderHash, data.SenderHash);
+            var removed = await adminService.RemoveAdminAsync(senderHash, data.SenderHash);
 
             if (!removed)
             {
-                if (_logger.IsEnabled(LogLevel.Warning))
-                    _logger.LogWarning("[ADMIN_REMOVE] Failed to remove admin {Hash} by {Sender}",
+                if (logger.IsEnabled(LogLevel.Warning))
+                    logger.LogWarning("[ADMIN_REMOVE] Failed to remove admin {Hash} by {Sender}",
                         senderHash, data.SenderName);
 
                 return new ServerResponse
@@ -71,8 +62,8 @@ public class AdminRemoveCommandHandler : ICommandHandler
                 };
             }
 
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning("[ADMIN_REMOVE] Admin {Hash} removed by {Sender}",
+            if (logger.IsEnabled(LogLevel.Warning))
+                logger.LogWarning("[ADMIN_REMOVE] Admin {Hash} removed by {Sender}",
                     senderHash, data.SenderName);
 
             return new ServerResponse
@@ -84,7 +75,7 @@ public class AdminRemoveCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN_REMOVE] Error processing admin remove command");
+            logger.LogError(ex, "[ADMIN_REMOVE] Error processing admin remove command");
             return new ServerResponse
             {
                 Action = "send_text",

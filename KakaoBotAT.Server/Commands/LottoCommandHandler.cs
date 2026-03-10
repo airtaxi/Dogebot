@@ -2,15 +2,9 @@ using KakaoBotAT.Commons;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class LottoCommandHandler : ICommandHandler
+public class LottoCommandHandler(ILogger<LottoCommandHandler> logger) : ICommandHandler
 {
-    private readonly ILogger<LottoCommandHandler> _logger;
     private readonly Random _random = new();
-
-    public LottoCommandHandler(ILogger<LottoCommandHandler> logger)
-    {
-        _logger = logger;
-    }
 
     public string Command => "!로또";
 
@@ -42,8 +36,8 @@ public class LottoCommandHandler : ICommandHandler
                 ? $"🎱 로또 번호\n{lines[0][4..]}"
                 : $"🎱 로또 번호 ({count}회)\n\n{string.Join('\n', lines)}";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[LOTTO] Generated {Count} set(s) for {Sender} in room {RoomId}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[LOTTO] Generated {Count} set(s) for {Sender} in room {RoomId}",
                     count, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
@@ -55,7 +49,7 @@ public class LottoCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[LOTTO] Error processing lotto command");
+            logger.LogError(ex, "[LOTTO] Error processing lotto command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

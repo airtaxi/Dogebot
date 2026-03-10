@@ -3,15 +3,8 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class RankingCommandHandler : ICommandHandler
+public class RankingCommandHandler(ILogger<RankingCommandHandler> logger) : ICommandHandler
 {
-    private readonly ILogger<RankingCommandHandler> _logger;
-
-    public RankingCommandHandler(ILogger<RankingCommandHandler> logger)
-    {
-        _logger = logger;
-    }
-
     public string Command => "!랭킹";
 
     public bool CanHandle(string content)
@@ -28,8 +21,8 @@ public class RankingCommandHandler : ICommandHandler
                          "사용법: !조회 (roomId)\n" +
                          $"현재 방 조회: !조회 {data.RoomId}";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[RANKING] Showing ranking guide for room {RoomId}", data.RoomId);
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[RANKING] Showing ranking guide for room {RoomId}", data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {
@@ -40,7 +33,7 @@ public class RankingCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[RANKING] Error processing ranking command");
+            logger.LogError(ex, "[RANKING] Error processing ranking command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

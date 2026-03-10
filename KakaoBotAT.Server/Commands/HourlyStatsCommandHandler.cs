@@ -3,19 +3,10 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class HourlyStatsCommandHandler : ICommandHandler
+public class HourlyStatsCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<HourlyStatsCommandHandler> logger) : ICommandHandler
 {
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<HourlyStatsCommandHandler> _logger;
-
-    public HourlyStatsCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<HourlyStatsCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
-
     public string Command => "!시간통계";
 
     public bool CanHandle(string content)
@@ -27,7 +18,7 @@ public class HourlyStatsCommandHandler : ICommandHandler
     {
         try
         {
-            var hourlyStats = await _statisticsService.GetHourlyStatisticsAsync(data.RoomId);
+            var hourlyStats = await statisticsService.GetHourlyStatisticsAsync(data.RoomId);
 
             if (hourlyStats.Count == 0)
             {
@@ -41,8 +32,8 @@ public class HourlyStatsCommandHandler : ICommandHandler
 
             var message = "⏰ 시간대별 채팅 통계 (KST)\n\n" + FormatHourlyStats(hourlyStats);
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[HOURLY_STATS] Showing room hourly stats for room {RoomId}", data.RoomId);
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[HOURLY_STATS] Showing room hourly stats for room {RoomId}", data.RoomId);
 
             return new ServerResponse
             {
@@ -53,7 +44,7 @@ public class HourlyStatsCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[HOURLY_STATS] Error processing hourly stats command");
+            logger.LogError(ex, "[HOURLY_STATS] Error processing hourly stats command");
             return new ServerResponse
             {
                 Action = "send_text",

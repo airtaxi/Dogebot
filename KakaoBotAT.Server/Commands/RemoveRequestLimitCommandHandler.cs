@@ -3,22 +3,11 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class RemoveRequestLimitCommandHandler : ICommandHandler
+public class RemoveRequestLimitCommandHandler(
+    IRequestLimitService requestLimitService,
+    IAdminService adminService,
+    ILogger<RemoveRequestLimitCommandHandler> logger) : ICommandHandler
 {
-    private readonly IRequestLimitService _requestLimitService;
-    private readonly IAdminService _adminService;
-    private readonly ILogger<RemoveRequestLimitCommandHandler> _logger;
-
-    public RemoveRequestLimitCommandHandler(
-        IRequestLimitService requestLimitService,
-        IAdminService adminService,
-        ILogger<RemoveRequestLimitCommandHandler> logger)
-    {
-        _requestLimitService = requestLimitService;
-        _adminService = adminService;
-        _logger = logger;
-    }
-
     public string Command => "!제한해제";
 
     public bool CanHandle(string content)
@@ -30,7 +19,7 @@ public class RemoveRequestLimitCommandHandler : ICommandHandler
     {
         try
         {
-            if (!await _adminService.IsAdminAsync(data.SenderHash))
+            if (!await adminService.IsAdminAsync(data.SenderHash))
             {
                 return new ServerResponse
                 {
@@ -40,12 +29,12 @@ public class RemoveRequestLimitCommandHandler : ICommandHandler
                 };
             }
 
-            var removed = await _requestLimitService.RemoveLimitAsync(data.RoomId, data.SenderHash);
+            var removed = await requestLimitService.RemoveLimitAsync(data.RoomId, data.SenderHash);
 
             if (!removed)
             {
-                if (_logger.IsEnabled(LogLevel.Information))
-                    _logger.LogInformation("[REQUEST_LIMIT_REMOVE] No limit found in room {RoomName} by {Sender}",
+                if (logger.IsEnabled(LogLevel.Information))
+                    logger.LogInformation("[REQUEST_LIMIT_REMOVE] No limit found in room {RoomName} by {Sender}",
                         data.RoomName, data.SenderName);
 
                 return new ServerResponse
@@ -56,8 +45,8 @@ public class RemoveRequestLimitCommandHandler : ICommandHandler
                 };
             }
 
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning("[REQUEST_LIMIT_REMOVE] Limit removed from room {RoomName} by {Sender}",
+            if (logger.IsEnabled(LogLevel.Warning))
+                logger.LogWarning("[REQUEST_LIMIT_REMOVE] Limit removed from room {RoomName} by {Sender}",
                     data.RoomName, data.SenderName);
 
             return new ServerResponse
@@ -69,7 +58,7 @@ public class RemoveRequestLimitCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[REQUEST_LIMIT_REMOVE] Error processing remove request limit command");
+            logger.LogError(ex, "[REQUEST_LIMIT_REMOVE] Error processing remove request limit command");
             return new ServerResponse
             {
                 Action = "send_text",

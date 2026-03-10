@@ -2,15 +2,9 @@
 
 namespace KakaoBotAT.Server.Commands;
 
-public class DiceCommandHandler : ICommandHandler
+public class DiceCommandHandler(ILogger<DiceCommandHandler> logger) : ICommandHandler
 {
-    private readonly ILogger<DiceCommandHandler> _logger;
     private readonly Random _random = new();
-
-    public DiceCommandHandler(ILogger<DiceCommandHandler> logger)
-    {
-        _logger = logger;
-    }
 
     public string Command => "!주사위";
 
@@ -48,8 +42,8 @@ public class DiceCommandHandler : ICommandHandler
             var result = _random.Next(1, range + 1);
             var message = $"🎲 주사위 (1~{range:N0})\n결과: {result:N0}";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[DICE] Rolled 1~{Range} for {Sender} in room {RoomId}: {Result}", 
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[DICE] Rolled 1~{Range} for {Sender} in room {RoomId}: {Result}", 
                     range, data.SenderName, data.RoomId, result);
 
             return Task.FromResult(new ServerResponse
@@ -61,7 +55,7 @@ public class DiceCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[DICE] Error processing dice command");
+            logger.LogError(ex, "[DICE] Error processing dice command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

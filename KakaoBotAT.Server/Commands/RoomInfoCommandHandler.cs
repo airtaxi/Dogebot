@@ -7,19 +7,10 @@ namespace KakaoBotAT.Server.Commands;
 /// Handles the !정보 command to display room information.
 /// Shows room name, room ID, message count, user count, and sender hash.
 /// </summary>
-public class RoomInfoCommandHandler : ICommandHandler
+public class RoomInfoCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<RoomInfoCommandHandler> logger) : ICommandHandler
 {
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<RoomInfoCommandHandler> _logger;
-
-    public RoomInfoCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<RoomInfoCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
-
     public string Command => "!정보";
 
     public bool CanHandle(string content)
@@ -31,7 +22,7 @@ public class RoomInfoCommandHandler : ICommandHandler
     {
         try
         {
-            var (totalMessages, uniqueUsers) = await _statisticsService.GetRoomStatisticsAsync(data.RoomId);
+            var (totalMessages, uniqueUsers) = await statisticsService.GetRoomStatisticsAsync(data.RoomId);
 
             var message = "ℹ️ 방 정보\n\n" +
                          $"방 이름: {data.RoomName}\n" +
@@ -43,8 +34,8 @@ public class RoomInfoCommandHandler : ICommandHandler
                          $"• 이름: {data.SenderName}\n" +
                          $"• 해시: {data.SenderHash}";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[ROOM_INFO] Room info requested by {Sender} in room {RoomId}", 
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[ROOM_INFO] Room info requested by {Sender} in room {RoomId}", 
                     data.SenderName, data.RoomId);
 
             return new ServerResponse
@@ -56,7 +47,7 @@ public class RoomInfoCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ROOM_INFO] Error processing room info command");
+            logger.LogError(ex, "[ROOM_INFO] Error processing room info command");
             return new ServerResponse
             {
                 Action = "send_text",

@@ -7,19 +7,10 @@ namespace KakaoBotAT.Server.Commands;
 /// Handles the !심등록 command to register a new simsim response.
 /// Only works in private chats (not group chats).
 /// </summary>
-public class SimSimRegisterCommandHandler : ICommandHandler
+public class SimSimRegisterCommandHandler(
+    ISimSimService simSimService,
+    ILogger<SimSimRegisterCommandHandler> logger) : ICommandHandler
 {
-    private readonly ISimSimService _simSimService;
-    private readonly ILogger<SimSimRegisterCommandHandler> _logger;
-
-    public SimSimRegisterCommandHandler(
-        ISimSimService simSimService,
-        ILogger<SimSimRegisterCommandHandler> logger)
-    {
-        _simSimService = simSimService;
-        _logger = logger;
-    }
-
     public string Command => "!심등록";
 
     public bool CanHandle(string content)
@@ -84,10 +75,10 @@ public class SimSimRegisterCommandHandler : ICommandHandler
                 };
             }
 
-            await _simSimService.AddResponseAsync(message, response, data.SenderHash);
+            await simSimService.AddResponseAsync(message, response, data.SenderHash);
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[SIMSIM_REGISTER] {Sender} registered '{Message}' / '{Response}'",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[SIMSIM_REGISTER] {Sender} registered '{Message}' / '{Response}'",
                     data.SenderName, message, response);
 
             return new ServerResponse
@@ -99,7 +90,7 @@ public class SimSimRegisterCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[SIMSIM_REGISTER] Error processing simsim register command");
+            logger.LogError(ex, "[SIMSIM_REGISTER] Error processing simsim register command");
             return new ServerResponse
             {
                 Action = "send_text",

@@ -3,19 +3,10 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class MyRankingCommandHandler : ICommandHandler
+public class MyRankingCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<MyRankingCommandHandler> logger) : ICommandHandler
 {
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<MyRankingCommandHandler> _logger;
-
-    public MyRankingCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<MyRankingCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
-
     public string Command => "!내랭킹";
 
     public bool CanHandle(string content)
@@ -27,7 +18,7 @@ public class MyRankingCommandHandler : ICommandHandler
     {
         try
         {
-            var result = await _statisticsService.GetUserRankAsync(data.RoomId, data.SenderHash);
+            var result = await statisticsService.GetUserRankAsync(data.RoomId, data.SenderHash);
 
             if (result == null)
             {
@@ -50,8 +41,8 @@ public class MyRankingCommandHandler : ICommandHandler
 
             var message = $"{rankEmoji} {data.SenderName}님의 랭킹\n순위: {rank}위\n채팅 수: {messageCount:N0}회";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[MY_RANKING] User {SenderName} is rank {Rank} with {Count} messages in room {RoomId}", 
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[MY_RANKING] User {SenderName} is rank {Rank} with {Count} messages in room {RoomId}", 
                     data.SenderName, rank, messageCount, data.RoomId);
 
             return new ServerResponse
@@ -63,7 +54,7 @@ public class MyRankingCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[MY_RANKING] Error processing my ranking command");
+            logger.LogError(ex, "[MY_RANKING] Error processing my ranking command");
             return new ServerResponse
             {
                 Action = "send_text",

@@ -3,19 +3,10 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class MyMonthlyStatsCommandHandler : ICommandHandler
+public class MyMonthlyStatsCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<MyMonthlyStatsCommandHandler> logger) : ICommandHandler
 {
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<MyMonthlyStatsCommandHandler> _logger;
-
-    public MyMonthlyStatsCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<MyMonthlyStatsCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
-
     public string Command => "!내월별통계";
 
     public bool CanHandle(string content)
@@ -27,7 +18,7 @@ public class MyMonthlyStatsCommandHandler : ICommandHandler
     {
         try
         {
-            var monthlyStats = await _statisticsService.GetUserMonthlyStatisticsAsync(data.RoomId, data.SenderHash);
+            var monthlyStats = await statisticsService.GetUserMonthlyStatisticsAsync(data.RoomId, data.SenderHash);
 
             if (monthlyStats.Count == 0)
             {
@@ -42,8 +33,8 @@ public class MyMonthlyStatsCommandHandler : ICommandHandler
             var message = $"📆 {data.SenderName}님의 월별 채팅 통계 (KST)\n\n" +
                           MonthlyStatsCommandHandler.FormatMonthlyStats(monthlyStats);
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[MY_MONTHLY_STATS] Showing personal monthly stats for {SenderName} in room {RoomId}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[MY_MONTHLY_STATS] Showing personal monthly stats for {SenderName} in room {RoomId}",
                     data.SenderName, data.RoomId);
 
             return new ServerResponse
@@ -55,7 +46,7 @@ public class MyMonthlyStatsCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[MY_MONTHLY_STATS] Error processing personal monthly stats command");
+            logger.LogError(ex, "[MY_MONTHLY_STATS] Error processing personal monthly stats command");
             return new ServerResponse
             {
                 Action = "send_text",

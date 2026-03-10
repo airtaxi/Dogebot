@@ -6,15 +6,9 @@ namespace KakaoBotAT.Server.Commands;
 /// Handles the !선택 command to randomly pick one option from user-provided choices.
 /// Usage: !선택 (option1) (option2) (option3) ...
 /// </summary>
-public class ChoiceCommandHandler : ICommandHandler
+public class ChoiceCommandHandler(ILogger<ChoiceCommandHandler> logger) : ICommandHandler
 {
-    private readonly ILogger<ChoiceCommandHandler> _logger;
     private readonly Random _random = new();
-
-    public ChoiceCommandHandler(ILogger<ChoiceCommandHandler> logger)
-    {
-        _logger = logger;
-    }
 
     public string Command => "!선택";
 
@@ -47,8 +41,8 @@ public class ChoiceCommandHandler : ICommandHandler
 
             var message = $"🎯 선택 결과: {selected}";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[CHOICE] Selected '{Selected}' from {ChoiceCount} options for {Sender} in room {RoomId}",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[CHOICE] Selected '{Selected}' from {ChoiceCount} options for {Sender} in room {RoomId}",
                     selected, choices.Length, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
@@ -60,7 +54,7 @@ public class ChoiceCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[CHOICE] Error processing choice command");
+            logger.LogError(ex, "[CHOICE] Error processing choice command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

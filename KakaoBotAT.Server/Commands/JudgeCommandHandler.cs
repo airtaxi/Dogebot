@@ -2,15 +2,9 @@
 
 namespace KakaoBotAT.Server.Commands;
 
-public class JudgeCommandHandler : ICommandHandler
+public class JudgeCommandHandler(ILogger<JudgeCommandHandler> logger) : ICommandHandler
 {
-    private readonly ILogger<JudgeCommandHandler> _logger;
     private readonly Random _random = new();
-
-    public JudgeCommandHandler(ILogger<JudgeCommandHandler> logger)
-    {
-        _logger = logger;
-    }
 
     public string Command => "판사님";
 
@@ -36,8 +30,8 @@ public class JudgeCommandHandler : ICommandHandler
 
             var message = $"⚖️ 판결: {verdict}";
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[JUDGE] Verdict '{Verdict}' for {Sender} in room {RoomId}", 
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[JUDGE] Verdict '{Verdict}' for {Sender} in room {RoomId}", 
                     verdict, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
@@ -49,7 +43,7 @@ public class JudgeCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[JUDGE] Error processing judge command");
+            logger.LogError(ex, "[JUDGE] Error processing judge command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

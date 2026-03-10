@@ -2,23 +2,15 @@
 
 namespace KakaoBotAT.Server.BackgroundServices;
 
-public class ApprovalCodeCleanupService : BackgroundService
+public class ApprovalCodeCleanupService(
+    IServiceProvider serviceProvider,
+    ILogger<ApprovalCodeCleanupService> logger) : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<ApprovalCodeCleanupService> _logger;
     private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(10);
-
-    public ApprovalCodeCleanupService(
-        IServiceProvider serviceProvider,
-        ILogger<ApprovalCodeCleanupService> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("[CLEANUP_SERVICE] Approval code cleanup service started");
+        logger.LogInformation("[CLEANUP_SERVICE] Approval code cleanup service started");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -26,7 +18,7 @@ public class ApprovalCodeCleanupService : BackgroundService
             {
                 await Task.Delay(_cleanupInterval, stoppingToken);
 
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = serviceProvider.CreateScope();
                 var adminService = scope.ServiceProvider.GetRequiredService<IAdminService>();
                 var requestLimitService = scope.ServiceProvider.GetRequiredService<IRequestLimitService>();
 
@@ -35,7 +27,7 @@ public class ApprovalCodeCleanupService : BackgroundService
 
                 if (deletedAdminCodes > 0 || deletedLimitCodes > 0)
                 {
-                    _logger.LogInformation("[CLEANUP_SERVICE] Deleted {AdminCodes} admin codes and {LimitCodes} limit codes",
+                    logger.LogInformation("[CLEANUP_SERVICE] Deleted {AdminCodes} admin codes and {LimitCodes} limit codes",
                         deletedAdminCodes, deletedLimitCodes);
                 }
             }
@@ -46,10 +38,10 @@ public class ApprovalCodeCleanupService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[CLEANUP_SERVICE] Error during approval code cleanup");
+                logger.LogError(ex, "[CLEANUP_SERVICE] Error during approval code cleanup");
             }
         }
 
-        _logger.LogInformation("[CLEANUP_SERVICE] Approval code cleanup service stopped");
+        logger.LogInformation("[CLEANUP_SERVICE] Approval code cleanup service stopped");
     }
 }

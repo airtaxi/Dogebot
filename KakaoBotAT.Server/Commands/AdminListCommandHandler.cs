@@ -4,19 +4,10 @@ using System.Text;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class AdminListCommandHandler : ICommandHandler
+public class AdminListCommandHandler(
+    IAdminService adminService,
+    ILogger<AdminListCommandHandler> logger) : ICommandHandler
 {
-    private readonly IAdminService _adminService;
-    private readonly ILogger<AdminListCommandHandler> _logger;
-
-    public AdminListCommandHandler(
-        IAdminService adminService,
-        ILogger<AdminListCommandHandler> logger)
-    {
-        _adminService = adminService;
-        _logger = logger;
-    }
-
     public string Command => "!관리목록";
 
     public bool CanHandle(string content)
@@ -28,7 +19,7 @@ public class AdminListCommandHandler : ICommandHandler
     {
         try
         {
-            if (!await _adminService.IsAdminAsync(data.SenderHash))
+            if (!await adminService.IsAdminAsync(data.SenderHash))
             {
                 return new ServerResponse
                 {
@@ -38,7 +29,7 @@ public class AdminListCommandHandler : ICommandHandler
                 };
             }
 
-            var admins = await _adminService.GetAdminListAsync();
+            var admins = await adminService.GetAdminListAsync();
 
             if (admins.Count == 0)
             {
@@ -83,8 +74,8 @@ public class AdminListCommandHandler : ICommandHandler
             messageBuilder.AppendLine();
             messageBuilder.AppendLine("⚠️ 최고 관리자는 목록에 표시되지 않습니다.");
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[ADMIN_LIST] Admin {Sender} viewed admin list ({Count} admins)",
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[ADMIN_LIST] Admin {Sender} viewed admin list ({Count} admins)",
                     data.SenderName, totalCount);
 
             return new ServerResponse
@@ -96,7 +87,7 @@ public class AdminListCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ADMIN_LIST] Error processing admin list command");
+            logger.LogError(ex, "[ADMIN_LIST] Error processing admin list command");
             return new ServerResponse
             {
                 Action = "send_text",

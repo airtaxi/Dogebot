@@ -3,22 +3,11 @@ using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class SetRequestLimitCommandHandler : ICommandHandler
+public class SetRequestLimitCommandHandler(
+    IRequestLimitService requestLimitService,
+    IAdminService adminService,
+    ILogger<SetRequestLimitCommandHandler> logger) : ICommandHandler
 {
-    private readonly IRequestLimitService _requestLimitService;
-    private readonly IAdminService _adminService;
-    private readonly ILogger<SetRequestLimitCommandHandler> _logger;
-
-    public SetRequestLimitCommandHandler(
-        IRequestLimitService requestLimitService,
-        IAdminService adminService,
-        ILogger<SetRequestLimitCommandHandler> logger)
-    {
-        _requestLimitService = requestLimitService;
-        _adminService = adminService;
-        _logger = logger;
-    }
-
     public string Command => "!제한설정";
 
     public bool CanHandle(string content)
@@ -30,7 +19,7 @@ public class SetRequestLimitCommandHandler : ICommandHandler
     {
         try
         {
-            if (!await _adminService.IsAdminAsync(data.SenderHash))
+            if (!await adminService.IsAdminAsync(data.SenderHash))
             {
                 return new ServerResponse
                 {
@@ -80,7 +69,7 @@ public class SetRequestLimitCommandHandler : ICommandHandler
                     };
                 }
 
-                var success = await _requestLimitService.SetLimitAsync(
+                var success = await requestLimitService.SetLimitAsync(
                     data.RoomId,
                     data.RoomName,
                     dailyLimit,
@@ -88,8 +77,8 @@ public class SetRequestLimitCommandHandler : ICommandHandler
 
                 if (!success)
                 {
-                    if (_logger.IsEnabled(LogLevel.Error))
-                        _logger.LogError("[REQUEST_LIMIT_SET] Failed to set limit {Limit} for room {RoomName} by {Sender}",
+                    if (logger.IsEnabled(LogLevel.Error))
+                        logger.LogError("[REQUEST_LIMIT_SET] Failed to set limit {Limit} for room {RoomName} by {Sender}",
                             dailyLimit, data.RoomName, data.SenderName);
 
                     return new ServerResponse
@@ -100,8 +89,8 @@ public class SetRequestLimitCommandHandler : ICommandHandler
                     };
                 }
 
-                if (_logger.IsEnabled(LogLevel.Warning))
-                    _logger.LogWarning("[REQUEST_LIMIT_SET] Limit set to {Limit} for room {RoomName} by {Sender}",
+                if (logger.IsEnabled(LogLevel.Warning))
+                    logger.LogWarning("[REQUEST_LIMIT_SET] Limit set to {Limit} for room {RoomName} by {Sender}",
                         dailyLimit, data.RoomName, data.SenderName);
 
                 return new ServerResponse
@@ -125,7 +114,7 @@ public class SetRequestLimitCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[REQUEST_LIMIT_SET] Error processing set request limit command");
+            logger.LogError(ex, "[REQUEST_LIMIT_SET] Error processing set request limit command");
             return new ServerResponse
             {
                 Action = "send_text",
