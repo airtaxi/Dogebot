@@ -1,0 +1,45 @@
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+
+namespace KakaoBotAT.Server.Models;
+
+public class ImaxNotification
+{
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = string.Empty;
+
+    [BsonElement("roomId")]
+    public string RoomId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Screening date in yyyyMMdd format (e.g., "20260330").
+    /// </summary>
+    [BsonElement("screeningDate")]
+    public string ScreeningDate { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional keyword for KakaoTalk keyword notifications.
+    /// </summary>
+    [BsonElement("keyword")]
+    public string? Keyword { get; set; }
+
+    [BsonElement("createdBy")]
+    public string CreatedBy { get; set; } = string.Empty;
+
+    [BsonElement("createdByName")]
+    public string CreatedByName { get; set; } = string.Empty;
+
+    [BsonElement("roomName")]
+    public string RoomName { get; set; } = string.Empty;
+
+    [BsonElement("createdAt")]
+    public long CreatedAt { get; set; }
+
+    /// <summary>
+    /// Formatted message to send when IMAX is detected. Null means IMAX has not been detected yet.
+    /// Set by the background check service, consumed and deleted by the delivery check.
+    /// </summary>
+    [BsonElement("pendingMessage")]
+    public string? PendingMessage { get; set; }
+}
