@@ -12,7 +12,8 @@ public class KakaoService(
     CommandHandlerFactory commandHandlerFactory,
     IChatStatisticsService chatStatisticsService,
     IRequestLimitService requestLimitService,
-    IScheduledMessageService scheduledMessageService) : IKakaoService
+    IScheduledMessageService scheduledMessageService,
+    IImaxNotificationService imaxNotificationService) : IKakaoService
 {
 
     /// <summary>
@@ -52,7 +53,10 @@ public class KakaoService(
                                 handler.Command == "!반복해제" ||
                                 handler.Command == "!반복목록" ||
                                 handler.Command == "!방백업" ||
-                                handler.Command == "!방복원";
+                                handler.Command == "!방복원" ||
+                                handler.Command == "!용아맥설정" ||
+                                handler.Command == "!용아맥해제" ||
+                                handler.Command == "!용아맥목록";
 
             if (!isAdminCommand)
             {
@@ -84,6 +88,11 @@ public class KakaoService(
 
             return await handler.HandleAsync(data);
         }
+
+        // Check for IMAX notifications to deliver
+        var imaxResponse = await imaxNotificationService.CheckAndDeliverAsync(data);
+        if (imaxResponse is not null)
+            return imaxResponse;
 
         // Check for scheduled messages to trigger
         var scheduledResponse = await scheduledMessageService.CheckAndSendScheduledMessageAsync(data);

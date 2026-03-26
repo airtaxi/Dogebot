@@ -43,9 +43,13 @@ builder.Services.AddSingleton<IScheduledMessageService, ScheduledMessageService>
 // Register Room Migration service
 builder.Services.AddSingleton<IRoomMigrationService, RoomMigrationService>();
 
+// Register IMAX Notification service
+builder.Services.AddSingleton<IImaxNotificationService, ImaxNotificationService>();
+
 // Register background services
 builder.Services.AddHostedService<ApprovalCodeCleanupService>();
 builder.Services.AddHostedService<ScheduledMessageSessionCleanupService>();
+builder.Services.AddHostedService<ImaxNotificationCheckService>();
 
 // ⚠️ Register command handlers
 // 
@@ -119,6 +123,9 @@ builder.Services.AddSingleton<ICommandHandler, ScheduledMessageRemoveCommandHand
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageListCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RoomBackupCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RoomRestoreCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ImaxNotificationSetCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ImaxNotificationRemoveCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ImaxNotificationListCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
