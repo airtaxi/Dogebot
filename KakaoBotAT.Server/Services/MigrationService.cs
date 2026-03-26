@@ -30,6 +30,7 @@ public class MigrationService : IMigrationService
         await ApplyMigrationAsync(1, "SplitMessageContentsToWords", MigrateMessageContentsToWordsAsync);
         await ApplyMigrationAsync(2, "NormalizeKoreanConsonantWords", NormalizeKoreanConsonantWordsAsync);
         await ApplyMigrationAsync(3, "ManualSenderHashMappings", InsertManualSenderHashMappingsAsync);
+        await ApplyMigrationAsync(4, "AddMovieInfoToImaxNotifications", AddMovieInfoToImaxNotificationsAsync);
     }
 
     private async Task ApplyMigrationAsync(int version, string name, Func<Task> migration)
@@ -242,5 +243,27 @@ public class MigrationService : IMigrationService
             .Select(w => w.ToLowerInvariant())
             .Distinct()
             .ToArray();
+    }
+
+    /// <summary>
+    /// v4: Add movieName and movieNumber fields to existing IMAX notifications.
+    /// Existing notifications are assumed to be for "프로젝트 헤일메리" (movNo=30000994).
+    /// </summary>
+    private async Task AddMovieInfoToImaxNotificationsAsync()
+    {
+        var imaxNotifications = _database.GetCollection<ImaxNotification>("imaxNotifications");
+
+        var filter = Builders<ImaxNotification>.Filter.Or(
+            Builders<ImaxNotification>.Filter.Exists(x => x.MovieName, false),
+            Builders<ImaxNotification>.Filter.Eq(x => x.MovieName, string.Empty));
+
+        var update = Builders<ImaxNotification>.Update
+            .Set(x => x.MovieName, "프로젝트 헤일메리")
+            .Set(x => x.MovieNumber, "30000994");
+
+        var result = await imaxNotifications.UpdateManyAsync(filter, update);
+
+        _logger.LogInformation("[MIGRATION] Updated {Count} IMAX notifications with movie info (프로젝트 헤일메리).",
+            result.ModifiedCount);
     }
 }

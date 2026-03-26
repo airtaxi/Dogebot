@@ -58,6 +58,7 @@ public class ImaxNotificationListCommandHandler(
                 Action = "send_text",
                 RoomId = data.RoomId,
                 Message = $"🔔 용아맥 알림 정보\n\n" +
+                         $"🎬 영화: {notification.MovieName}\n" +
                          $"📅 날짜: {dateDisplay}\n" +
                          $"🔑 키워드: {keywordDisplay}\n" +
                          $"👤 등록자: {notification.CreatedByName}\n" +

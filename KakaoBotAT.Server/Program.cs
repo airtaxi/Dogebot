@@ -126,6 +126,8 @@ builder.Services.AddSingleton<ICommandHandler, RoomRestoreCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ImaxNotificationSetCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ImaxNotificationRemoveCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ImaxNotificationListCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, CgvMovieListCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ImaxScheduleQueryCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 

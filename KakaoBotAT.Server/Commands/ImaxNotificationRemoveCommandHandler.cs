@@ -51,7 +51,7 @@ public class ImaxNotificationRemoveCommandHandler(
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
-                Message = $"✅ 용아맥 알림이 해제되었습니다.\n📅 {dateDisplay}"
+                Message = $"✅ 용아맥 알림이 해제되었습니다.\n🎬 {notification.MovieName}\n📅 {dateDisplay}"
             };
         }
         catch (Exception ex)

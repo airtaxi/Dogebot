@@ -9,8 +9,8 @@ public interface IImaxNotificationService
     /// Registers an IMAX notification for a room. Only one notification per room is allowed.
     /// </summary>
     Task<(bool Success, string Message)> RegisterAsync(
-        string roomId, string screeningDate, string? keyword,
-        string senderHash, string senderName, string roomName);
+        string roomId, string screeningDate, string movieName, string movieNumber,
+        string? keyword, string senderHash, string senderName, string roomName);
 
     /// <summary>
     /// Gets the active IMAX notification for a room, or null if none exists.
