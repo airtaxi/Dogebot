@@ -24,6 +24,18 @@ public class ImaxNotification
     [BsonElement("keyword")]
     public string? Keyword { get; set; }
 
+    /// <summary>
+    /// Movie name displayed to users (e.g., "프로젝트 헤일메리").
+    /// </summary>
+    [BsonElement("movieName")]
+    public string MovieName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// CGV movie number used for API calls (e.g., "30000994").
+    /// </summary>
+    [BsonElement("movieNumber")]
+    public string MovieNumber { get; set; } = string.Empty;
+
     [BsonElement("createdBy")]
     public string CreatedBy { get; set; } = string.Empty;
 

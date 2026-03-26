@@ -29,14 +29,15 @@ public class ImaxNotificationService : IImaxNotificationService
     }
 
     public async Task<(bool Success, string Message)> RegisterAsync(
-        string roomId, string screeningDate, string? keyword,
-        string senderHash, string senderName, string roomName)
+        string roomId, string screeningDate, string movieName, string movieNumber,
+        string? keyword, string senderHash, string senderName, string roomName)
     {
         var existing = await GetNotificationAsync(roomId);
         if (existing is not null)
         {
             var existingDateDisplay = FormatScreeningDate(existing.ScreeningDate);
             return (false, $"❌ 이 방에 이미 알림이 등록되어 있습니다.\n\n" +
+                          $"🎬 {existing.MovieName}\n" +
                           $"📅 기존 알림: {existingDateDisplay}\n\n" +
                           $"!용아맥해제 후 다시 등록해주세요.");
         }
@@ -45,6 +46,8 @@ public class ImaxNotificationService : IImaxNotificationService
         {
             RoomId = roomId,
             ScreeningDate = screeningDate,
+            MovieName = movieName,
+            MovieNumber = movieNumber,
             Keyword = keyword,
             CreatedBy = senderHash,
             CreatedByName = senderName,
@@ -64,8 +67,9 @@ public class ImaxNotificationService : IImaxNotificationService
         var dateDisplay = FormatScreeningDate(screeningDate);
         var keywordDisplay = string.IsNullOrEmpty(keyword) ? "" : $"\n🔑 키워드: {keyword}";
         return (true, $"✅ 용아맥 알림이 등록되었습니다!\n\n" +
+                      $"🎬 영화: {movieName}\n" +
                       $"📅 날짜: {dateDisplay}{keywordDisplay}\n" +
-                      $"⏰ 5분 간격으로 IMAX 상영 여부를 확인합니다.\n\n" +
+                      $"⏰ 30초~1분 간격으로 IMAX 상영 여부를 확인합니다.\n\n" +
                       $"IMAX 감지 시 자동으로 알림이 전송되고 해제됩니다.\n" +
                       $"⚠️ 알림은 채팅이 올 때 답장으로 전송되므로,\n" +
                       $"등록 후 최소 1건 이상의 채팅이 필요합니다.");

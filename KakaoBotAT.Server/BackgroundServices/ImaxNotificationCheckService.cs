@@ -10,7 +10,7 @@ public class ImaxNotificationCheckService(
     ILogger<ImaxNotificationCheckService> logger) : BackgroundService
 {
     private const string ImaxApiBaseUrl = "https://imax.kagamine-rin.com";
-    private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(5);
+    private static readonly Random CheckIntervalRandom = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -33,7 +33,9 @@ public class ImaxNotificationCheckService(
 
             try
             {
-                await Task.Delay(_checkInterval, stoppingToken);
+                var delaySeconds = CheckIntervalRandom.Next(30, 61);
+                logger.LogDebug("[IMAX_CHECK] Next check in {Seconds} seconds", delaySeconds);
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds), stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -61,29 +63,29 @@ public class ImaxNotificationCheckService(
         if (logger.IsEnabled(LogLevel.Information))
             logger.LogInformation("[IMAX_CHECK] Checking {Count} active IMAX notifications", notifications.Count);
 
-        // Group by date to avoid redundant API calls for the same date
-        var dateGroups = notifications.GroupBy(n => n.ScreeningDate);
+        // Group by (date, movieNumber) to avoid redundant API calls
+        var dateMovieGroups = notifications.GroupBy(n => (n.ScreeningDate, n.MovieNumber));
         var httpClient = httpClientFactory.CreateClient();
 
-        foreach (var group in dateGroups)
+        foreach (var group in dateMovieGroups)
         {
             try
             {
-                var apiResult = await FetchImaxScheduleAsync(httpClient, group.Key, stoppingToken);
+                var apiResult = await FetchImaxScheduleAsync(httpClient, group.Key.ScreeningDate, group.Key.MovieNumber, stoppingToken);
                 if (apiResult is null)
                     continue;
 
                 if (!apiResult.Value.GetProperty("hasImax").GetBoolean())
                     continue;
 
-                // IMAX detected! Set pending message for all notifications with this date
+                // IMAX detected! Set pending message for all notifications with this date+movie
                 foreach (var notification in group)
                 {
                     var message = FormatImaxMessage(notification, apiResult.Value);
                     await imaxNotificationService.SetPendingMessageAsync(notification.Id, message);
 
-                    logger.LogInformation("[IMAX_CHECK] IMAX detected for room {RoomName}, date {Date}",
-                        notification.RoomName, notification.ScreeningDate);
+                    logger.LogInformation("[IMAX_CHECK] IMAX detected for room {RoomName}, movie {Movie}, date {Date}",
+                        notification.RoomName, notification.MovieName, notification.ScreeningDate);
                 }
             }
             catch (Exception ex)
@@ -93,9 +95,9 @@ public class ImaxNotificationCheckService(
         }
     }
 
-    private async Task<JsonElement?> FetchImaxScheduleAsync(HttpClient httpClient, string date, CancellationToken stoppingToken)
+    private async Task<JsonElement?> FetchImaxScheduleAsync(HttpClient httpClient, string date, string movieNumber, CancellationToken stoppingToken)
     {
-        var url = $"{ImaxApiBaseUrl}/schedule?date={date}";
+        var url = $"{ImaxApiBaseUrl}/schedule?date={date}&movNo={movieNumber}";
         var response = await httpClient.GetAsync(url, stoppingToken);
 
         if (!response.IsSuccessStatusCode)
@@ -117,6 +119,7 @@ public class ImaxNotificationCheckService(
         var builder = new StringBuilder();
         builder.AppendLine($"🎬 용아맥 알림{keywordSuffix}");
         builder.AppendLine();
+        builder.AppendLine($"🎬 {notification.MovieName}");
 
         var screenings = apiResponse.GetProperty("screenings");
         var imaxScreenings = screenings.EnumerateArray()
