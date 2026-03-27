@@ -40,6 +40,14 @@ public interface IImaxNotificationService
     Task<ServerResponse?> CheckAndDeliverAsync(KakaoMessageData data);
 
     /// <summary>
+    /// Checks for pending IMAX notifications in any of the given rooms and delivers the first one.
+    /// Used by the polling endpoint for proactive delivery when the client has reply actions available.
+    /// The notification is atomically deleted upon delivery (one-time notification).
+    /// Returns null if no pending notification exists for any of the given rooms.
+    /// </summary>
+    Task<ServerResponse?> CheckAndDeliverForRoomsAsync(IEnumerable<string> roomIds);
+
+    /// <summary>
     /// Deletes notifications whose screening date has passed (KST).
     /// </summary>
     Task<int> CleanupExpiredNotificationsAsync();

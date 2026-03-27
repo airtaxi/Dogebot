@@ -103,11 +103,33 @@ public class KakaoService(
     }
 
     /// <summary>
-    /// Retrieves queued commands. (Currently the queued command feature is not implemented.)
+    /// Retrieves queued commands. Checks for due IMAX notifications and scheduled messages
+    /// for rooms where the client has reply actions available.
     /// </summary>
-    public Task<ServerResponse> GetPendingCommandAsync()
+    public async Task<ServerResponse> GetPendingCommandAsync(IEnumerable<string> availableRoomIds)
     {
-        // Currently there is no queued command feature, so return an empty response (to allow the client to process without errors)
-        return Task.FromResult(new ServerResponse());
+        var roomIds = availableRoomIds.ToList();
+        if (roomIds.Count == 0)
+            return new ServerResponse();
+
+        // Check IMAX first (higher priority - time-sensitive)
+        var imaxResponse = await imaxNotificationService.CheckAndDeliverForRoomsAsync(roomIds);
+        if (imaxResponse is not null)
+        {
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[COMMAND] Delivering IMAX notification to room {RoomId}", imaxResponse.RoomId);
+            return imaxResponse;
+        }
+
+        // Check scheduled messages
+        var scheduledResponse = await scheduledMessageService.CheckAndSendScheduledMessageForRoomsAsync(roomIds);
+        if (scheduledResponse is not null)
+        {
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[COMMAND] Delivering scheduled message to room {RoomId}", scheduledResponse.RoomId);
+            return scheduledResponse;
+        }
+
+        return new ServerResponse();
     }
 }

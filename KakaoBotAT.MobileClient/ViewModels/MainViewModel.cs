@@ -160,7 +160,12 @@ public partial class MainViewModel : ObservableObject
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{ServerAddress}/command", cancellationToken);
+                var availableRooms = KakaoNotificationListener.GetAvailableRoomIds();
+                var roomsParam = availableRooms.Count > 0
+                    ? $"?availableRooms={string.Join(",", availableRooms)}"
+                    : "";
+
+                var response = await _httpClient.GetAsync($"{ServerAddress}/command{roomsParam}", cancellationToken);
 
                 if (response.IsSuccessStatusCode)
                 {

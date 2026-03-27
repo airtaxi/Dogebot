@@ -344,6 +344,49 @@ public class ScheduledMessageService : IScheduledMessageService
         };
     }
 
+    public async Task<ServerResponse?> CheckAndSendScheduledMessageForRoomsAsync(IEnumerable<string> roomIds)
+    {
+        var now = DateTimeOffset.UtcNow.ToOffset(KstOffset);
+        var currentHour = now.Hour;
+        var currentDay = (int)now.DayOfWeek;
+        var dateKey = now.ToString("yyyy-MM-dd");
+
+        // Filter out rooms already sent for this hour
+        var candidateRoomIds = roomIds
+            .Where(roomId => !_sentTracking.ContainsKey($"{roomId}:{dateKey}:{currentHour}"))
+            .ToList();
+
+        if (candidateRoomIds.Count == 0)
+            return null;
+
+        var filter = Builders<ScheduledMessage>.Filter.And(
+            Builders<ScheduledMessage>.Filter.In(x => x.RoomId, candidateRoomIds),
+            Builders<ScheduledMessage>.Filter.AnyEq(x => x.Hours, currentHour),
+            Builders<ScheduledMessage>.Filter.AnyEq(x => x.Days, currentDay)
+        );
+
+        var messages = await _scheduledMessages.Find(filter).ToListAsync();
+        if (messages.Count == 0)
+            return null;
+
+        // Send messages for the first matching room
+        var firstRoomGroup = messages.GroupBy(m => m.RoomId).First();
+        var roomId = firstRoomGroup.Key;
+        var trackingKey = $"{roomId}:{dateKey}:{currentHour}";
+
+        _sentTracking.TryAdd(trackingKey, 0);
+
+        var combined = string.Join("\n\n━━━━━━━━━━━━━━━━━━\n\n",
+            firstRoomGroup.Select(m => m.Message));
+
+        return new ServerResponse
+        {
+            Action = "send_text",
+            RoomId = roomId,
+            Message = combined
+        };
+    }
+
     public async Task<List<ScheduledMessage>> GetScheduledMessagesAsync(string roomId)
     {
         var filter = Builders<ScheduledMessage>.Filter.Eq(x => x.RoomId, roomId);

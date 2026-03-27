@@ -14,8 +14,10 @@ public interface IKakaoService
 
     /// <summary>
     /// Retrieves queued commands from the server for the client. (For polling)
-    /// This method is used when the server needs to send commands to the client at any time, regardless of notification reception.
+    /// Checks for due scheduled messages and pending IMAX notifications for rooms
+    /// where the client currently has reply actions available.
     /// </summary>
+    /// <param name="availableRoomIds">Room IDs where the client has active reply actions.</param>
     /// <returns>Command to execute or empty command.</returns>
-    Task<ServerResponse> GetPendingCommandAsync();
+    Task<ServerResponse> GetPendingCommandAsync(IEnumerable<string> availableRoomIds);
 }

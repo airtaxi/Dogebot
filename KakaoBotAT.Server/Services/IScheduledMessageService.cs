@@ -38,6 +38,13 @@ public interface IScheduledMessageService
     Task<int> RemoveAllScheduledMessagesAsync(string roomId);
 
     /// <summary>
+    /// Checks whether scheduled messages should be triggered for any of the given rooms and returns one.
+    /// Used by the polling endpoint for proactive delivery when the client has reply actions available.
+    /// Returns null if no scheduled message should be sent at this time.
+    /// </summary>
+    Task<ServerResponse?> CheckAndSendScheduledMessageForRoomsAsync(IEnumerable<string> roomIds);
+
+    /// <summary>
     /// Cleans up expired setup sessions (older than 5 minutes).
     /// </summary>
     int CleanupExpiredSessions();
