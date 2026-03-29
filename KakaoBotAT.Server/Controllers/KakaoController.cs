@@ -37,9 +37,8 @@ public class KakaoController(IKakaoService kakaoService, ILogger<KakaoController
         var roomIds = string.IsNullOrEmpty(availableRooms)
             ? []
             : availableRooms.Split(',', StringSplitOptions.RemoveEmptyEntries);
-
-        if (roomIds.Length > 0 && logger.IsEnabled(LogLevel.Debug))
-            logger.LogDebug("[COMMAND] Polling with {Count} available rooms", roomIds.Length);
+        
+        logger.LogInformation("[COMMAND] Polling with {Count} available rooms", roomIds.Length);
 
         var command = await kakaoService.GetPendingCommandAsync(roomIds);
         return Ok(command);
