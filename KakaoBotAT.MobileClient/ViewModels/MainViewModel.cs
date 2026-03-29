@@ -162,7 +162,7 @@ public partial class MainViewModel : ObservableObject
             {
                 var availableRooms = KakaoNotificationListener.GetAvailableRoomIds();
                 var roomsParam = availableRooms.Count > 0
-                    ? $"?availableRooms={string.Join(",", availableRooms)}"
+                    ? $"?availableRooms={Uri.EscapeDataString(string.Join(",", availableRooms))}"
                     : "";
 
                 var response = await _httpClient.GetAsync($"{ServerAddress}/command{roomsParam}", cancellationToken);
