@@ -115,10 +115,7 @@ public class KakaoNotificationListener : NotificationListenerService
         }
     }
 
-    public static IReadOnlyList<string> GetAvailableRoomIds()
-    {
-        return ReplyActions.Keys.ToList();
-    }
+    public static IReadOnlyList<string> GetAvailableRoomIds() => [.. ReplyActions.Keys];
 
     public static bool SendReply(string roomId, string message)
     {
