@@ -46,6 +46,9 @@ builder.Services.AddSingleton<IRoomMigrationService, RoomMigrationService>();
 // Register IMAX Notification service
 builder.Services.AddSingleton<IImaxNotificationService, ImaxNotificationService>();
 
+// Register Debug Log service
+builder.Services.AddSingleton<DebugLogService>();
+
 // Register background services
 builder.Services.AddHostedService<ApprovalCodeCleanupService>();
 builder.Services.AddHostedService<ScheduledMessageSessionCleanupService>();
@@ -128,6 +131,7 @@ builder.Services.AddSingleton<ICommandHandler, ImaxNotificationRemoveCommandHand
 builder.Services.AddSingleton<ICommandHandler, ImaxNotificationListCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, CgvMovieListCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ImaxScheduleQueryCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DebugCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
