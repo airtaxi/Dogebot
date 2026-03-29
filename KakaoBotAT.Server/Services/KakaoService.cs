@@ -13,7 +13,8 @@ public class KakaoService(
     IChatStatisticsService chatStatisticsService,
     IRequestLimitService requestLimitService,
     IScheduledMessageService scheduledMessageService,
-    IImaxNotificationService imaxNotificationService) : IKakaoService
+    IImaxNotificationService imaxNotificationService,
+    DebugLogService debugLogService) : IKakaoService
 {
 
     /// <summary>
@@ -56,7 +57,8 @@ public class KakaoService(
                                 handler.Command == "!방복원" ||
                                 handler.Command == "!용아맥설정" ||
                                 handler.Command == "!용아맥해제" ||
-                                handler.Command == "!용아맥목록";
+                                handler.Command == "!용아맥목록" ||
+                                handler.Command == "!디버그";
 
             if (!isAdminCommand)
             {
@@ -92,12 +94,18 @@ public class KakaoService(
         // Check for IMAX notifications to deliver
         var imaxResponse = await imaxNotificationService.CheckAndDeliverAsync(data);
         if (imaxResponse is not null)
+        {
+            debugLogService.Log("NOTIFY", $"IMAX 알림 전달 → {data.RoomName}");
             return imaxResponse;
+        }
 
         // Check for scheduled messages to trigger
         var scheduledResponse = await scheduledMessageService.CheckAndSendScheduledMessageAsync(data);
         if (scheduledResponse is not null)
+        {
+            debugLogService.Log("NOTIFY", $"반복메시지 전달 (fallback) → {data.RoomName}");
             return scheduledResponse;
+        }
 
         return new ServerResponse();
     }
@@ -112,10 +120,13 @@ public class KakaoService(
         if (roomIds.Count == 0)
             return new ServerResponse();
 
+        debugLogService.Log("POLL", $"폴링 수신: {roomIds.Count}개 방");
+
         // Check IMAX first (higher priority - time-sensitive)
         var imaxResponse = await imaxNotificationService.CheckAndDeliverForRoomsAsync(roomIds);
         if (imaxResponse is not null)
         {
+            debugLogService.Log("POLL", $"IMAX 알림 전달 (proactive) → {imaxResponse.RoomId}");
             if (logger.IsEnabled(LogLevel.Information))
                 logger.LogInformation("[COMMAND] Delivering IMAX notification to room {RoomId}", imaxResponse.RoomId);
             return imaxResponse;
@@ -125,6 +136,7 @@ public class KakaoService(
         var scheduledResponse = await scheduledMessageService.CheckAndSendScheduledMessageForRoomsAsync(roomIds);
         if (scheduledResponse is not null)
         {
+            debugLogService.Log("POLL", $"반복메시지 전달 (proactive) → {scheduledResponse.RoomId}");
             if (logger.IsEnabled(LogLevel.Information))
                 logger.LogInformation("[COMMAND] Delivering scheduled message to room {RoomId}", scheduledResponse.RoomId);
             return scheduledResponse;
