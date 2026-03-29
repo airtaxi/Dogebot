@@ -34,7 +34,7 @@ public class ImaxNotificationCheckService(
             try
             {
                 var delaySeconds = CheckIntervalRandom.Next(30, 61);
-                logger.LogDebug("[IMAX_CHECK] Next check in {Seconds} seconds", delaySeconds);
+                logger.LogInformation("[IMAX_CHECK] Next check in {Seconds} seconds", delaySeconds);
                 await Task.Delay(TimeSpan.FromSeconds(delaySeconds), stoppingToken);
             }
             catch (OperationCanceledException)
