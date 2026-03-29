@@ -186,10 +186,6 @@ public partial class MainViewModel : ObservableObject
                         }
                     }
                 }
-                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    // No command (usually)
-                }
                 else
                 {
                     LogText = $"❌ Polling response error: Status code {response.StatusCode}";
