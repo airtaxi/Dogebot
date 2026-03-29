@@ -1,8 +1,9 @@
-﻿using Android.App;
+using Android.App;
 using Android.Content;
 using Android.Service.Notification;
 using Android.Util;
 using Android.OS;
+using System.Collections.Concurrent;
 using KakaoBotAT.Commons;
 
 namespace KakaoBotAT.MobileClient.Platforms.Android;
@@ -16,7 +17,7 @@ public class KakaoNotificationListener : NotificationListenerService
 {
     public static event EventHandler<KakaoMessageData>? NotificationReceived;
 
-    private static readonly Dictionary<string, Notification.Action?[]> ReplyActions = [];
+    private static readonly ConcurrentDictionary<string, Notification.Action?[]> ReplyActions = [];
 
     public override void OnNotificationPosted(StatusBarNotification? sbn)
     {
@@ -110,7 +111,7 @@ public class KakaoNotificationListener : NotificationListenerService
     {
         if (sbn?.PackageName == "com.kakao.talk" && sbn?.Tag != null)
         {
-            ReplyActions.Remove(sbn.Tag);
+            ReplyActions.TryRemove(sbn.Tag, out _);
         }
     }
 

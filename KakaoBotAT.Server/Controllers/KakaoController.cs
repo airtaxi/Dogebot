@@ -6,7 +6,7 @@ namespace KakaoBotAT.Server.Controllers;
 
 [ApiController]
 [Route("api/kakao")]
-public class KakaoController(IKakaoService kakaoService) : ControllerBase
+public class KakaoController(IKakaoService kakaoService, ILogger<KakaoController> logger) : ControllerBase
 {
     /// <summary>
     /// Receives notification messages from the MAUI client and returns an immediate response.
@@ -37,6 +37,9 @@ public class KakaoController(IKakaoService kakaoService) : ControllerBase
         var roomIds = string.IsNullOrEmpty(availableRooms)
             ? []
             : availableRooms.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+        if (roomIds.Length > 0 && logger.IsEnabled(LogLevel.Debug))
+            logger.LogDebug("[COMMAND] Polling with {Count} available rooms", roomIds.Length);
 
         var command = await kakaoService.GetPendingCommandAsync(roomIds);
         return Ok(command);
