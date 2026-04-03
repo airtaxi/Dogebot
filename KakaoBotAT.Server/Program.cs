@@ -46,6 +46,9 @@ builder.Services.AddSingleton<IRoomMigrationService, RoomMigrationService>();
 // Register IMAX Notification service
 builder.Services.AddSingleton<IImaxNotificationService, ImaxNotificationService>();
 
+// Register Fortune service
+builder.Services.AddSingleton<IFortuneService, FortuneService>();
+
 // Register Debug Log service
 builder.Services.AddSingleton<DebugLogService>();
 
@@ -132,6 +135,7 @@ builder.Services.AddSingleton<ICommandHandler, ImaxNotificationListCommandHandle
 builder.Services.AddSingleton<ICommandHandler, CgvMovieListCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ImaxScheduleQueryCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DebugCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, FortuneCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
