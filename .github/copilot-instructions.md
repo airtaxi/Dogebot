@@ -145,3 +145,50 @@ public class ExampleCommandHandler(ILogger<ExampleCommandHandler> logger) : ICom
 서버는 환경변수를 우선 사용하고, 없으면 `appsettings.json`을 참조한다:
 - `DB_HOST`, `DB_PORT`, `DB_ID`, `DB_PASSWORD` (환경변수)
 - `MongoDB:Host`, `MongoDB:Port`, `MongoDB:UserId`, `MongoDB:Password`, `MongoDB:Database` (appsettings)
+
+## MongoDB Service Pattern
+
+새 서비스 추가 시:
+
+1. `Models/` 에 BSON 모델 생성 (`[BsonId]`, `[BsonElement("camelCase")]`).
+2. `Services/` 에 인터페이스 + 구현 클래스 생성.
+3. `Program.cs`에 `builder.Services.AddSingleton<IYourService, YourService>();` 등록.
+
+서비스 구현 규칙:
+- 생성자에서 `IMongoDbService`를 주입받아 `GetCollection<T>("collectionName")` 호출.
+- `CreateIndexes()` 메서드를 별도로 분리하고, 생성자에서 호출.
+- 인덱스 생성에 constructor body가 필요하므로 primary constructor 대신 일반 생성자 사용.
+
+```csharp
+public class ExampleService : IExampleService
+{
+    private readonly IMongoCollection<ExampleModel> _examples;
+
+    public ExampleService(IMongoDbService mongoDbService)
+    {
+        _examples = mongoDbService.Database.GetCollection<ExampleModel>("examples");
+        CreateIndexes();
+    }
+
+    private void CreateIndexes()
+    {
+        var indexKeys = Builders<ExampleModel>.IndexKeys
+            .Ascending(x => x.SomeField)
+            .Ascending(x => x.AnotherField);
+        var indexModel = new CreateIndexModel<ExampleModel>(indexKeys, new CreateIndexOptions { Unique = true });
+        _examples.Indexes.CreateOne(indexModel);
+    }
+}
+```
+
+## MongoDB Migration Pattern
+
+스키마 변경이나 데이터 마이그레이션이 필요할 때 `MigrationService`를 사용한다.
+
+1. `MigrationService.RunMigrationsAsync()`에 새 마이그레이션 호출 추가:
+   ```csharp
+   await ApplyMigrationAsync(version, "MigrationName", MigrationMethodAsync);
+   ```
+2. 마이그레이션 메서드를 private async로 구현.
+3. `ApplyMigrationAsync`가 `migrations` 컬렉션에서 버전 중복을 자동 체크하므로 수동 확인 불필요.
+4. 마이그레이션은 **버전 번호 순서대로** 등록해야 한다.
