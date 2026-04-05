@@ -748,7 +748,7 @@ public class ImaxNotificationService : IImaxNotificationService
                       $"🏢 영화관: CGV {siteName}\n" +
                       $"🎬 영화: {movieName}\n" +
                       $"📅 날짜: {dateDisplay}{keywordDisplay}\n" +
-                      $"⏰ 30초~1분 간격으로 IMAX 상영 여부를 확인합니다.\n\n" +
+                      $"⏰ 5~10초 간격으로 IMAX 상영 여부를 확인합니다.\n\n" +
                       $"IMAX 감지 시 자동으로 알림이 전송되고 해제됩니다.\n" +
                       $"⚠️ 알림은 채팅이 올 때 답장으로 전송되므로,\n" +
                       $"등록 후 최소 1건 이상의 채팅이 필요합니다.");
