@@ -1,14 +1,12 @@
-using System.Text.Json;
 using KakaoBotAT.Commons;
+using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
 public class CgvMovieListCommandHandler(
-    IHttpClientFactory httpClientFactory,
+    IImaxNotificationService imaxNotificationService,
     ILogger<CgvMovieListCommandHandler> logger) : ICommandHandler
 {
-    private const string ImaxApiBaseUrl = "https://imax.kagamine-rin.com";
-
     public string Command => "!영화목록";
 
     public bool CanHandle(string content)
@@ -18,89 +16,54 @@ public class CgvMovieListCommandHandler(
                trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
     }
 
-    public async Task<ServerResponse> HandleAsync(KakaoMessageData data)
+    public Task<ServerResponse> HandleAsync(KakaoMessageData data)
     {
         try
         {
             var parts = data.Content.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-            var query = parts.Length > 1 ? parts[1].Trim() : null;
+            var movieSearchQuery = parts.Length > 1 ? parts[1].Trim() : null;
 
-            var httpClient = httpClientFactory.CreateClient();
-            var url = string.IsNullOrWhiteSpace(query)
-                ? $"{ImaxApiBaseUrl}/movies"
-                : $"{ImaxApiBaseUrl}/movies?query={Uri.EscapeDataString(query)}";
-
-            HttpResponseMessage response;
-            try
-            {
-                response = await httpClient.GetAsync(url);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "[CGV_MOVIES] Failed to connect to IMAX API");
-                return new ServerResponse
-                {
-                    Action = "send_text",
-                    RoomId = data.RoomId,
-                    Message = "❌ IMAX API 서버에 연결할 수 없습니다."
-                };
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return new ServerResponse
-                {
-                    Action = "send_text",
-                    RoomId = data.RoomId,
-                    Message = $"❌ 영화 목록 조회 실패 (HTTP {(int)response.StatusCode})"
-                };
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var document = JsonSerializer.Deserialize<JsonElement>(json);
-            var movies = document.GetProperty("movies");
-
-            if (movies.GetArrayLength() == 0)
-            {
-                var noResultMessage = string.IsNullOrWhiteSpace(query)
-                    ? "ℹ️ 현재 용산아이파크몰 CGV에서 상영 중인 영화가 없습니다."
-                    : $"ℹ️ \"{query}\"에 해당하는 영화를 찾을 수 없습니다.";
-
-                return new ServerResponse
-                {
-                    Action = "send_text",
-                    RoomId = data.RoomId,
-                    Message = noResultMessage
-                };
-            }
-
-            var header = string.IsNullOrWhiteSpace(query)
-                ? "🎬 용산아이파크몰 CGV 상영 영화 목록"
-                : $"🎬 \"{query}\" 검색 결과";
-
-            var movieList = string.Join("\n",
-                movies.EnumerateArray().Select(m => $"  • {m.GetProperty("movieName").GetString()}"));
+            imaxNotificationService.StartSession(
+                data.RoomId, data.SenderHash, data.SenderName, data.RoomName,
+                ImaxSessionType.MovieList, movieSearchQuery);
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[CGV_MOVIES] Showing {Count} movies to {Sender} in room {RoomName}",
-                    movies.GetArrayLength(), data.SenderName, data.RoomName);
+                logger.LogInformation("[CGV_MOVIES] Session started by {Sender} in room {RoomName}",
+                    data.SenderName, data.RoomName);
 
-            return new ServerResponse
+            var regionList = string.Join("\n", [
+                "  1. 서울",
+                "  2. 경기",
+                "  3. 인천",
+                "  4. 강원",
+                "  5. 대전/충청",
+                "  6. 대구",
+                "  7. 부산/울산",
+                "  8. 경상",
+                "  9. 광주/전라"
+            ]);
+
+            return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
-                Message = $"{header}\n\n{movieList}\n\n총 {movies.GetArrayLength()}편"
-            };
+                Message = "🎬 영화 목록 조회\n\n" +
+                          "지역을 선택해주세요:\n" +
+                          regionList + "\n\n" +
+                          "숫자를 입력해주세요.\n\n" +
+                          "❌ 취소: !취소\n" +
+                          "⏳ 5분 내에 입력하지 않으면 자동 취소됩니다."
+            });
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            logger.LogError(ex, "[CGV_MOVIES] Error processing CGV movie list command");
-            return new ServerResponse
+            logger.LogError(exception, "[CGV_MOVIES] Error starting movie list session");
+            return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
-                Message = "영화 목록 조회 중 오류가 발생했습니다."
-            };
+                Message = "영화 목록 조회 시작 중 오류가 발생했습니다."
+            });
         }
     }
 }

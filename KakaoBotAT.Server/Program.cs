@@ -56,6 +56,7 @@ builder.Services.AddSingleton<DebugLogService>();
 builder.Services.AddHostedService<ApprovalCodeCleanupService>();
 builder.Services.AddHostedService<ScheduledMessageSessionCleanupService>();
 builder.Services.AddHostedService<ImaxNotificationCheckService>();
+builder.Services.AddHostedService<ImaxNotificationSessionCleanupService>();
 
 // ⚠️ Register command handlers
 // 
