@@ -54,26 +54,13 @@ public class ImaxNotificationSetCommandHandler(
                 logger.LogInformation("[IMAX_SET] Session started by {Sender} in room {RoomName}",
                     data.SenderName, data.RoomName);
 
-            var regionList = string.Join("\n", [
-                "  1. 서울",
-                "  2. 경기",
-                "  3. 인천",
-                "  4. 강원",
-                "  5. 대전/충청",
-                "  6. 대구",
-                "  7. 부산/울산",
-                "  8. 경상",
-                "  9. 광주/전라"
-            ]);
-
             return new ServerResponse
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
                 Message = "📝 IMAX 알림 설정\n\n" +
-                          "지역을 선택해주세요:\n" +
-                          regionList + "\n\n" +
-                          "숫자를 입력해주세요.\n\n" +
+                          "알림을 받을 영화 이름을 입력해주세요.\n" +
+                          "예: 아바타\n\n" +
                           "❌ 취소: !취소\n" +
                           "⏳ 5분 내에 입력하지 않으면 자동 취소됩니다."
             };
