@@ -36,6 +36,18 @@ public class ImaxNotification
     [BsonElement("movieNumber")]
     public string MovieNumber { get; set; } = string.Empty;
 
+    /// <summary>
+    /// CGV site number (e.g., "0013" for 용산아이파크몰).
+    /// </summary>
+    [BsonElement("siteNumber")]
+    public string SiteNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    /// CGV site name displayed to users (e.g., "용산아이파크몰").
+    /// </summary>
+    [BsonElement("siteName")]
+    public string SiteName { get; set; } = string.Empty;
+
     [BsonElement("createdBy")]
     public string CreatedBy { get; set; } = string.Empty;
 

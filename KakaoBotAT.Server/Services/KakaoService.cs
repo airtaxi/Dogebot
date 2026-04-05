@@ -36,6 +36,11 @@ public class KakaoService(
         if (sessionResponse is not null)
             return sessionResponse;
 
+        // Check for active IMAX notification setup sessions
+        var imaxSessionResponse = await imaxNotificationService.HandleSessionInputAsync(data);
+        if (imaxSessionResponse is not null)
+            return imaxSessionResponse;
+
         // Find and execute appropriate command handler
         var handler = commandHandlerFactory.FindHandler(data.Content);
         if (handler != null)
@@ -55,9 +60,9 @@ public class KakaoService(
                                 handler.Command == "!반복목록" ||
                                 handler.Command == "!방백업" ||
                                 handler.Command == "!방복원" ||
-                                handler.Command == "!용아맥설정" ||
-                                handler.Command == "!용아맥해제" ||
-                                handler.Command == "!용아맥목록" ||
+                                handler.Command == "!아이맥스설정" ||
+                                handler.Command == "!아이맥스해제" ||
+                                handler.Command == "!아이맥스목록" ||
                                 handler.Command == "!디버그";
 
             if (!isAdminCommand)

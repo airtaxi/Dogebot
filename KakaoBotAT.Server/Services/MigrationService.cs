@@ -31,6 +31,7 @@ public class MigrationService : IMigrationService
         await ApplyMigrationAsync(2, "NormalizeKoreanConsonantWords", NormalizeKoreanConsonantWordsAsync);
         await ApplyMigrationAsync(3, "ManualSenderHashMappings", InsertManualSenderHashMappingsAsync);
         await ApplyMigrationAsync(4, "AddMovieInfoToImaxNotifications", AddMovieInfoToImaxNotificationsAsync);
+        await ApplyMigrationAsync(5, "AddSiteInfoToImaxNotifications", AddSiteInfoToImaxNotificationsAsync);
     }
 
     private async Task ApplyMigrationAsync(int version, string name, Func<Task> migration)
@@ -264,6 +265,29 @@ public class MigrationService : IMigrationService
         var result = await imaxNotifications.UpdateManyAsync(filter, update);
 
         _logger.LogInformation("[MIGRATION] Updated {Count} IMAX notifications with movie info (프로젝트 헤일메리).",
+            result.ModifiedCount);
+    }
+
+    /// <summary>
+    /// v5: Add siteNumber and siteName fields to existing IMAX notifications.
+    /// Existing notifications are assumed to be for 용산아이파크몰 (siteNo=0013).
+    /// </summary>
+    private async Task AddSiteInfoToImaxNotificationsAsync()
+    {
+        var imaxNotifications = _database.GetCollection<ImaxNotification>("imaxNotifications");
+
+        var filter = Builders<ImaxNotification>.Filter.Or(
+            Builders<ImaxNotification>.Filter.Exists(x => x.SiteNumber, false),
+            Builders<ImaxNotification>.Filter.Eq(x => x.SiteNumber, null),
+            Builders<ImaxNotification>.Filter.Eq(x => x.SiteNumber, string.Empty));
+
+        var update = Builders<ImaxNotification>.Update
+            .Set(x => x.SiteNumber, "0013")
+            .Set(x => x.SiteName, "용산아이파크몰");
+
+        var result = await imaxNotifications.UpdateManyAsync(filter, update);
+
+        _logger.LogInformation("[MIGRATION] Updated {Count} IMAX notifications with site info (용산아이파크몰).",
             result.ModifiedCount);
     }
 }
