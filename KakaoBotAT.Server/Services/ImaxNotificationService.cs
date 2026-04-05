@@ -61,6 +61,10 @@ public class ImaxNotificationService : IImaxNotificationService
     public void StartSession(string roomId, string senderHash, string senderName, string roomName,
         ImaxSessionType type = ImaxSessionType.Setup, string? movieSearchQuery = null)
     {
+        var initialStage = type == ImaxSessionType.Setup
+            ? SetupStage.AwaitingSetupMovieQuery
+            : SetupStage.AwaitingRegion;
+
         var session = new SetupSession
         {
             RoomId = roomId,
@@ -68,7 +72,7 @@ public class ImaxNotificationService : IImaxNotificationService
             SenderName = senderName,
             RoomName = roomName,
             Type = type,
-            Stage = SetupStage.AwaitingRegion,
+            Stage = initialStage,
             LastActivityAt = DateTimeOffset.UtcNow,
             MovieSearchQuery = movieSearchQuery
         };
@@ -121,6 +125,8 @@ public class ImaxNotificationService : IImaxNotificationService
             SetupStage.AwaitingMovie => HandleAwaitingMovie(session, data),
             SetupStage.AwaitingDate => await HandleAwaitingDateAsync(session, data),
             SetupStage.AwaitingMovieQuery => await HandleAwaitingMovieQueryAsync(session, data),
+            SetupStage.AwaitingSetupMovieQuery => await HandleAwaitingSetupMovieQueryAsync(session, data),
+            SetupStage.AwaitingImaxTheater => HandleAwaitingImaxTheater(session, data),
             _ => null
         };
     }
@@ -244,72 +250,14 @@ public class ImaxNotificationService : IImaxNotificationService
             };
         }
 
-        // Setup type: fetch movies for selection
-        var httpClient = _httpClientFactory.CreateClient();
-        try
+        // Setup type no longer uses region/theater flow — it uses movie-first flow instead
+        // This should not be reached for Setup type, but handle gracefully
+        return new ServerResponse
         {
-            var url = $"{ImaxApiBaseUrl}/movies?siteNo={selectedTheater.SiteNumber}";
-            var response = await httpClient.GetAsync(url);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return new ServerResponse
-                {
-                    Action = "send_text",
-                    RoomId = data.RoomId,
-                    Message = $"❌ 영화 목록 조회 실패 (HTTP {(int)response.StatusCode})\n\n❌ 취소: !취소"
-                };
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var document = JsonSerializer.Deserialize<JsonElement>(json);
-            var movies = document.GetProperty("movies");
-
-            if (movies.GetArrayLength() == 0)
-            {
-                return new ServerResponse
-                {
-                    Action = "send_text",
-                    RoomId = data.RoomId,
-                    Message = $"❌ CGV {selectedTheater.SiteName}에서 현재 상영 중인 영화가 없습니다.\n\n❌ 취소: !취소"
-                };
-            }
-
-            var movieList = movies.EnumerateArray()
-                .Select(movie => (
-                    MovieNumber: movie.GetProperty("movieNumber").GetString()!,
-                    MovieName: movie.GetProperty("movieName").GetString()!))
-                .ToList();
-
-            session.AvailableMovies = movieList;
-            session.Stage = SetupStage.AwaitingMovie;
-
-            var builder = new StringBuilder();
-            builder.AppendLine($"✅ 영화관: CGV {selectedTheater.SiteName}");
-            builder.AppendLine();
-            builder.AppendLine("영화를 선택해주세요:");
-            for (int index = 0; index < movieList.Count; index++)
-                builder.AppendLine($"  {index + 1,2}. {movieList[index].MovieName}");
-            builder.AppendLine();
-            builder.AppendLine("❌ 취소: !취소");
-
-            return new ServerResponse
-            {
-                Action = "send_text",
-                RoomId = data.RoomId,
-                Message = builder.ToString().TrimEnd()
-            };
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "[IMAX_SET] Failed to fetch movie list");
-            return new ServerResponse
-            {
-                Action = "send_text",
-                RoomId = data.RoomId,
-                Message = "❌ 영화 목록 조회 중 오류가 발생했습니다.\n\n❌ 취소: !취소"
-            };
-        }
+            Action = "send_text",
+            RoomId = data.RoomId,
+            Message = "❌ 예기치 않은 상태입니다.\n\n❌ 취소: !취소"
+        };
     }
 
     private ServerResponse HandleAwaitingMovie(SetupSession session, KakaoMessageData data)
@@ -335,6 +283,182 @@ public class ImaxNotificationService : IImaxNotificationService
             Action = "send_text",
             RoomId = data.RoomId,
             Message = $"✅ 영화: {selectedMovie.MovieName}\n\n" +
+                      "날짜를 입력해주세요 (yyyyMMdd)\n" +
+                      "예: 20260405\n\n" +
+                      "선택적으로 /키워드를 뒤에 붙일 수 있습니다.\n" +
+                      "예: 20260405/IMAX알림\n\n" +
+                      "❌ 취소: !취소"
+        };
+    }
+
+    private async Task<ServerResponse> HandleAwaitingSetupMovieQueryAsync(SetupSession session, KakaoMessageData data)
+    {
+        var movieQuery = data.Content.Trim();
+        var httpClient = _httpClientFactory.CreateClient();
+
+        try
+        {
+            // Search for the movie using a well-known siteNo (용산) to get movie number
+            var movieSearchUrl = $"{ImaxApiBaseUrl}/movies?siteNo=0013&query={Uri.EscapeDataString(movieQuery)}";
+            var movieResponse = await httpClient.GetAsync(movieSearchUrl);
+
+            if (!movieResponse.IsSuccessStatusCode)
+            {
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = $"❌ 영화 검색 실패 (HTTP {(int)movieResponse.StatusCode})\n\n다른 영화 이름을 입력해주세요.\n\n❌ 취소: !취소"
+                };
+            }
+
+            var movieJson = await movieResponse.Content.ReadAsStringAsync();
+            var movieDocument = JsonSerializer.Deserialize<JsonElement>(movieJson);
+            var movies = movieDocument.GetProperty("movies");
+
+            if (movies.GetArrayLength() == 0)
+            {
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = $"❌ \"{movieQuery}\"에 해당하는 영화를 찾을 수 없습니다.\n\n다른 이름으로 검색해주세요.\n\n❌ 취소: !취소"
+                };
+            }
+
+            if (movies.GetArrayLength() > 1)
+            {
+                var movieList = string.Join("\n",
+                    movies.EnumerateArray().Select(m => $"  • {m.GetProperty("movieName").GetString()}"));
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = $"❌ \"{movieQuery}\"에 해당하는 영화가 여러 개 있습니다.\n\n" +
+                              $"{movieList}\n\n" +
+                              "더 구체적인 이름으로 검색해주세요.\n\n❌ 취소: !취소"
+                };
+            }
+
+            var selectedMovie = movies[0];
+            var movieNumber = selectedMovie.GetProperty("movieNumber").GetString()!;
+            var movieName = selectedMovie.GetProperty("movieName").GetString()!;
+            session.SelectedMovieNumber = movieNumber;
+            session.SelectedMovieName = movieName;
+
+            // Fetch IMAX theaters for this movie
+            var imaxTheatersUrl = $"{ImaxApiBaseUrl}/imax-theaters?movNo={movieNumber}";
+            var imaxResponse = await httpClient.GetAsync(imaxTheatersUrl);
+
+            if (!imaxResponse.IsSuccessStatusCode)
+            {
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = $"❌ IMAX 영화관 조회 실패 (HTTP {(int)imaxResponse.StatusCode})\n\n❌ 취소: !취소"
+                };
+            }
+
+            var imaxJson = await imaxResponse.Content.ReadAsStringAsync();
+            var imaxDocument = JsonSerializer.Deserialize<JsonElement>(imaxJson);
+            var regions = imaxDocument.GetProperty("regions");
+
+            if (regions.GetArrayLength() == 0)
+            {
+                var key = (session.RoomId, session.SenderHash);
+                _sessions.TryRemove(key, out _);
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = $"❌ \"{movieName}\"의 IMAX 상영이 있는 영화관이 없습니다."
+                };
+            }
+
+            // Flatten theaters with region info for selection
+            var flatTheaters = new List<(string RegionName, List<(string SiteNumber, string SiteName)> Theaters)>();
+            foreach (var region in regions.EnumerateArray())
+            {
+                var regionName = region.GetProperty("regionName").GetString()!;
+                var theaters = region.GetProperty("theaters").EnumerateArray()
+                    .Select(t => (
+                        SiteNumber: t.GetProperty("siteNumber").GetString()!,
+                        SiteName: t.GetProperty("siteName").GetString()!))
+                    .ToList();
+                if (theaters.Count > 0)
+                    flatTheaters.Add((regionName, theaters));
+            }
+
+            session.AvailableImaxTheaters = flatTheaters;
+            session.Stage = SetupStage.AwaitingImaxTheater;
+
+            var builder = new StringBuilder();
+            builder.AppendLine($"✅ 영화: {movieName}");
+            builder.AppendLine();
+            builder.AppendLine("IMAX 상영 영화관을 선택해주세요:");
+            var number = 1;
+            foreach (var (regionName, theaters) in flatTheaters)
+            {
+                builder.AppendLine($"\n📍 {regionName}");
+                foreach (var (_, siteName) in theaters)
+                {
+                    builder.AppendLine($"  {number,2}. {siteName}");
+                    number++;
+                }
+            }
+            builder.AppendLine();
+            builder.AppendLine("❌ 취소: !취소");
+
+            return new ServerResponse
+            {
+                Action = "send_text",
+                RoomId = data.RoomId,
+                Message = builder.ToString().TrimEnd()
+            };
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "[IMAX_SET] Failed to search movie and IMAX theaters");
+            return new ServerResponse
+            {
+                Action = "send_text",
+                RoomId = data.RoomId,
+                Message = "❌ 영화 검색 중 오류가 발생했습니다.\n\n❌ 취소: !취소"
+            };
+        }
+    }
+
+    private ServerResponse HandleAwaitingImaxTheater(SetupSession session, KakaoMessageData data)
+    {
+        var trimmed = data.Content.Trim();
+
+        // Flatten all theaters for index-based selection
+        var allTheaters = session.AvailableImaxTheaters!
+            .SelectMany(r => r.Theaters)
+            .ToList();
+
+        if (!int.TryParse(trimmed, out var theaterIndex) || theaterIndex < 1 || theaterIndex > allTheaters.Count)
+        {
+            return new ServerResponse
+            {
+                Action = "send_text",
+                RoomId = data.RoomId,
+                Message = $"❌ 1~{allTheaters.Count} 사이의 숫자를 입력해주세요.\n\n❌ 취소: !취소"
+            };
+        }
+
+        var selectedTheater = allTheaters[theaterIndex - 1];
+        session.SelectedSiteNumber = selectedTheater.SiteNumber;
+        session.SelectedSiteName = selectedTheater.SiteName;
+        session.Stage = SetupStage.AwaitingDate;
+
+        return new ServerResponse
+        {
+            Action = "send_text",
+            RoomId = data.RoomId,
+            Message = $"✅ 영화: {session.SelectedMovieName}\n" +
+                      $"✅ 영화관: CGV {selectedTheater.SiteName}\n\n" +
                       "날짜를 입력해주세요 (yyyyMMdd)\n" +
                       "예: 20260405\n\n" +
                       "선택적으로 /키워드를 뒤에 붙일 수 있습니다.\n" +
@@ -678,7 +802,9 @@ public class ImaxNotificationService : IImaxNotificationService
         AwaitingTheater,
         AwaitingMovie,
         AwaitingDate,
-        AwaitingMovieQuery
+        AwaitingMovieQuery,
+        AwaitingSetupMovieQuery,
+        AwaitingImaxTheater
     }
 
     private sealed class SetupSession
@@ -696,6 +822,7 @@ public class ImaxNotificationService : IImaxNotificationService
         public string? SelectedMovieNumber { get; set; }
         public string? SelectedMovieName { get; set; }
         public string? MovieSearchQuery { get; set; }
+        public List<(string RegionName, List<(string SiteNumber, string SiteName)> Theaters)>? AvailableImaxTheaters { get; set; }
         public DateTimeOffset LastActivityAt { get; set; }
     }
 
