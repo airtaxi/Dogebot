@@ -33,7 +33,7 @@ public class ImaxNotificationCheckService(
 
             try
             {
-                var delaySeconds = CheckIntervalRandom.Next(30, 61);
+                var delaySeconds = CheckIntervalRandom.Next(5, 11);
                 logger.LogInformation("[IMAX_CHECK] Next check in {Seconds} seconds", delaySeconds);
                 await Task.Delay(TimeSpan.FromSeconds(delaySeconds), stoppingToken);
             }

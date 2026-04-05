@@ -69,7 +69,7 @@ public class ImaxNotificationListCommandHandler(
                          $"🔑 키워드: {keywordDisplay}\n" +
                          $"👤 등록자: {notification.CreatedByName}\n" +
                          $"📊 상태: {statusDisplay}\n\n" +
-                         $"ℹ️ 5분 간격으로 IMAX 상영 여부를 확인합니다.\n" +
+                         $"ℹ️ 5~10초 간격으로 IMAX 상영 여부를 확인합니다.\n" +
                          $"!아이맥스해제로 알림을 해제할 수 있습니다."
             };
         }
