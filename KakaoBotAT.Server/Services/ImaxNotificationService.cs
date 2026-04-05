@@ -825,8 +825,17 @@ public class ImaxNotificationService : IImaxNotificationService
 
     public async Task<int> CleanupExpiredNotificationsAsync()
     {
-        var todayString = DateTimeOffset.UtcNow.ToOffset(KstOffset).ToString("yyyyMMdd");
-        var filter = Builders<ImaxNotification>.Filter.Lt(x => x.ScreeningDate, todayString);
+        var kstNow = DateTimeOffset.UtcNow.ToOffset(KstOffset);
+
+        // Only delete notifications whose screening date's next day 3:00 AM KST has passed
+        // (to account for late-night screenings)
+        string cutoffDateString;
+        if (kstNow.Hour >= 3)
+            cutoffDateString = kstNow.AddDays(-1).ToString("yyyyMMdd");
+        else
+            cutoffDateString = kstNow.AddDays(-2).ToString("yyyyMMdd");
+
+        var filter = Builders<ImaxNotification>.Filter.Lte(x => x.ScreeningDate, cutoffDateString);
         var result = await _imaxNotifications.DeleteManyAsync(filter);
         return (int)result.DeletedCount;
     }
