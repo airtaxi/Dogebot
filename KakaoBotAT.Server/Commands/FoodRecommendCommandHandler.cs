@@ -24,7 +24,9 @@ public class FoodRecommendCommandHandler(ILogger<FoodRecommendCommandHandler> lo
 
     public bool CanHandle(string content)
     {
-        return content.Trim().Equals(Command, StringComparison.OrdinalIgnoreCase);
+        var legitCommand = content.Trim().Equals(Command, StringComparison.OrdinalIgnoreCase);
+        var hiddenCommand = content.Trim().Equals("!대댁거", StringComparison.OrdinalIgnoreCase);
+        return legitCommand || hiddenCommand;
     }
 
     public Task<ServerResponse> HandleAsync(KakaoMessageData data)
