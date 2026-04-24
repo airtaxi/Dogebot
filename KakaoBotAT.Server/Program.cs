@@ -130,6 +130,7 @@ builder.Services.AddSingleton<ICommandHandler, HotDealCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballTeamRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballBattingRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballPitchingRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, BaseballCrowdRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WordRankCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageSetCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageRemoveCommandHandler>();

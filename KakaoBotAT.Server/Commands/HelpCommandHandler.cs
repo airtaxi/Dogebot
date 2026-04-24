@@ -98,7 +98,8 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger) : ICommandHa
                          "⚾ 야구\n" +
                          "• !야구팀순위 [팀명] - KBO 팀 순위 조회\n" +
                          "• !야구타자순위 - 타율 TOP5, 홈런 TOP5 조회\n" +
-                         "• !야구투수순위 - 평균자책점 TOP5, 승리 TOP5 조회\n\n" +
+                         "• !야구투수순위 - 평균자책점 TOP5, 승리 TOP5 조회\n" +
+                         "• !야구관중순위 - 구단별 관중 수 순위 조회\n\n" +
                          "ℹ️ 기타\n" +
                          "• !날씨 [지역] - 현재 날씨 확인 (기본: 이전 도시 또는 서울)\n" +
                          "• !내일날씨 [지역] - 내일 날씨 확인 (기본: 이전 도시 또는 서울)\n" +
