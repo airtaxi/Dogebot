@@ -237,10 +237,6 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         requestMessage.Headers.Referrer = new Uri("https://www.koreabaseball.com/");
         requestMessage.Headers.Accept.Clear();
         requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
-        requestMessage.Headers.AcceptEncoding.Clear();
-        requestMessage.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
-        requestMessage.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
-        requestMessage.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("br"));
         requestMessage.Headers.Connection.Clear();
         requestMessage.Headers.Connection.Add("keep-alive");
         requestMessage.Headers.UserAgent.Clear();
