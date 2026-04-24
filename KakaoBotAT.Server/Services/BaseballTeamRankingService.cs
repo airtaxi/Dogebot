@@ -173,9 +173,10 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
             .Select(pageLine => NormalizeCellText(WebUtility.HtmlDecode(pageLine)))
             .Where(pageLine => !string.IsNullOrWhiteSpace(pageLine))
             .ToList();
+        var normalizedPageText = string.Join('\n', normalizedLines);
 
-        var battingTopFiveStatistics = ParseRequestedTopFiveStatistics(normalizedLines, ["타율", "홈런"]);
-        var pitchingTopFiveStatistics = ParseRequestedTopFiveStatistics(normalizedLines, ["평균자책점", "승리"]);
+        var battingTopFiveStatistics = ParseRequestedTopFiveStatistics(normalizedLines, normalizedPageText, ["타율", "홈런"]);
+        var pitchingTopFiveStatistics = ParseRequestedTopFiveStatistics(normalizedLines, normalizedPageText, ["평균자책점", "승리"]);
 
         if (battingTopFiveStatistics.Count == 0 && pitchingTopFiveStatistics.Count == 0) return null;
         return new BaseballTopFiveSnapshot(battingTopFiveStatistics, pitchingTopFiveStatistics);
@@ -288,21 +289,30 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
             awayRecordText);
     }
 
-    private static IReadOnlyList<BaseballTopFiveStatistic> ParseRequestedTopFiveStatistics(IReadOnlyList<string> normalizedLines, IReadOnlyList<string> statisticNames)
+    private static IReadOnlyList<BaseballTopFiveStatistic> ParseRequestedTopFiveStatistics(
+        IReadOnlyList<string> normalizedLines,
+        string normalizedPageText,
+        IReadOnlyList<string> statisticNames)
     {
         var parsedStatistics = new List<BaseballTopFiveStatistic>();
 
         foreach (var statisticName in statisticNames)
         {
-            var parsedStatistic = TryParseTopFiveStatistic(normalizedLines, statisticName);
+            var parsedStatistic = TryParseTopFiveStatistic(normalizedLines, normalizedPageText, statisticName);
             if (parsedStatistic != null) parsedStatistics.Add(parsedStatistic);
         }
 
         return parsedStatistics;
     }
 
-    private static BaseballTopFiveStatistic? TryParseTopFiveStatistic(IReadOnlyList<string> normalizedLines, string statisticName)
+    private static BaseballTopFiveStatistic? TryParseTopFiveStatistic(
+        IReadOnlyList<string> normalizedLines,
+        string normalizedPageText,
+        string statisticName)
     {
+        var parsedStatisticFromSectionText = TryParseTopFiveStatisticFromSectionText(normalizedPageText, statisticName);
+        if (parsedStatisticFromSectionText != null) return parsedStatisticFromSectionText;
+
         var statisticTitle = $"{statisticName} TOP5";
         var statisticLineIndex = normalizedLines
             .Select((lineText, lineIndex) => new { lineText, lineIndex })
@@ -328,11 +338,39 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         return playerEntries.Count == 0 ? null : new BaseballTopFiveStatistic(statisticName, playerEntries);
     }
 
+    private static BaseballTopFiveStatistic? TryParseTopFiveStatisticFromSectionText(string normalizedPageText, string statisticName)
+    {
+        var sectionMatch = TopFiveStatisticSectionRegex().Match(normalizedPageText);
+        while (sectionMatch.Success)
+        {
+            if (sectionMatch.Groups["StatisticName"].Value.Equals(statisticName, StringComparison.Ordinal))
+            {
+                var playerEntries = PlayerTopFiveEntryRegex()
+                    .Matches(sectionMatch.Groups["SectionContent"].Value)
+                    .Select(playerEntryMatch => TryCreatePlayerTopFiveEntry(playerEntryMatch))
+                    .Where(playerEntry => playerEntry != null)
+                    .Cast<BaseballPlayerTopFiveEntry>()
+                    .Take(5)
+                    .ToList();
+
+                return playerEntries.Count == 0 ? null : new BaseballTopFiveStatistic(statisticName, playerEntries);
+            }
+
+            sectionMatch = sectionMatch.NextMatch();
+        }
+
+        return null;
+    }
+
     private static BaseballPlayerTopFiveEntry? TryParsePlayerTopFiveEntry(string lineText)
     {
         var playerEntryMatch = PlayerTopFiveEntryRegex().Match(lineText);
-        if (!playerEntryMatch.Success) return null;
+        return TryCreatePlayerTopFiveEntry(playerEntryMatch);
+    }
 
+    private static BaseballPlayerTopFiveEntry? TryCreatePlayerTopFiveEntry(Match playerEntryMatch)
+    {
+        if (!playerEntryMatch.Success) return null;
         if (!int.TryParse(playerEntryMatch.Groups["Rank"].Value, out var rank)) return null;
 
         return new BaseballPlayerTopFiveEntry(
@@ -417,8 +455,11 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
     [GeneratedRegex(@"^(?<Rank>\d+)\s+(?<TeamName>KT|LG|SSG|삼성|KIA|한화|NC|두산|롯데|키움)\s+(?<Games>\d+)\s+(?<Wins>\d+)\s+(?<Losses>\d+)\s+(?<Draws>\d+)\s+(?<WinningPercentage>\d+\.\d+)\s+(?<GamesBehind>[-\d.]+)\s+(?<RecentTenGames>\S+)\s+(?<Streak>\S+)\s+(?<HomeRecord>\d+-\d+-\d+)\s+(?<AwayRecord>\d+-\d+-\d+)$")]
     private static partial Regex TeamRankingLineRegex();
 
-    [GeneratedRegex(@"^(?<Rank>[1-5])\.\s+(?<PlayerName>.+?)\s+(?<TeamName>KT|LG|SSG|삼성|KIA|한화|NC|두산|롯데|키움)\s+(?<StatisticValue>.+)$")]
+    [GeneratedRegex(@"(?m)^(?<Rank>[1-5])\.\s+(?<PlayerName>.+?)\s+(?<TeamName>KT|LG|SSG|삼성|KIA|한화|NC|두산|롯데|키움)\s+(?<StatisticValue>.+)$")]
     private static partial Regex PlayerTopFiveEntryRegex();
+
+    [GeneratedRegex(@"(?ms)(?<StatisticName>타율|홈런|평균자책점|승리)\s+TOP5(?<SectionContent>.*?)(?=(타율|홈런|타점|도루|득점|안타|출루율|장타율|2루타|3루타|루타|OPS|타수|볼넷|삼진|평균자책점|승리|세이브|승률|홀드|탈삼진|경기|패배|이닝|WHIP|완투|완봉|QS|피안타율)\s+TOP5|$)")]
+    private static partial Regex TopFiveStatisticSectionRegex();
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhiteSpaceRegex();
