@@ -34,6 +34,9 @@ builder.Services.AddSingleton<IUserPreferenceService, UserPreferenceService>();
 // Register Hot Deal service
 builder.Services.AddSingleton<IHotDealService, HotDealService>();
 
+// Register Baseball team ranking service
+builder.Services.AddSingleton<IBaseballTeamRankingService, BaseballTeamRankingService>();
+
 // Register Migration service
 builder.Services.AddSingleton<IMigrationService, MigrationService>();
 
@@ -124,6 +127,7 @@ builder.Services.AddSingleton<ICommandHandler, MyDailyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MonthlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MyMonthlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HotDealCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, BaseballTeamRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WordRankCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageSetCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageRemoveCommandHandler>();
