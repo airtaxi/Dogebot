@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -14,6 +15,9 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
     private const string BaseballTeamRankingPageAddress = "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx";
     private const string BaseballPlayerTopFivePageAddress = "https://www.koreabaseball.com/Record/Ranking/Top5.aspx";
     private const string BaseballCrowdRankingPageAddress = "https://www.koreabaseball.com/ws/Record.asmx/GetCrowdTeam";
+    private const string BaseballCrowdReferrerPageAddress = "https://www.koreabaseball.com/Record/Crowd/GraphTeam.aspx";
+    private const string BaseballHostHeaderValue = "www.koreabaseball.com";
+    private const string BaseballUserAgentValue = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
     private static readonly Lock s_teamRankingCacheLock = new();
     private static readonly Lock s_playerTopFiveCacheLock = new();
@@ -125,10 +129,10 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         {
             using var requestMessage = new HttpRequestMessage(HttpMethod.Post, BaseballCrowdRankingPageAddress)
             {
-                Content = new StringContent("{}", Encoding.UTF8, "application/json")
+                Content = new StringContent("leagueId=1&seriesId=0&gameMonth=0", Encoding.UTF8, "application/x-www-form-urlencoded")
             };
-            requestMessage.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36");
-            requestMessage.Headers.Referrer = new Uri("https://www.koreabaseball.com/");
+            requestMessage.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded; charset=UTF-8");
+            ConfigureBaseballCrowdRequestHeaders(requestMessage);
 
             using var responseMessage = await _baseballTeamRankingClient.SendAsync(requestMessage);
             var responseContent = await responseMessage.Content.ReadAsStringAsync();
@@ -207,8 +211,7 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
     private async Task<string?> FetchPageContentAsync(string pageAddress, string logTag)
     {
         using var requestMessage = new HttpRequestMessage(HttpMethod.Get, pageAddress);
-        requestMessage.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36");
-        requestMessage.Headers.Referrer = new Uri("https://www.koreabaseball.com/");
+        ConfigureBaseballRequestHeaders(requestMessage);
 
         using var responseMessage = await _baseballTeamRankingClient.SendAsync(requestMessage);
         if (!responseMessage.IsSuccessStatusCode)
@@ -224,6 +227,41 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         }
 
         return await responseMessage.Content.ReadAsStringAsync();
+    }
+
+    private static void ConfigureBaseballRequestHeaders(HttpRequestMessage requestMessage)
+    {
+        requestMessage.Version = HttpVersion.Version11;
+        requestMessage.VersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+        requestMessage.Headers.Host = BaseballHostHeaderValue;
+        requestMessage.Headers.Referrer = new Uri("https://www.koreabaseball.com/");
+        requestMessage.Headers.Accept.Clear();
+        requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
+        requestMessage.Headers.AcceptEncoding.Clear();
+        requestMessage.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
+        requestMessage.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
+        requestMessage.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("br"));
+        requestMessage.Headers.Connection.Clear();
+        requestMessage.Headers.Connection.Add("keep-alive");
+        requestMessage.Headers.UserAgent.Clear();
+        requestMessage.Headers.UserAgent.ParseAdd(BaseballUserAgentValue);
+    }
+
+    private static void ConfigureBaseballCrowdRequestHeaders(HttpRequestMessage requestMessage)
+    {
+        ConfigureBaseballRequestHeaders(requestMessage);
+        requestMessage.Headers.Referrer = new Uri(BaseballCrowdReferrerPageAddress);
+        requestMessage.Headers.Accept.Clear();
+        requestMessage.Headers.TryAddWithoutValidation("accept", "application/json, text/javascript, */*; q=0.01");
+        requestMessage.Headers.TryAddWithoutValidation("accept-language", "en-US,en;q=0.9,ko;q=0.8");
+        requestMessage.Headers.TryAddWithoutValidation("priority", "u=1, i");
+        requestMessage.Headers.TryAddWithoutValidation("sec-ch-ua", "\"Chromium\";v=\"148\", \"Microsoft Edge\";v=\"148\", \"Not/A)Brand\";v=\"99\"");
+        requestMessage.Headers.TryAddWithoutValidation("sec-ch-ua-mobile", "?0");
+        requestMessage.Headers.TryAddWithoutValidation("sec-ch-ua-platform", "\"Windows\"");
+        requestMessage.Headers.TryAddWithoutValidation("sec-fetch-dest", "empty");
+        requestMessage.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
+        requestMessage.Headers.TryAddWithoutValidation("sec-fetch-site", "same-origin");
+        requestMessage.Headers.TryAddWithoutValidation("x-requested-with", "XMLHttpRequest");
     }
 
     private static BaseballTeamRankingSnapshot? ParseBaseballTeamRankingSnapshot(string pageContent)
