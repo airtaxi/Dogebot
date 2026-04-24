@@ -15,6 +15,7 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
     private const string BaseballTeamRankingPageAddress = "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx";
     private const string BaseballPlayerTopFivePageAddress = "https://www.koreabaseball.com/Record/Ranking/Top5.aspx";
     private const string BaseballCrowdRankingPageAddress = "https://www.koreabaseball.com/ws/Record.asmx/GetCrowdTeam";
+    private const string BaseballNewsPageAddress = "https://www.koreabaseball.com/MediaNews/News/BreakingNews/List.aspx";
     private const string BaseballCrowdReferrerPageAddress = "https://www.koreabaseball.com/Record/Crowd/GraphTeam.aspx";
     private const string BaseballHostHeaderValue = "www.koreabaseball.com";
     private const string BaseballUserAgentValue = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0";
@@ -22,16 +23,20 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
     private static readonly Lock s_teamRankingCacheLock = new();
     private static readonly Lock s_playerTopFiveCacheLock = new();
     private static readonly Lock s_crowdRankingCacheLock = new();
+    private static readonly Lock s_newsCacheLock = new();
     private static readonly Lock s_errorStateLock = new();
     private static BaseballTeamRankingSnapshot? s_cachedTeamRankingSnapshot;
     private static BaseballTopFiveSnapshot? s_cachedPlayerTopFiveSnapshot;
     private static BaseballCrowdRankingSnapshot? s_cachedCrowdRankingSnapshot;
+    private static BaseballNewsSnapshot? s_cachedNewsSnapshot;
     private static DateTimeOffset s_lastTeamRankingCacheTime = DateTimeOffset.MinValue;
     private static DateTimeOffset s_lastPlayerTopFiveCacheTime = DateTimeOffset.MinValue;
     private static DateTimeOffset s_lastCrowdRankingCacheTime = DateTimeOffset.MinValue;
+    private static DateTimeOffset s_lastNewsCacheTime = DateTimeOffset.MinValue;
     private static string? s_lastTeamRankingErrorDetails;
     private static string? s_lastPlayerTopFiveErrorDetails;
     private static string? s_lastCrowdRankingErrorDetails;
+    private static string? s_lastNewsErrorDetails;
 
     private readonly HttpClient _baseballTeamRankingClient = httpClientFactory.CreateClient();
 
@@ -184,6 +189,52 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         }
     }
 
+    public async Task<BaseballNewsSnapshot?> GetBaseballNewsSnapshotAsync()
+    {
+        var targetDate = GetBaseballNewsTargetDate();
+
+        lock (s_newsCacheLock)
+        {
+            if (s_cachedNewsSnapshot != null &&
+                s_cachedNewsSnapshot.TargetDate == targetDate &&
+                DateTimeOffset.UtcNow - s_lastNewsCacheTime < CacheDuration)
+                return s_cachedNewsSnapshot;
+        }
+
+        try
+        {
+            var pageContent = await FetchPageContentAsync(BaseballNewsPageAddress, "BASEBALL_NEWS");
+            if (string.IsNullOrWhiteSpace(pageContent)) return null;
+
+            var baseballNewsSnapshot = ParseBaseballNewsSnapshot(pageContent, targetDate);
+            if (baseballNewsSnapshot == null)
+            {
+                var targetDateText = targetDate.ToString("yyyy.MM.dd", CultureInfo.InvariantCulture);
+                SetLastNewsErrorDetails(
+                    "KBO 뉴스 페이지 파싱에 실패했습니다.",
+                    Environment.StackTrace,
+                    $"PageAddress: {BaseballNewsPageAddress}\nPageLength: {pageContent.Length}\nPreviewLines:\n{BuildNormalizedLinePreview(pageContent, 40, [targetDateText])}");
+                logger.LogError("[BASEBALL_NEWS] Failed to parse news page");
+                return null;
+            }
+
+            lock (s_newsCacheLock)
+            {
+                s_cachedNewsSnapshot = baseballNewsSnapshot;
+                s_lastNewsCacheTime = DateTimeOffset.UtcNow;
+            }
+
+            ClearLastNewsErrorDetails();
+            return baseballNewsSnapshot;
+        }
+        catch (Exception exception)
+        {
+            SetLastNewsErrorDetails(exception.Message, exception.StackTrace, exception.ToString());
+            logger.LogError(exception, "[BASEBALL_NEWS] Error fetching baseball news");
+            return null;
+        }
+    }
+
     public string? GetLastTeamRankingErrorDetails()
     {
         lock (s_errorStateLock)
@@ -208,6 +259,14 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         }
     }
 
+    public string? GetLastNewsErrorDetails()
+    {
+        lock (s_errorStateLock)
+        {
+            return s_lastNewsErrorDetails;
+        }
+    }
+
     private async Task<string?> FetchPageContentAsync(string pageAddress, string logTag)
     {
         using var requestMessage = new HttpRequestMessage(HttpMethod.Get, pageAddress);
@@ -222,6 +281,7 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
                 $"PageAddress: {pageAddress}");
             if (logTag.Equals("BASEBALL_RANKING", StringComparison.Ordinal)) SetLastTeamRankingErrorDetails(errorDetails);
             if (logTag.Equals("BASEBALL_TOP5", StringComparison.Ordinal)) SetLastPlayerTopFiveErrorDetails(errorDetails);
+            if (logTag.Equals("BASEBALL_NEWS", StringComparison.Ordinal)) SetLastNewsErrorDetails(errorDetails);
             logger.LogError("[{LogTag}] Failed to fetch page with status code {StatusCode}", logTag, responseMessage.StatusCode);
             return null;
         }
@@ -319,6 +379,30 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         return crowdRankings.Count == 0 ? null : new BaseballCrowdRankingSnapshot(baseballCrowdResponse.DateText, crowdRankings);
     }
 
+    private static BaseballNewsSnapshot? ParseBaseballNewsSnapshot(string pageContent, DateOnly targetDate)
+    {
+        var htmlDocument = new HtmlDocument();
+        htmlDocument.LoadHtml(pageContent);
+
+        var newsListItemNodes = htmlDocument.DocumentNode.SelectNodes("//ul[contains(concat(' ', normalize-space(@class), ' '), ' boardPhoto ')]/li");
+        if (newsListItemNodes == null || newsListItemNodes.Count == 0) return null;
+
+        var parsedNewsItems = new List<BaseballNewsItem>();
+        foreach (var newsListItemNode in newsListItemNodes)
+        {
+            var parsedNewsItem = TryParseBaseballNewsItem(newsListItemNode);
+            if (parsedNewsItem != null) parsedNewsItems.Add(parsedNewsItem);
+        }
+
+        if (parsedNewsItems.Count == 0) return null;
+
+        var filteredNewsItems = parsedNewsItems
+            .Where(newsItem => newsItem.PublishedDate == targetDate)
+            .ToList();
+
+        return new BaseballNewsSnapshot(targetDate, filteredNewsItems);
+    }
+
     private static DateOnly? ExtractRankingDate(string pageText)
     {
         var rankingDateMatch = RankingDateRegex().Match(pageText);
@@ -329,6 +413,24 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         if (!int.TryParse(rankingDateMatch.Groups["Day"].Value, out var day)) return null;
 
         return new DateOnly(year, month, day);
+    }
+
+    private static BaseballNewsItem? TryParseBaseballNewsItem(HtmlNode newsListItemNode)
+    {
+        var titleNode = newsListItemNode.SelectSingleNode(".//div[contains(concat(' ', normalize-space(@class), ' '), ' txt ')]//strong/a");
+        var summaryParagraphNode = newsListItemNode.SelectSingleNode(".//div[contains(concat(' ', normalize-space(@class), ' '), ' txt ')]/p");
+        var dateNode = newsListItemNode.SelectSingleNode(".//span[contains(concat(' ', normalize-space(@class), ' '), ' date ')]");
+        if (titleNode == null || summaryParagraphNode == null || dateNode == null) return null;
+
+        var title = NormalizeHtmlNodeText(titleNode);
+        var publishedDateText = NormalizeHtmlNodeText(dateNode);
+        if (!DateOnly.TryParseExact(publishedDateText, "yyyy.MM.dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var publishedDate))
+            return null;
+
+        var summary = BuildBaseballNewsSummary(summaryParagraphNode);
+        if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(summary)) return null;
+
+        return new BaseballNewsItem(publishedDate, title, summary);
     }
 
     private static List<BaseballTeamStanding> ParseTableRows(HtmlDocument htmlDocument)
@@ -523,6 +625,33 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         return classTokens.Contains(className, StringComparer.Ordinal);
     }
 
+    private static string BuildBaseballNewsSummary(HtmlNode summaryParagraphNode)
+    {
+        var summarySegments = summaryParagraphNode.ChildNodes
+            .Where(htmlNode => !(htmlNode.Name.Equals("span", StringComparison.OrdinalIgnoreCase) && HasCssClass(htmlNode, "date")))
+            .Select(htmlNode => NormalizeCellText(WebUtility.HtmlDecode(htmlNode.InnerText)))
+            .Where(summarySegment => !string.IsNullOrWhiteSpace(summarySegment))
+            .ToList();
+
+        return string.Join(" ", summarySegments);
+    }
+
+    private static DateOnly GetBaseballNewsTargetDate()
+    {
+        var koreanStandardTimeZoneInfo = GetKoreanStandardTimeZoneInfo();
+        var currentKoreanDateTimeOffset = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, koreanStandardTimeZoneInfo);
+        var targetDate = DateOnly.FromDateTime(currentKoreanDateTimeOffset.DateTime);
+        if (currentKoreanDateTimeOffset.Hour < 6) return targetDate.AddDays(-1);
+
+        return targetDate;
+    }
+
+    private static TimeZoneInfo GetKoreanStandardTimeZoneInfo()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Seoul"); }
+        catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById("Korea Standard Time"); }
+    }
+
     private static string NormalizeHtmlNodeText(HtmlNode htmlNode) =>
         NormalizeCellText(WebUtility.HtmlDecode(htmlNode.InnerText));
 
@@ -547,6 +676,14 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         lock (s_errorStateLock)
         {
             s_lastCrowdRankingErrorDetails = null;
+        }
+    }
+
+    private static void ClearLastNewsErrorDetails()
+    {
+        lock (s_errorStateLock)
+        {
+            s_lastNewsErrorDetails = null;
         }
     }
 
@@ -589,6 +726,20 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         lock (s_errorStateLock)
         {
             s_lastCrowdRankingErrorDetails = errorDetails;
+        }
+    }
+
+    private static void SetLastNewsErrorDetails(string message, string? stackTrace, string? additionalInformation)
+    {
+        var errorDetails = BuildErrorDetails(message, stackTrace, additionalInformation);
+        SetLastNewsErrorDetails(errorDetails);
+    }
+
+    private static void SetLastNewsErrorDetails(string errorDetails)
+    {
+        lock (s_errorStateLock)
+        {
+            s_lastNewsErrorDetails = errorDetails;
         }
     }
 
