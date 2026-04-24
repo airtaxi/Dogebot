@@ -28,7 +28,7 @@ public class BaseballTeamRankingCommandHandler(
                 {
                     Action = "send_text",
                     RoomId = data.RoomId,
-                    Message = "야구 팀 순위를 가져오지 못했습니다."
+                    Message = baseballTeamRankingService.GetLastTeamRankingErrorDetails() ?? "야구 팀 순위를 가져오지 못했습니다."
                 };
             }
 
@@ -98,7 +98,7 @@ public class BaseballTeamRankingCommandHandler(
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
-                Message = "야구 팀 순위 조회 중 오류가 발생했습니다."
+                Message = $"Message: {exception.Message}\nStackTrace: {exception.StackTrace ?? "스택 추적 정보 없음"}"
             };
         }
     }

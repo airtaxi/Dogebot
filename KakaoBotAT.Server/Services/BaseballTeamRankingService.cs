@@ -13,10 +13,13 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
     private static readonly Lock s_teamRankingCacheLock = new();
     private static readonly Lock s_playerTopFiveCacheLock = new();
+    private static readonly Lock s_errorStateLock = new();
     private static BaseballTeamRankingSnapshot? s_cachedTeamRankingSnapshot;
     private static BaseballTopFiveSnapshot? s_cachedPlayerTopFiveSnapshot;
     private static DateTimeOffset s_lastTeamRankingCacheTime = DateTimeOffset.MinValue;
     private static DateTimeOffset s_lastPlayerTopFiveCacheTime = DateTimeOffset.MinValue;
+    private static string? s_lastTeamRankingErrorDetails;
+    private static string? s_lastPlayerTopFiveErrorDetails;
 
     private readonly HttpClient _baseballTeamRankingClient = httpClientFactory.CreateClient();
 
@@ -36,6 +39,10 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
             var baseballTeamRankingSnapshot = ParseBaseballTeamRankingSnapshot(pageContent);
             if (baseballTeamRankingSnapshot == null)
             {
+                SetLastTeamRankingErrorDetails(
+                    "KBO 팀 순위 페이지 파싱에 실패했습니다.",
+                    Environment.StackTrace,
+                    $"PageAddress: {BaseballTeamRankingPageAddress}\nPageLength: {pageContent.Length}\nPreviewLines:\n{BuildNormalizedLinePreview(pageContent, 20)}");
                 logger.LogError("[BASEBALL_RANKING] Failed to parse ranking page");
                 return null;
             }
@@ -46,10 +53,12 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
                 s_lastTeamRankingCacheTime = DateTimeOffset.UtcNow;
             }
 
+            ClearLastTeamRankingErrorDetails();
             return baseballTeamRankingSnapshot;
         }
         catch (Exception exception)
         {
+            SetLastTeamRankingErrorDetails(exception.Message, exception.StackTrace, exception.ToString());
             logger.LogError(exception, "[BASEBALL_RANKING] Error fetching baseball team rankings");
             return null;
         }
@@ -71,6 +80,10 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
             var baseballTopFiveSnapshot = ParseBaseballTopFiveSnapshot(pageContent);
             if (baseballTopFiveSnapshot == null)
             {
+                SetLastPlayerTopFiveErrorDetails(
+                    "KBO TOP5 페이지 파싱에 실패했습니다.",
+                    Environment.StackTrace,
+                    $"PageAddress: {BaseballPlayerTopFivePageAddress}\nPageLength: {pageContent.Length}\nPreviewLines:\n{BuildNormalizedLinePreview(pageContent, 40)}");
                 logger.LogError("[BASEBALL_TOP5] Failed to parse top five page");
                 return null;
             }
@@ -81,12 +94,30 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
                 s_lastPlayerTopFiveCacheTime = DateTimeOffset.UtcNow;
             }
 
+            ClearLastPlayerTopFiveErrorDetails();
             return baseballTopFiveSnapshot;
         }
         catch (Exception exception)
         {
+            SetLastPlayerTopFiveErrorDetails(exception.Message, exception.StackTrace, exception.ToString());
             logger.LogError(exception, "[BASEBALL_TOP5] Error fetching baseball top five rankings");
             return null;
+        }
+    }
+
+    public string? GetLastTeamRankingErrorDetails()
+    {
+        lock (s_errorStateLock)
+        {
+            return s_lastTeamRankingErrorDetails;
+        }
+    }
+
+    public string? GetLastPlayerTopFiveErrorDetails()
+    {
+        lock (s_errorStateLock)
+        {
+            return s_lastPlayerTopFiveErrorDetails;
         }
     }
 
@@ -99,6 +130,12 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         using var responseMessage = await _baseballTeamRankingClient.SendAsync(requestMessage);
         if (!responseMessage.IsSuccessStatusCode)
         {
+            var errorDetails = BuildErrorDetails(
+                $"HTTP 요청이 실패했습니다. StatusCode={(int)responseMessage.StatusCode} ({responseMessage.StatusCode})",
+                Environment.StackTrace,
+                $"PageAddress: {pageAddress}");
+            if (logTag.Equals("BASEBALL_RANKING", StringComparison.Ordinal)) SetLastTeamRankingErrorDetails(errorDetails);
+            if (logTag.Equals("BASEBALL_TOP5", StringComparison.Ordinal)) SetLastPlayerTopFiveErrorDetails(errorDetails);
             logger.LogError("[{LogTag}] Failed to fetch page with status code {StatusCode}", logTag, responseMessage.StatusCode);
             return null;
         }
@@ -303,6 +340,73 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
             playerEntryMatch.Groups["PlayerName"].Value,
             playerEntryMatch.Groups["TeamName"].Value,
             playerEntryMatch.Groups["StatisticValue"].Value);
+    }
+
+    private static void ClearLastTeamRankingErrorDetails()
+    {
+        lock (s_errorStateLock)
+        {
+            s_lastTeamRankingErrorDetails = null;
+        }
+    }
+
+    private static void ClearLastPlayerTopFiveErrorDetails()
+    {
+        lock (s_errorStateLock)
+        {
+            s_lastPlayerTopFiveErrorDetails = null;
+        }
+    }
+
+    private static void SetLastTeamRankingErrorDetails(string message, string? stackTrace, string? additionalInformation)
+    {
+        var errorDetails = BuildErrorDetails(message, stackTrace, additionalInformation);
+        SetLastTeamRankingErrorDetails(errorDetails);
+    }
+
+    private static void SetLastTeamRankingErrorDetails(string errorDetails)
+    {
+        lock (s_errorStateLock)
+        {
+            s_lastTeamRankingErrorDetails = errorDetails;
+        }
+    }
+
+    private static void SetLastPlayerTopFiveErrorDetails(string message, string? stackTrace, string? additionalInformation)
+    {
+        var errorDetails = BuildErrorDetails(message, stackTrace, additionalInformation);
+        SetLastPlayerTopFiveErrorDetails(errorDetails);
+    }
+
+    private static void SetLastPlayerTopFiveErrorDetails(string errorDetails)
+    {
+        lock (s_errorStateLock)
+        {
+            s_lastPlayerTopFiveErrorDetails = errorDetails;
+        }
+    }
+
+    private static string BuildErrorDetails(string message, string? stackTrace, string? additionalInformation)
+    {
+        var errorMessage = string.IsNullOrWhiteSpace(message) ? "알 수 없는 오류" : message;
+        var errorStackTrace = string.IsNullOrWhiteSpace(stackTrace) ? "스택 추적 정보 없음" : stackTrace;
+        var errorAdditionalInformation = string.IsNullOrWhiteSpace(additionalInformation) ? "추가 정보 없음" : additionalInformation;
+        return $"Message: {errorMessage}\nStackTrace: {errorStackTrace}\nAdditionalInfo: {errorAdditionalInformation}";
+    }
+
+    private static string BuildNormalizedLinePreview(string pageContent, int maximumLineCount)
+    {
+        var htmlDocument = new HtmlDocument();
+        htmlDocument.LoadHtml(pageContent);
+
+        return string.Join(
+            "\n",
+            htmlDocument.DocumentNode.InnerText
+                .Replace("\r", string.Empty)
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(pageLine => NormalizeCellText(WebUtility.HtmlDecode(pageLine)))
+                .Where(pageLine => !string.IsNullOrWhiteSpace(pageLine))
+                .Take(maximumLineCount));
     }
 
     private static string NormalizeCellText(string value) => WhiteSpaceRegex().Replace(value, " ").Trim();

@@ -6,4 +6,6 @@ public interface IBaseballTeamRankingService
 {
     Task<BaseballTeamRankingSnapshot?> GetDailyBaseballTeamRankingSnapshotAsync();
     Task<BaseballTopFiveSnapshot?> GetBaseballTopFiveSnapshotAsync();
+    string? GetLastTeamRankingErrorDetails();
+    string? GetLastPlayerTopFiveErrorDetails();
 }
