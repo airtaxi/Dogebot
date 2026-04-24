@@ -24,7 +24,7 @@ public class BaseballBattingRankingCommandHandler(
                 {
                     Action = "send_text",
                     RoomId = data.RoomId,
-                    Message = "야구 타자 순위를 가져오지 못했습니다."
+                    Message = baseballTeamRankingService.GetLastPlayerTopFiveErrorDetails() ?? "야구 타자 순위를 가져오지 못했습니다."
                 };
             }
 
@@ -46,7 +46,7 @@ public class BaseballBattingRankingCommandHandler(
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
-                Message = "야구 타자 순위 조회 중 오류가 발생했습니다."
+                Message = $"Message: {exception.Message}\nStackTrace: {exception.StackTrace ?? "스택 추적 정보 없음"}"
             };
         }
     }
