@@ -5,4 +5,5 @@ namespace KakaoBotAT.Server.Services;
 public interface IBaseballTeamRankingService
 {
     Task<BaseballTeamRankingSnapshot?> GetDailyBaseballTeamRankingSnapshotAsync();
+    Task<BaseballTopFiveSnapshot?> GetBaseballTopFiveSnapshotAsync();
 }
