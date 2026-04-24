@@ -42,6 +42,20 @@ public class BaseballTeamRankingCommandHandler(
                 };
             }
 
+            if (IsLastPlaceSearchText(teamSearchText))
+            {
+                var lastPlaceTeamStanding = rankingSnapshot.TeamStandings
+                    .OrderByDescending(teamStanding => teamStanding.Rank)
+                    .First();
+
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = FormatSingleTeamStandingMessage(rankingSnapshot, lastPlaceTeamStanding)
+                };
+            }
+
             var matchedTeamStandings = FindMatchingTeamStandings(rankingSnapshot.TeamStandings, teamSearchText);
             if (matchedTeamStandings.Count == 0)
             {
@@ -136,6 +150,9 @@ public class BaseballTeamRankingCommandHandler(
         var separatedParts = recordText.Split('-', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         return separatedParts.Length == 3 ? $"{separatedParts[0]}승 {separatedParts[1]}무 {separatedParts[2]}패" : recordText;
     }
+
+    private static bool IsLastPlaceSearchText(string teamSearchText) =>
+        NormalizeTeamSearchText(teamSearchText).Equals("꼴찌", StringComparison.Ordinal);
 
     private static string NormalizeTeamSearchText(string value) =>
         string.Concat(value.Where(character => !char.IsWhiteSpace(character))).ToUpperInvariant();
