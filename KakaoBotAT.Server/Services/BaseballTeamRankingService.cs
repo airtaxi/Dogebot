@@ -1,5 +1,8 @@
 using System.Globalization;
 using System.Net;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using KakaoBotAT.Server.Models;
@@ -10,16 +13,21 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
 {
     private const string BaseballTeamRankingPageAddress = "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx";
     private const string BaseballPlayerTopFivePageAddress = "https://www.koreabaseball.com/Record/Ranking/Top5.aspx";
+    private const string BaseballCrowdRankingPageAddress = "https://www.koreabaseball.com/ws/Record.asmx/GetCrowdTeam";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
     private static readonly Lock s_teamRankingCacheLock = new();
     private static readonly Lock s_playerTopFiveCacheLock = new();
+    private static readonly Lock s_crowdRankingCacheLock = new();
     private static readonly Lock s_errorStateLock = new();
     private static BaseballTeamRankingSnapshot? s_cachedTeamRankingSnapshot;
     private static BaseballTopFiveSnapshot? s_cachedPlayerTopFiveSnapshot;
+    private static BaseballCrowdRankingSnapshot? s_cachedCrowdRankingSnapshot;
     private static DateTimeOffset s_lastTeamRankingCacheTime = DateTimeOffset.MinValue;
     private static DateTimeOffset s_lastPlayerTopFiveCacheTime = DateTimeOffset.MinValue;
+    private static DateTimeOffset s_lastCrowdRankingCacheTime = DateTimeOffset.MinValue;
     private static string? s_lastTeamRankingErrorDetails;
     private static string? s_lastPlayerTopFiveErrorDetails;
+    private static string? s_lastCrowdRankingErrorDetails;
 
     private readonly HttpClient _baseballTeamRankingClient = httpClientFactory.CreateClient();
 
@@ -105,6 +113,73 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         }
     }
 
+    public async Task<BaseballCrowdRankingSnapshot?> GetBaseballCrowdRankingSnapshotAsync()
+    {
+        lock (s_crowdRankingCacheLock)
+        {
+            if (s_cachedCrowdRankingSnapshot != null && DateTimeOffset.UtcNow - s_lastCrowdRankingCacheTime < CacheDuration)
+                return s_cachedCrowdRankingSnapshot;
+        }
+
+        try
+        {
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Post, BaseballCrowdRankingPageAddress)
+            {
+                Content = new StringContent("{}", Encoding.UTF8, "application/json")
+            };
+            requestMessage.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36");
+            requestMessage.Headers.Referrer = new Uri("https://www.koreabaseball.com/");
+
+            using var responseMessage = await _baseballTeamRankingClient.SendAsync(requestMessage);
+            var responseContent = await responseMessage.Content.ReadAsStringAsync();
+            if (!responseMessage.IsSuccessStatusCode)
+            {
+                SetLastCrowdRankingErrorDetails(
+                    $"HTTP 요청이 실패했습니다. StatusCode={(int)responseMessage.StatusCode} ({responseMessage.StatusCode})",
+                    Environment.StackTrace,
+                    $"PageAddress: {BaseballCrowdRankingPageAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
+                logger.LogError("[BASEBALL_CROWD] Failed to fetch crowd page with status code {StatusCode}", responseMessage.StatusCode);
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(responseContent))
+            {
+                SetLastCrowdRankingErrorDetails(
+                    "KBO 관중 순위 응답이 비어 있습니다.",
+                    Environment.StackTrace,
+                    $"PageAddress: {BaseballCrowdRankingPageAddress}");
+                logger.LogError("[BASEBALL_CROWD] Crowd response content was empty");
+                return null;
+            }
+
+            var baseballCrowdRankingSnapshot = ParseBaseballCrowdRankingSnapshot(responseContent);
+            if (baseballCrowdRankingSnapshot == null)
+            {
+                SetLastCrowdRankingErrorDetails(
+                    "KBO 관중 순위 응답 파싱에 실패했습니다.",
+                    Environment.StackTrace,
+                    $"PageAddress: {BaseballCrowdRankingPageAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
+                logger.LogError("[BASEBALL_CROWD] Failed to parse crowd response");
+                return null;
+            }
+
+            lock (s_crowdRankingCacheLock)
+            {
+                s_cachedCrowdRankingSnapshot = baseballCrowdRankingSnapshot;
+                s_lastCrowdRankingCacheTime = DateTimeOffset.UtcNow;
+            }
+
+            ClearLastCrowdRankingErrorDetails();
+            return baseballCrowdRankingSnapshot;
+        }
+        catch (Exception exception)
+        {
+            SetLastCrowdRankingErrorDetails(exception.Message, exception.StackTrace, exception.ToString());
+            logger.LogError(exception, "[BASEBALL_CROWD] Error fetching baseball crowd rankings");
+            return null;
+        }
+    }
+
     public string? GetLastTeamRankingErrorDetails()
     {
         lock (s_errorStateLock)
@@ -118,6 +193,14 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         lock (s_errorStateLock)
         {
             return s_lastPlayerTopFiveErrorDetails;
+        }
+    }
+
+    public string? GetLastCrowdRankingErrorDetails()
+    {
+        lock (s_errorStateLock)
+        {
+            return s_lastCrowdRankingErrorDetails;
         }
     }
 
@@ -172,6 +255,34 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
 
         if (battingTopFiveStatistics.Count == 0 && pitchingTopFiveStatistics.Count == 0) return null;
         return new BaseballTopFiveSnapshot(battingTopFiveStatistics, pitchingTopFiveStatistics);
+    }
+
+    private static BaseballCrowdRankingSnapshot? ParseBaseballCrowdRankingSnapshot(string responseContent)
+    {
+        var baseballCrowdResponse = JsonSerializer.Deserialize<BaseballCrowdRankingResponsePayload>(responseContent);
+        if (baseballCrowdResponse == null) return null;
+        if (!baseballCrowdResponse.ResultCode.Equals("100", StringComparison.Ordinal)) return null;
+        if (string.IsNullOrWhiteSpace(baseballCrowdResponse.Categories)) return null;
+        if (string.IsNullOrWhiteSpace(baseballCrowdResponse.DateText)) return null;
+
+        var teamNames = baseballCrowdResponse.Categories
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .ToList();
+        if (teamNames.Count == 0) return null;
+
+        var crowdDataSeries = baseballCrowdResponse.DataSeries?.FirstOrDefault(dataSeries =>
+            dataSeries.CrowdCounts != null && dataSeries.CrowdCounts.Count > 0);
+        if (crowdDataSeries?.CrowdCounts == null) return null;
+        if (teamNames.Count != crowdDataSeries.CrowdCounts.Count) return null;
+
+        var crowdRankings = teamNames
+            .Select((teamName, index) => new { TeamName = teamName, CrowdCount = crowdDataSeries.CrowdCounts[index] })
+            .OrderByDescending(crowdRanking => crowdRanking.CrowdCount)
+            .ThenBy(crowdRanking => crowdRanking.TeamName, StringComparer.Ordinal)
+            .Select((crowdRanking, index) => new BaseballCrowdRankingEntry(index + 1, crowdRanking.TeamName, crowdRanking.CrowdCount))
+            .ToList();
+
+        return crowdRankings.Count == 0 ? null : new BaseballCrowdRankingSnapshot(baseballCrowdResponse.DateText, crowdRankings);
     }
 
     private static DateOnly? ExtractRankingDate(string pageText)
@@ -397,6 +508,14 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         }
     }
 
+    private static void ClearLastCrowdRankingErrorDetails()
+    {
+        lock (s_errorStateLock)
+        {
+            s_lastCrowdRankingErrorDetails = null;
+        }
+    }
+
     private static void SetLastTeamRankingErrorDetails(string message, string? stackTrace, string? additionalInformation)
     {
         var errorDetails = BuildErrorDetails(message, stackTrace, additionalInformation);
@@ -422,6 +541,20 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         lock (s_errorStateLock)
         {
             s_lastPlayerTopFiveErrorDetails = errorDetails;
+        }
+    }
+
+    private static void SetLastCrowdRankingErrorDetails(string message, string? stackTrace, string? additionalInformation)
+    {
+        var errorDetails = BuildErrorDetails(message, stackTrace, additionalInformation);
+        SetLastCrowdRankingErrorDetails(errorDetails);
+    }
+
+    private static void SetLastCrowdRankingErrorDetails(string errorDetails)
+    {
+        lock (s_errorStateLock)
+        {
+            s_lastCrowdRankingErrorDetails = errorDetails;
         }
     }
 
@@ -456,7 +589,21 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         return string.Join("\n", normalizedLines.Skip(previewStartIndex).Take(maximumLineCount));
     }
 
+    private static string BuildContentPreview(string content, int maximumLength) =>
+        content.Length <= maximumLength ? content : $"{content[..maximumLength]}...";
+
     private static string NormalizeCellText(string value) => WhiteSpaceRegex().Replace(value, " ").Trim();
+
+    private sealed record BaseballCrowdRankingResponsePayload(
+        [property: JsonPropertyName("result_cd")] string ResultCode,
+        [property: JsonPropertyName("result_msg")] string ResultMessage,
+        [property: JsonPropertyName("data")] IReadOnlyList<BaseballCrowdDataSeriesPayload>? DataSeries,
+        [property: JsonPropertyName("categories")] string Categories,
+        [property: JsonPropertyName("date")] string DateText);
+
+    private sealed record BaseballCrowdDataSeriesPayload(
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("data")] IReadOnlyList<int>? CrowdCounts);
 
     [GeneratedRegex(@"(?<Year>\d{4})\.(?<Month>\d{2})\.(?<Day>\d{2})")]
     private static partial Regex RankingDateRegex();
