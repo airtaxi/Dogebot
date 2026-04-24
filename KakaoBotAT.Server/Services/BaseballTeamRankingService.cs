@@ -83,7 +83,7 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
                 SetLastPlayerTopFiveErrorDetails(
                     "KBO TOP5 페이지 파싱에 실패했습니다.",
                     Environment.StackTrace,
-                    $"PageAddress: {BaseballPlayerTopFivePageAddress}\nPageLength: {pageContent.Length}\nPreviewLines:\n{BuildNormalizedLinePreview(pageContent, 40)}");
+                    $"PageAddress: {BaseballPlayerTopFivePageAddress}\nPageLength: {pageContent.Length}\nPreviewLines:\n{BuildNormalizedLinePreview(pageContent, 40, ["타율 TOP5", "홈런 TOP5", "평균자책점 TOP5", "승리 TOP5"])}");
                 logger.LogError("[BASEBALL_TOP5] Failed to parse top five page");
                 return null;
             }
@@ -286,155 +286,96 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         IReadOnlyList<string> statisticNames)
     {
         var parsedStatistics = new List<BaseballTopFiveStatistic>();
+        var topFiveStatisticContainerNodes = FindTopFiveStatisticContainerNodes(htmlDocument);
 
         foreach (var statisticName in statisticNames)
         {
-            var parsedStatistic = TryParseTopFiveStatistic(htmlDocument, statisticName);
+            var parsedStatistic = TryParseTopFiveStatistic(topFiveStatisticContainerNodes, statisticName);
             if (parsedStatistic != null) parsedStatistics.Add(parsedStatistic);
         }
 
         return parsedStatistics;
     }
 
-    private static BaseballTopFiveStatistic? TryParseTopFiveStatistic(HtmlDocument htmlDocument, string statisticName)
+    private static IReadOnlyList<HtmlNode> FindTopFiveStatisticContainerNodes(HtmlDocument htmlDocument)
     {
-        var playerEntries = new List<BaseballPlayerTopFiveEntry>();
-        var statisticTitleNode = FindTopFiveStatisticTitleNode(htmlDocument, statisticName);
-        if (statisticTitleNode == null) return null;
+        var statisticContainerNodes = htmlDocument.DocumentNode
+            .Descendants("div")
+            .Where(htmlNode => HasCssClass(htmlNode, "record"))
+            .ToList();
 
-        var seenPlayerEntries = new HashSet<string>(StringComparer.Ordinal);
-        var followingNodes = statisticTitleNode.SelectNodes("following::*");
-        if (followingNodes == null) return null;
+        return statisticContainerNodes;
+    }
 
-        foreach (var followingNode in followingNodes)
+    private static BaseballTopFiveStatistic? TryParseTopFiveStatistic(
+        IReadOnlyList<HtmlNode> topFiveStatisticContainerNodes,
+        string statisticName)
+    {
+        var statisticTitle = $"{statisticName} TOP5";
+        var statisticContainerNode = topFiveStatisticContainerNodes.FirstOrDefault(htmlNode =>
         {
-            var normalizedNodeText = NormalizeHtmlNodeText(followingNode);
-            if (string.IsNullOrWhiteSpace(normalizedNodeText)) continue;
+            var titleNode = htmlNode.Descendants("span").FirstOrDefault(titleHtmlNode => HasCssClass(titleHtmlNode, "title"));
+            if (titleNode == null) return false;
 
-            if (IsTopFiveStatisticTitleText(normalizedNodeText))
-            {
-                if (playerEntries.Count > 0) break;
-                continue;
-            }
+            return NormalizeHtmlNodeText(titleNode).Equals(statisticTitle, StringComparison.Ordinal);
+        });
+        if (statisticContainerNode == null) return null;
 
-            if (normalizedNodeText.Equals("기록이 없습니다", StringComparison.Ordinal))
-                break;
+        var rankingListItemNodes = statisticContainerNode.SelectNodes(".//ol[contains(concat(' ', normalize-space(@class), ' '), ' rankList ')]/li");
+        if (rankingListItemNodes == null || rankingListItemNodes.Count == 0) return null;
 
-            var parsedPlayerEntry = TryParsePlayerTopFiveEntry(followingNode);
+        var playerEntries = new List<BaseballPlayerTopFiveEntry>();
+        foreach (var rankingListItemNode in rankingListItemNodes)
+        {
+            var fallbackRank = playerEntries.Count + 1;
+            var parsedPlayerEntry = TryParsePlayerTopFiveEntry(rankingListItemNode, fallbackRank);
             if (parsedPlayerEntry == null) continue;
-
-            var playerEntryKey = $"{parsedPlayerEntry.Rank}:{parsedPlayerEntry.PlayerName}:{parsedPlayerEntry.TeamName}:{parsedPlayerEntry.StatisticValue}";
-            if (!seenPlayerEntries.Add(playerEntryKey)) continue;
-
             playerEntries.Add(parsedPlayerEntry);
-            if (playerEntries.Count == 5) break;
         }
 
         return playerEntries.Count == 0 ? null : new BaseballTopFiveStatistic(statisticName, playerEntries);
     }
 
-    private static HtmlNode? FindTopFiveStatisticTitleNode(HtmlDocument htmlDocument, string statisticName)
+    private static BaseballPlayerTopFiveEntry? TryParsePlayerTopFiveEntry(HtmlNode rankingListItemNode, int fallbackRank)
     {
-        var statisticTitle = $"{statisticName} TOP5";
+        var nameNode = rankingListItemNode.Descendants("span").FirstOrDefault(htmlNode => HasCssClass(htmlNode, "name"));
+        var teamNode = rankingListItemNode.Descendants("span").FirstOrDefault(htmlNode => HasCssClass(htmlNode, "team"));
+        var statisticValueNode = rankingListItemNode.Descendants("span").FirstOrDefault(htmlNode => HasCssClass(htmlNode, "rr"));
+        if (nameNode == null || teamNode == null || statisticValueNode == null) return null;
 
-        return htmlDocument.DocumentNode
-            .Descendants()
-            .Where(htmlNode => htmlNode.NodeType == HtmlNodeType.Text)
-            .Select(htmlNode => htmlNode.ParentNode)
-            .Where(htmlNode => htmlNode != null)
-            .Distinct()
-            .OrderBy(htmlNode => NormalizeHtmlNodeText(htmlNode!).Length)
-            .FirstOrDefault(htmlNode =>
-                NormalizeHtmlNodeText(htmlNode!).StartsWith(statisticTitle, StringComparison.Ordinal));
-    }
-
-    private static BaseballPlayerTopFiveEntry? TryParsePlayerTopFiveEntry(HtmlNode htmlNode)
-    {
-        if (!IsPlayerEntryContainerNode(htmlNode)) return null;
-
-        var normalizedNodeText = NormalizeHtmlNodeText(htmlNode);
-        if (string.IsNullOrWhiteSpace(normalizedNodeText)) return null;
-
-        var firstSeparatorIndex = normalizedNodeText.IndexOf('.');
-        if (firstSeparatorIndex < 1) return null;
-
-        var rankText = normalizedNodeText[..firstSeparatorIndex].Trim();
-        if (!int.TryParse(rankText, out var rank)) return null;
+        var rank = ExtractRankFromClassAttribute(nameNode.GetAttributeValue("class", string.Empty), fallbackRank);
         if (rank is < 1 or > 5) return null;
 
-        var remainingText = normalizedNodeText[(firstSeparatorIndex + 1)..].Trim();
-        if (string.IsNullOrWhiteSpace(remainingText)) return null;
-
-        var valueTokens = remainingText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (valueTokens.Length < 3) return null;
-
-        var teamTokenIndex = Array.FindIndex(valueTokens, IsKboTeamNameToken);
-        if (teamTokenIndex <= 0 || teamTokenIndex >= valueTokens.Length - 1) return null;
-
-        var playerName = string.Join(' ', valueTokens[..teamTokenIndex]);
-        var teamName = valueTokens[teamTokenIndex];
-        var statisticValue = string.Join(' ', valueTokens[(teamTokenIndex + 1)..]);
-
-        if (string.IsNullOrWhiteSpace(playerName) || string.IsNullOrWhiteSpace(statisticValue)) return null;
+        var playerName = NormalizeHtmlNodeText(nameNode);
+        var teamName = NormalizeHtmlNodeText(teamNode);
+        var statisticValue = NormalizeHtmlNodeText(statisticValueNode);
+        if (string.IsNullOrWhiteSpace(playerName) || string.IsNullOrWhiteSpace(teamName) || string.IsNullOrWhiteSpace(statisticValue))
+            return null;
 
         return new BaseballPlayerTopFiveEntry(rank, playerName, teamName, statisticValue);
     }
 
-    private static bool IsPlayerEntryContainerNode(HtmlNode htmlNode)
+    private static int ExtractRankFromClassAttribute(string classAttributeValue, int fallbackRank)
     {
-        return htmlNode.Name.Equals("li", StringComparison.OrdinalIgnoreCase) ||
-               htmlNode.Name.Equals("tr", StringComparison.OrdinalIgnoreCase) ||
-               htmlNode.Name.Equals("dd", StringComparison.OrdinalIgnoreCase) ||
-               htmlNode.Name.Equals("p", StringComparison.OrdinalIgnoreCase);
+        var classTokens = classAttributeValue.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var classToken in classTokens)
+        {
+            if (!classToken.StartsWith("rank", StringComparison.Ordinal)) continue;
+
+            var rankText = classToken["rank".Length..];
+            if (int.TryParse(rankText, out var parsedRank)) return parsedRank;
+        }
+
+        return fallbackRank;
     }
 
-    private static bool IsTopFiveStatisticTitleText(string normalizedNodeText)
+    private static bool HasCssClass(HtmlNode htmlNode, string className)
     {
-        if (!normalizedNodeText.EndsWith("TOP5", StringComparison.Ordinal)) return false;
+        var classAttributeValue = htmlNode.GetAttributeValue("class", string.Empty);
+        if (string.IsNullOrWhiteSpace(classAttributeValue)) return false;
 
-        return normalizedNodeText.StartsWith("타율 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("홈런 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("타점 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("도루 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("득점 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("안타 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("출루율 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("장타율 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("2루타 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("3루타 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("루타 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("OPS ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("타수 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("볼넷 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("삼진 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("평균자책점 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("승리 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("세이브 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("승률 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("홀드 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("탈삼진 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("경기 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("패배 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("이닝 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("WHIP ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("완투 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("완봉 ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("QS ", StringComparison.Ordinal) ||
-               normalizedNodeText.StartsWith("피안타율 ", StringComparison.Ordinal);
-    }
-
-    private static bool IsKboTeamNameToken(string token)
-    {
-        return token.Equals("KT", StringComparison.Ordinal) ||
-               token.Equals("LG", StringComparison.Ordinal) ||
-               token.Equals("SSG", StringComparison.Ordinal) ||
-               token.Equals("삼성", StringComparison.Ordinal) ||
-               token.Equals("KIA", StringComparison.Ordinal) ||
-               token.Equals("한화", StringComparison.Ordinal) ||
-               token.Equals("NC", StringComparison.Ordinal) ||
-               token.Equals("두산", StringComparison.Ordinal) ||
-               token.Equals("롯데", StringComparison.Ordinal) ||
-               token.Equals("키움", StringComparison.Ordinal);
+        var classTokens = classAttributeValue.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return classTokens.Contains(className, StringComparer.Ordinal);
     }
 
     private static string NormalizeHtmlNodeText(HtmlNode htmlNode) =>
@@ -492,19 +433,27 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
         return $"Message: {errorMessage}\nStackTrace: {errorStackTrace}\nAdditionalInfo: {errorAdditionalInformation}";
     }
 
-    private static string BuildNormalizedLinePreview(string pageContent, int maximumLineCount)
+    private static string BuildNormalizedLinePreview(string pageContent, int maximumLineCount, IReadOnlyList<string>? preferredKeywords = null)
     {
         var htmlDocument = new HtmlDocument();
         htmlDocument.LoadHtml(pageContent);
 
-        return string.Join(
-            "\n",
-            htmlDocument.DocumentNode.InnerText
-                .Replace("\r", string.Empty)
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Select(pageLine => NormalizeCellText(WebUtility.HtmlDecode(pageLine)))
-                .Where(pageLine => !string.IsNullOrWhiteSpace(pageLine))
-                .Take(maximumLineCount));
+        var normalizedLines = htmlDocument.DocumentNode.InnerText
+            .Replace("\r", string.Empty)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(pageLine => NormalizeCellText(WebUtility.HtmlDecode(pageLine)))
+            .Where(pageLine => !string.IsNullOrWhiteSpace(pageLine))
+            .ToList();
+
+        var previewStartIndex = 0;
+        if (preferredKeywords != null && preferredKeywords.Count > 0)
+        {
+            var matchingLineIndex = normalizedLines.FindIndex(pageLine =>
+                preferredKeywords.Any(preferredKeyword => pageLine.Contains(preferredKeyword, StringComparison.Ordinal)));
+            if (matchingLineIndex >= 0) previewStartIndex = Math.Max(0, matchingLineIndex - 2);
+        }
+
+        return string.Join("\n", normalizedLines.Skip(previewStartIndex).Take(maximumLineCount));
     }
 
     private static string NormalizeCellText(string value) => WhiteSpaceRegex().Replace(value, " ").Trim();
