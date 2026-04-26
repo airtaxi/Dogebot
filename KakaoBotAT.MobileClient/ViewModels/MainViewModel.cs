@@ -160,7 +160,12 @@ public partial class MainViewModel : ObservableObject
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{ServerAddress}/command", cancellationToken);
+                var availableRooms = KakaoNotificationListener.GetAvailableRoomIds();
+                var roomsParam = availableRooms.Count > 0
+                    ? $"?availableRooms={Uri.EscapeDataString(string.Join(",", availableRooms))}"
+                    : "";
+
+                var response = await _httpClient.GetAsync($"{ServerAddress}/command{roomsParam}", cancellationToken);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -180,10 +185,6 @@ public partial class MainViewModel : ObservableObject
                             await _kakaoBotService.MarkAsReadAsync(serverResponse.RoomId);
                         }
                     }
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    // No command (usually)
                 }
                 else
                 {
