@@ -6,7 +6,7 @@ namespace KakaoBotAT.Server.Controllers;
 
 [ApiController]
 [Route("api/kakao")]
-public class KakaoController(IKakaoService kakaoService) : ControllerBase
+public class KakaoController(IKakaoService kakaoService, ILogger<KakaoController> logger) : ControllerBase
 {
     /// <summary>
     /// Receives notification messages from the MAUI client and returns an immediate response.
@@ -27,13 +27,20 @@ public class KakaoController(IKakaoService kakaoService) : ControllerBase
 
     /// <summary>
     /// Responds to polling requests from the MAUI client by delivering server queued commands.
-    /// GET /api/kakao/command
+    /// The client passes available room IDs (rooms with active reply actions) as a query parameter.
+    /// GET /api/kakao/command?availableRooms=roomId1,roomId2,...
     /// </summary>
     [HttpGet("command")]
     [ProducesResponseType(typeof(ServerResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Command()
+    public async Task<IActionResult> Command([FromQuery] string? availableRooms)
     {
-        var command = await kakaoService.GetPendingCommandAsync();
+        var roomIds = string.IsNullOrEmpty(availableRooms)
+            ? []
+            : availableRooms.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+        logger.LogInformation("[COMMAND] Polling with {Count} available rooms ({Query})", roomIds.Length, availableRooms ?? "N/A");
+
+        var command = await kakaoService.GetPendingCommandAsync(roomIds);
         return Ok(command);
     }
 }

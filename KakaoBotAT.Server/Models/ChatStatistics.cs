@@ -1,4 +1,4 @@
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace KakaoBotAT.Server.Models;
@@ -11,6 +11,9 @@ public class ChatStatistics
 
     [BsonElement("roomId")]
     public string RoomId { get; set; } = string.Empty;
+
+    [BsonElement("senderHash")]
+    public string SenderHash { get; set; } = string.Empty;
 
     [BsonElement("senderName")]
     public string SenderName { get; set; } = string.Empty;

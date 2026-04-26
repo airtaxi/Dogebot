@@ -1,7 +1,11 @@
-using KakaoBotAT.Server.Commands;
+﻿using KakaoBotAT.Server.Commands;
 using KakaoBotAT.Server.Services;
+using KakaoBotAT.Server.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Register HttpClient
+builder.Services.AddHttpClient();
 
 // Register MongoDB service
 builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
@@ -9,11 +13,138 @@ builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
 // Register statistics service
 builder.Services.AddSingleton<IChatStatisticsService, ChatStatisticsService>();
 
-// Register command handlers
-builder.Services.AddSingleton<ICommandHandler, PingCommandHandler>();
+// Register cleanup service
+builder.Services.AddSingleton<MessageCleanupService>();
+
+// Register SimSim service
+builder.Services.AddSingleton<ISimSimService, SimSimService>();
+
+// Register Weather service
+builder.Services.AddSingleton<IWeatherService, WeatherService>();
+
+// Register Admin service
+builder.Services.AddSingleton<IAdminService, AdminService>();
+
+// Register Request Limit service
+builder.Services.AddSingleton<IRequestLimitService, RequestLimitService>();
+
+// Register User Preference service
+builder.Services.AddSingleton<IUserPreferenceService, UserPreferenceService>();
+
+// Register Hot Deal service
+builder.Services.AddSingleton<IHotDealService, HotDealService>();
+
+// Register Baseball team ranking service
+builder.Services.AddSingleton<IBaseballTeamRankingService, BaseballTeamRankingService>();
+
+// Register Migration service
+builder.Services.AddSingleton<IMigrationService, MigrationService>();
+
+// Register Scheduled Message service
+builder.Services.AddSingleton<IScheduledMessageService, ScheduledMessageService>();
+
+// Register Room Migration service
+builder.Services.AddSingleton<IRoomMigrationService, RoomMigrationService>();
+
+// Register IMAX Notification service
+builder.Services.AddSingleton<IImaxNotificationService, ImaxNotificationService>();
+
+// Register Fortune service
+builder.Services.AddSingleton<IFortuneService, FortuneService>();
+
+// Register Debug Log service
+builder.Services.AddSingleton<DebugLogService>();
+
+// Register background services
+builder.Services.AddHostedService<ApprovalCodeCleanupService>();
+builder.Services.AddHostedService<ScheduledMessageSessionCleanupService>();
+builder.Services.AddHostedService<ImaxNotificationCheckService>();
+builder.Services.AddHostedService<ImaxNotificationSessionCleanupService>();
+
+// ⚠️ Register command handlers
+// 
+// IMPORTANT: When adding a new command handler, follow these 3 steps:
+// 
+// Step 1: Add the registration line here
+//         builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
+// 
+// Step 2: Update HelpCommandHandler.cs to include your command in the help message
+//         Add your command under the appropriate category:
+//         - 🎮 게임 & 랜덤 (Game & Random)
+//         - 🎭 재미 (Fun)
+//         - 📊 통계 (Statistics)
+//         - ℹ️ 기타 (Others)
+//         Format: "• [command] - [description]"
+// 
+// Step 3: Your command handler must implement ICommandHandler interface
+//         See existing handlers for examples (DengCommandHandler, FoodRecommendCommandHandler, etc.)
+// 
+// Example:
+// If you create "!날씨" command:
+// 1. Add here: builder.Services.AddSingleton<ICommandHandler, WeatherCommandHandler>();
+// 2. Update HelpCommandHandler.cs:
+//    "ℹ️ 기타\n" +
+//    "• !날씨 - 현재 날씨 확인\n" +
+//    "• !도움말 / !help - 이 메시지"
+//
+builder.Services.AddSingleton<ICommandHandler, DengCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ViewRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MyRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, FoodRecommendCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ProbabilityCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, JudgeCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, OddEvenCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DiceCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, LottoCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MagicConchCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, HelpCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, RoomInfoCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, CarGachaCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, PlanetGachaCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SimSimQueryCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SimSimRegisterCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SimSimDeleteCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SimSimCountCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SimSimRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, WeatherCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, TomorrowWeatherCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, HamburgerCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, CourseMealCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ChoiceCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, AdminAddCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, AdminRemoveCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, AdminListCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SetRequestLimitCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, RemoveRequestLimitCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, EnableRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DisableRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, HourlyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MyHourlyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DailyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MyDailyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MonthlyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MyMonthlyStatsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, HotDealCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, BaseballTeamRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, BaseballBattingRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, BaseballPitchingRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, BaseballCrowdRankingCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, BaseballNewsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, WordRankCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ScheduledMessageSetCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ScheduledMessageRemoveCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ScheduledMessageListCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, RoomBackupCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, RoomRestoreCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ImaxNotificationSetCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ImaxNotificationRemoveCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ImaxNotificationListCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, CgvMovieListCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ImaxScheduleQueryCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DebugCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, FortuneCommandHandler>();
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
 
@@ -22,6 +153,52 @@ builder.Services.AddSingleton<IKakaoService, KakaoService>();
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
+// Run cleanup on startup to remove blacklisted messages from database
+using (var scope = app.Services.CreateScope())
+{
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var cleanupService = scope.ServiceProvider.GetRequiredService<MessageCleanupService>();
+    var adminService = scope.ServiceProvider.GetRequiredService<IAdminService>();
+    var requestLimitService = scope.ServiceProvider.GetRequiredService<IRequestLimitService>();
+    
+    // Run database migrations
+    try
+    {
+        var migrationService = scope.ServiceProvider.GetRequiredService<IMigrationService>();
+        logger.LogInformation("[STARTUP] Running database migrations...");
+        await migrationService.RunMigrationsAsync();
+        logger.LogInformation("[STARTUP] Database migrations completed.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "[STARTUP] Error during database migrations");
+    }
+
+    try
+    {
+        logger.LogInformation("[STARTUP] Starting cleanup of blacklisted messages...");
+        var deletedCount = await cleanupService.DeleteBlacklistedMessagesAsync();
+        logger.LogInformation("[STARTUP] Cleanup completed. Deleted {Count} blacklisted messages.", deletedCount);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "[STARTUP] Error during cleanup of blacklisted messages");
+    }
+
+    try
+    {
+        logger.LogInformation("[STARTUP] Starting cleanup of expired approval codes...");
+        var deletedAdminCodes = await adminService.DeleteExpiredApprovalCodesAsync();
+        var deletedLimitCodes = await requestLimitService.DeleteExpiredApprovalCodesAsync();
+        logger.LogInformation("[STARTUP] Cleanup completed. Deleted {AdminCodes} admin approval codes and {LimitCodes} limit approval codes.", 
+            deletedAdminCodes, deletedLimitCodes);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "[STARTUP] Error during cleanup of expired approval codes");
+    }
+}
 
 app.MapControllers();
 

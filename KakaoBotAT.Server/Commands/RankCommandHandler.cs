@@ -1,22 +1,13 @@
-using KakaoBotAT.Commons;
+﻿using KakaoBotAT.Commons;
 using KakaoBotAT.Server.Services;
 
 namespace KakaoBotAT.Server.Commands;
 
-public class RankCommandHandler : ICommandHandler
+public class RankCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<RankCommandHandler> logger) : ICommandHandler
 {
-    private readonly IChatStatisticsService _statisticsService;
-    private readonly ILogger<RankCommandHandler> _logger;
-
-    public RankCommandHandler(
-        IChatStatisticsService statisticsService,
-        ILogger<RankCommandHandler> logger)
-    {
-        _statisticsService = statisticsService;
-        _logger = logger;
-    }
-
-    public string Command => "/랭크";
+    public string Command => "!랭크";
 
     public bool CanHandle(string content)
     {
@@ -29,6 +20,18 @@ public class RankCommandHandler : ICommandHandler
     {
         try
         {
+            // Check if message content ranking is enabled for this room
+            if (!await statisticsService.IsMessageContentEnabledAsync(data.RoomId))
+            {
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = "❌ 이 방은 랭킹이 비활성화되어 있습니다.\n\n" +
+                             "관리자가 !랭크활성화 명령어로 활성화할 수 있습니다."
+                };
+            }
+
             var parts = data.Content.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var limit = 10;
 
@@ -37,7 +40,7 @@ public class RankCommandHandler : ICommandHandler
                 limit = Math.Max(1, Math.Min(parsedLimit, 50));
             }
 
-            var topMessages = await _statisticsService.GetTopMessagesAsync(data.RoomId, limit);
+            var topMessages = await statisticsService.GetTopMessagesAsync(data.RoomId, limit);
 
             if (topMessages.Count == 0)
             {
@@ -61,15 +64,19 @@ public class RankCommandHandler : ICommandHandler
                     _ => $"{i + 1}."
                 };
                 
-                var displayContent = content.Length > 30 
-                    ? content.Substring(0, 27) + "..." 
-                    : content;
+                var displayContent = content switch
+                {
+                    [var c, var c2, var c3] when c == c2 && c2 == c3 && c is >= 'ㄱ' and <= 'ㅎ'
+                        => $"{c}, {c}{c} 등",
+                    _ when content.Length > 30 => content[..27] + "...",
+                    _ => content
+                };
                 
                 message += $"{medal} {displayContent} ({count:N0}회)\n";
             }
 
-            if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[RANK] Showing top {Limit} messages for room {RoomId}", limit, data.RoomId);
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[RANK] Showing top {Limit} messages for room {RoomId}", limit, data.RoomId);
 
             return new ServerResponse
             {
@@ -80,7 +87,7 @@ public class RankCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[RANK] Error processing rank command");
+            logger.LogError(ex, "[RANK] Error processing rank command");
             return new ServerResponse
             {
                 Action = "send_text",
