@@ -1,0 +1,126 @@
+namespace Dogebot.Server.Baseball;
+
+public static class BaseballTeamAliasCatalog
+{
+    public static IReadOnlyList<BaseballTeamAliasDefinition> TeamAliasDefinitions { get; } =
+    [
+        new("LG",
+        [
+            "LG",
+            "엘지",
+            "트윈스",
+            "엘지트윈스",
+            "LGTwins",
+            "쥐",
+            "꼴쥐",
+            "범쥐",
+            "잠실의주인"
+        ]),
+        new("롯데",
+        [
+            "롯데",
+            "자이언츠",
+            "롯데자이언츠",
+            "LotteGiants",
+            "꼴데",
+            "봄데",
+            "갈매기",
+            "데"
+        ]),
+        new("두산",
+        [
+            "두산",
+            "베어스",
+            "두산베어스",
+            "DoosanBears",
+            "범두",
+            "잠실의주인"
+        ]),
+        new("삼성",
+        [
+            "삼성",
+            "라이온즈",
+            "삼성라이온즈",
+            "SamsungLions",
+            "칩성",
+            "꼴성",
+            "푸른한화",
+            "블루떼껄룩스",
+            "칩"
+        ]),
+        new("NC",
+        [
+            "NC",
+            "엔시",
+            "엔씨",
+            "다이노스",
+            "엔씨다이노스",
+            "NCDinos",
+            "접시",
+            "접대",
+            "콩룡",
+            "집행검"
+        ]),
+        new("KT",
+        [
+            "KT",
+            "케이티",
+            "위즈",
+            "케이티위즈",
+            "KT위즈",
+            "KTWiz",
+            "킅",
+            "콱"
+        ]),
+        new("SSG",
+        [
+            "SSG",
+            "쓱",
+            "랜더스",
+            "SSG랜더스",
+            "쓱랜더스",
+            "신세계",
+            "SSGLanders"
+        ]),
+        new("KIA",
+        [
+            "KIA",
+            "기아",
+            "타이거즈",
+            "기아타이거즈",
+            "KIATigers",
+            "사이다",
+            "갸"
+        ]),
+        new("한화",
+        [
+            "한화",
+            "이글스",
+            "한화이글스",
+            "HanwhaEagles",
+            "칰",
+            "치킨",
+            "삼계탕",
+            "독수리",
+            "행복한화",
+            "꼴칰"
+        ]),
+        new("키움",
+        [
+            "키움",
+            "히어로즈",
+            "키움히어로즈",
+            "KiwoomHeroes",
+            "겆",
+            "거지"
+        ])
+    ];
+
+    public static IReadOnlyList<string> GetSearchAliases(string officialTeamName)
+    {
+        var teamAliasDefinition = TeamAliasDefinitions.FirstOrDefault(teamAliasDefinition =>
+            teamAliasDefinition.OfficialTeamName.Equals(officialTeamName, StringComparison.OrdinalIgnoreCase));
+        return teamAliasDefinition?.SearchAliases ?? [officialTeamName];
+    }
+}
+

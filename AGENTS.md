@@ -15,10 +15,10 @@
 dotnet build
 
 # 서버만 빌드
-dotnet build KakaoBotAT.Server
+dotnet build Dogebot.Server
 
 # 서버 실행
-dotnet run --project KakaoBotAT.Server
+dotnet run --project Dogebot.Server
 ```
 
 테스트 프로젝트와 lint 도구는 없다.
@@ -27,15 +27,15 @@ dotnet run --project KakaoBotAT.Server
 
 카카오톡 봇 시스템으로, 3개 프로젝트로 구성된 분산 아키텍처:
 
-- **KakaoBotAT.MobileClient** — .NET MAUI Android 앱. Android `NotificationListenerService`로 카카오톡 알림을 가로채 서버로 전송하고, 폴링으로 명령을 수신하여 답장/읽음 처리를 수행한다.
-- **KakaoBotAT.Server** — ASP.NET Core Web API. 메시지를 받아 커맨드 핸들러로 처리하고, MongoDB에 통계를 저장한다.
-- **KakaoBotAT.Commons** — 클라이언트-서버 간 공유 DTO (`KakaoMessageData`, `ServerNotification`, `ServerResponse`).
+- **Dogebot.MobileClient** — .NET MAUI Android 앱. Android `NotificationListenerService`로 카카오톡 알림을 가로채 서버로 전송하고, 폴링으로 명령을 수신하여 답장/읽음 처리를 수행한다.
+- **Dogebot.Server** — ASP.NET Core Web API. 메시지를 받아 커맨드 핸들러로 처리하고, MongoDB에 통계를 저장한다.
+- **Dogebot.Commons** — 클라이언트-서버 간 공유 DTO (`KakaoMessageData`, `ServerNotification`, `ServerResponse`).
 
 통신 흐름:
 1. 클라이언트 → `POST /api/kakao/notify` → 서버가 커맨드 핸들러 실행 → 즉시 응답 반환
 2. 클라이언트 → `GET /api/kakao/command?availableRooms=...` → 서버가 대기 중인 예약 메시지/IMAX 알림 반환
 
-서버 시작 시 흐름 (`KakaoBotAT.Server/Program.cs`):
+서버 시작 시 흐름 (`Dogebot.Server/Program.cs`):
 - `MigrationService.RunMigrationsAsync()` 실행
 - `MessageCleanupService`로 블랙리스트 메시지 정리
 - `IAdminService`/`IRequestLimitService`로 만료 승인 코드 정리
@@ -85,7 +85,7 @@ dotnet run --project KakaoBotAT.Server
 
 새 봇 커맨드를 추가할 때:
 
-1. `KakaoBotAT.Server\Commands\` 에 `ICommandHandler` 구현 클래스 생성.
+1. `Dogebot.Server\Commands\` 에 `ICommandHandler` 구현 클래스 생성.
 2. `Program.cs`에 `builder.Services.AddSingleton<ICommandHandler, YourHandler>();` 등록.
 3. `HelpCommandHandler.cs`에 명령어 설명 추가 (`!도움`, `!도움말`, `!help` 노출 목록).
 
@@ -146,7 +146,7 @@ public class ExampleCommandHandler(ILogger<ExampleCommandHandler> logger) : ICom
 
 ## DTO / JSON
 
-- `KakaoBotAT.Commons`의 DTO에 `[JsonPropertyName("camelCase")]` 사용.
+- `Dogebot.Commons`의 DTO에 `[JsonPropertyName("camelCase")]` 사용.
 - `ServerResponse.Action` 값: `"send_text"`, `"read"`, `"error"`.
 
 ## MongoDB Configuration
@@ -201,3 +201,4 @@ public class ExampleService : IExampleService
 2. 마이그레이션 메서드를 private async로 구현.
 3. `ApplyMigrationAsync`가 `migrations` 컬렉션에서 버전 중복을 자동 체크하므로 수동 확인 불필요.
 4. 마이그레이션은 **버전 번호 순서대로** 등록해야 한다.
+

@@ -1,4 +1,4 @@
-﻿# KakaoBotAT
+# Dogebot
 
 A KakaoTalk bot system built with .NET 10 that uses Android's NotificationListenerService to intercept and respond to KakaoTalk messages.
 
@@ -12,11 +12,11 @@ See the [LICENSE](LICENSE) file for details.
 
 ## Overview
 
-KakaoBotAT is a distributed system consisting of three main components:
+Dogebot is a distributed system consisting of three main components:
 
-- **KakaoBotAT.MobileClient**: A .NET MAUI Android application that listens to KakaoTalk notifications and communicates with the server
-- **KakaoBotAT.Server**: An ASP.NET Core REST API server that processes messages with extensible command handlers and MongoDB-based statistics
-- **KakaoBotAT.Commons**: Shared data models and contracts used by both client and server
+- **Dogebot.MobileClient**: A .NET MAUI Android application that listens to KakaoTalk notifications and communicates with the server
+- **Dogebot.Server**: An ASP.NET Core REST API server that processes messages with extensible command handlers and MongoDB-based statistics
+- **Dogebot.Commons**: Shared data models and contracts used by both client and server
 
 ## Architecture
 
@@ -99,23 +99,23 @@ KakaoBotAT is a distributed system consisting of three main components:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/airtaxi/KakaoBotAT.git
-cd KakaoBotAT
+git clone https://github.com/airtaxi/Dogebot.git
+cd Dogebot
 ```
 
 ### 2. Configure Server Endpoint
-Edit `KakaoBotAT.MobileClient\Constants.cs` and update the server URL:
+Edit `Dogebot.MobileClient\Constants.cs` and update the server URL:
 ```csharp
 internal const string ServerEndpointUrl = "https://your-server-url.com/api/kakao";
 ```
 
 ### 3. Configure MongoDB (Optional)
-If you want to use statistics features, configure MongoDB connection in `KakaoBotAT.Server\appsettings.json`:
+If you want to use statistics features, configure MongoDB connection in `Dogebot.Server\appsettings.json`:
 ```json
 {
   "MongoDB": {
     "ConnectionString": "mongodb://localhost:27017",
-    "DatabaseName": "KakaoBotAT"
+    "DatabaseName": "Dogebot"
   }
 }
 ```
@@ -127,12 +127,12 @@ dotnet build
 
 ### 5. Run the Server
 ```bash
-cd KakaoBotAT.Server
+cd Dogebot.Server
 dotnet run
 ```
 
 ### 6. Deploy Mobile Client
-Deploy the `KakaoBotAT.MobileClient` project to your Android device through Visual Studio.
+Deploy the `Dogebot.MobileClient` project to your Android device through Visual Studio.
 
 ## Usage
 
@@ -141,7 +141,7 @@ Deploy the `KakaoBotAT.MobileClient` project to your Android device through Visu
 1. **Grant Notification Access**
    - Open the app
    - Tap "Open Notification Listener Settings"
-   - Enable notification access for KakaoBotAT
+   - Enable notification access for Dogebot
 
 2. **Disable Battery Optimization**
    - Tap "Request Battery Optimization Exemption"
@@ -160,9 +160,9 @@ Deploy the `KakaoBotAT.MobileClient` project to your Android device through Visu
 Create a new command handler by implementing the `ICommandHandler` interface:
 
 ```csharp
-using KakaoBotAT.Commons;
+using Dogebot.Commons;
 
-namespace KakaoBotAT.Server.Commands;
+namespace Dogebot.Server.Commands;
 
 public class HelloCommandHandler : ICommandHandler
 {
@@ -236,12 +236,12 @@ Polling endpoint for retrieving queued commands (currently returns empty respons
 ## Project Structure
 
 ```
-KakaoBotAT/
-├── KakaoBotAT.Commons/
+Dogebot/
+├── Dogebot.Commons/
 │   ├── KakaoMessageData.cs        # Message data model
 │   ├── ServerNotification.cs      # Notification request model
 │   └── ServerResponse.cs          # Server response model
-├── KakaoBotAT.MobileClient/
+├── Dogebot.MobileClient/
 │   ├── Platforms/
 │   │   └── Android/
 │   │       ├── KakaoNotificationListener.cs  # Notification interceptor
@@ -254,7 +254,7 @@ KakaoBotAT/
 │   ├── IKakaoBotService.cs        # Service interface
 │   ├── MauiProgram.cs             # App configuration
 │   └── App.xaml                   # Application resources
-├── KakaoBotAT.Server/
+├── Dogebot.Server/
 │   ├── Commands/
 │   │   ├── ICommandHandler.cs            # Command handler interface
 │   │   ├── CommandHandlerFactory.cs      # Handler factory
@@ -327,3 +327,4 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 ## Disclaimer
 
 This project is for educational purposes. Make sure to comply with KakaoTalk's Terms of Service when using this bot.
+

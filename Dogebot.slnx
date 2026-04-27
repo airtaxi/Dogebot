@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Project Path="Dogebot.Commons/Dogebot.Commons.csproj" />
+  <Project Path="Dogebot.DiscordClient/Dogebot.DiscordClient.csproj" />
+  <Project Path="Dogebot.DiscordClient.Tests/Dogebot.DiscordClient.Tests.csproj" />
+  <Project Path="Dogebot.MobileClient/Dogebot.MobileClient.csproj" />
+  <Project Path="Dogebot.Server/Dogebot.Server.csproj" />
+</Solution>
+
