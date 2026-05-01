@@ -106,13 +106,34 @@ public class BaseballTeamRankingCommandHandler(
     private static List<BaseballTeamStanding> FindMatchingTeamStandings(IReadOnlyList<BaseballTeamStanding> teamStandings, string teamSearchText)
     {
         var normalizedTeamSearchText = NormalizeTeamSearchText(teamSearchText);
+        var teamStandingMatches = teamStandings
+            .Select(teamStanding =>
+            {
+                var normalizedSearchAliases = BaseballTeamAliasCatalog.GetSearchAliases(teamStanding.TeamName)
+                    .Select(NormalizeTeamSearchText)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
 
-        return [.. teamStandings.Where(teamStanding =>
-            BaseballTeamAliasCatalog.GetSearchAliases(teamStanding.TeamName)
-                .Select(NormalizeTeamSearchText)
-                .Any(searchAlias =>
-                    searchAlias.Contains(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase) ||
-                    normalizedTeamSearchText.Contains(searchAlias, StringComparison.OrdinalIgnoreCase)))];
+                return new
+                {
+                    TeamStanding = teamStanding,
+                    HasExactMatch = normalizedSearchAliases.Any(searchAlias =>
+                        searchAlias.Equals(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase)),
+                    HasPartialMatch = normalizedSearchAliases.Any(searchAlias =>
+                        searchAlias.Contains(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase) ||
+                        normalizedTeamSearchText.Contains(searchAlias, StringComparison.OrdinalIgnoreCase))
+                };
+            })
+            .Where(teamStandingMatch => teamStandingMatch.HasPartialMatch)
+            .ToList();
+
+        var exactMatchedTeamStandings = teamStandingMatches
+            .Where(teamStandingMatch => teamStandingMatch.HasExactMatch)
+            .Select(teamStandingMatch => teamStandingMatch.TeamStanding)
+            .ToList();
+        if (exactMatchedTeamStandings.Count > 0) return exactMatchedTeamStandings;
+
+        return [.. teamStandingMatches.Select(teamStandingMatch => teamStandingMatch.TeamStanding)];
     }
 
     private static string FormatAllTeamStandingsMessage(BaseballTeamRankingSnapshot rankingSnapshot)
