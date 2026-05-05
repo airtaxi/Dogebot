@@ -8,5 +8,7 @@ public interface IBaseballGameScheduleService
     Task<BaseballGameDetail?> GetTodayGameDetailAsync(long gameId);
     Task<BaseballGameScheduleSnapshot?> GetTomorrowGameSnapshotAsync();
     Task<BaseballGameDetail?> GetTomorrowGameDetailAsync(long gameId);
+    Task<BaseballGameScheduleSnapshot?> GetGameSnapshotAsync(DateOnly targetDate);
+    Task<BaseballGameDetail?> GetGameDetailAsync(DateOnly targetDate, long gameId);
     string? GetLastGameScheduleErrorDetails();
 }

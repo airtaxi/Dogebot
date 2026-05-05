@@ -70,12 +70,12 @@ public class RoomRestoreCommandHandler(
                          $"📋 원본: {result.SourceRoomName}\n" +
                          $"📋 대상: {data.RoomName}\n" +
                          $"📊 이전된 데이터: {result.TotalDocumentsMigrated:N0}건\n\n" +
-                         $"통계, 설정, 반복 메시지가 모두 이전되었습니다."
+                         $"통계, 설정, 반복 메시지, 알림 구독이 모두 이전되었습니다."
             };
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            logger.LogError(ex, "[ROOM_RESTORE] Error processing room restore command");
+            logger.LogError(exception, "[ROOM_RESTORE] Error processing room restore command");
             return new ServerResponse
             {
                 Action = "send_text",

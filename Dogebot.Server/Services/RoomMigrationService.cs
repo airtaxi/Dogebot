@@ -78,12 +78,15 @@ public class RoomMigrationService : IRoomMigrationService
         totalMigrated += await UpdateRoomIdAsync<MonthlyChatStatistics>("monthlyChatStatistics", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<RoomRankingSettings>("roomRankingSettings", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<ScheduledMessage>("scheduledMessages", sourceRoomId, targetRoomId);
+        totalMigrated += await UpdateRoomIdAsync<BaseballGameSubscription>("baseballGameSubscriptions", sourceRoomId, targetRoomId);
+        totalMigrated += await UpdateRoomIdAsync<BaseballGameSubscriptionMessage>("baseballGameSubscriptionMessages", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<RoomRequestLimit>("roomRequestLimits", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<UserDailyRequest>("userDailyRequests", sourceRoomId, targetRoomId);
 
         // Also update roomName in settings/limits that store it
         await UpdateRoomNameAsync<RoomRankingSettings>("roomRankingSettings", targetRoomId, targetRoomName);
         await UpdateRoomNameAsync<RoomRequestLimit>("roomRequestLimits", targetRoomId, targetRoomName);
+        await UpdateRoomNameAsync<BaseballGameSubscription>("baseballGameSubscriptions", targetRoomId, targetRoomName);
 
         // Record senderName→oldSenderHash mappings for lazy hash migration.
         // When a user sends a message in the target room, their old hash data
@@ -136,9 +139,9 @@ public class RoomMigrationService : IRoomMigrationService
             _logger.LogInformation("[ROOM_MIGRATION] Recorded {Count} senderHash mappings for room {RoomId}",
                 mappings.Count, targetRoomId);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            _logger.LogWarning(ex, "[ROOM_MIGRATION] Failed to record senderHash mappings");
+            _logger.LogWarning(exception, "[ROOM_MIGRATION] Failed to record senderHash mappings");
         }
     }
 
@@ -264,9 +267,9 @@ public class RoomMigrationService : IRoomMigrationService
 
             await collection.DeleteManyAsync(oldFilter);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            _logger.LogWarning(ex, "[ROOM_MIGRATION] Failed to merge senderHash in {Collection}", collectionName);
+            _logger.LogWarning(exception, "[ROOM_MIGRATION] Failed to merge senderHash in {Collection}", collectionName);
         }
     }
 
@@ -288,7 +291,7 @@ public class RoomMigrationService : IRoomMigrationService
 
             return count;
         }
-        catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
+        catch (MongoWriteException mongoWriteException) when (mongoWriteException.WriteError.Category == ServerErrorCategory.DuplicateKey)
         {
             _logger.LogWarning("[ROOM_MIGRATION] {Collection}: Duplicate key conflict during migration, skipping", collectionName);
             return 0;
@@ -307,9 +310,9 @@ public class RoomMigrationService : IRoomMigrationService
             var update = Builders<T>.Update.Set("roomName", roomName);
             await collection.UpdateManyAsync(filter, update);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            _logger.LogWarning(ex, "[ROOM_MIGRATION] Failed to update roomName in {Collection}", collectionName);
+            _logger.LogWarning(exception, "[ROOM_MIGRATION] Failed to update roomName in {Collection}", collectionName);
         }
     }
 

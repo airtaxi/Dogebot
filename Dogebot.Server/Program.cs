@@ -40,6 +40,9 @@ builder.Services.AddSingleton<IBaseballTeamRankingService, BaseballTeamRankingSe
 // Register Baseball game schedule service
 builder.Services.AddSingleton<IBaseballGameScheduleService, BaseballGameScheduleService>();
 
+// Register Baseball game subscription service
+builder.Services.AddSingleton<IBaseballGameSubscriptionService, BaseballGameSubscriptionService>();
+
 // Register Migration service
 builder.Services.AddSingleton<IMigrationService, MigrationService>();
 
@@ -63,6 +66,7 @@ builder.Services.AddHostedService<ApprovalCodeCleanupService>();
 builder.Services.AddHostedService<ScheduledMessageSessionCleanupService>();
 builder.Services.AddHostedService<ImaxNotificationCheckService>();
 builder.Services.AddHostedService<ImaxNotificationSessionCleanupService>();
+builder.Services.AddHostedService<BaseballGameSubscriptionCheckService>();
 
 // ⚠️ Register command handlers
 // 
@@ -136,6 +140,7 @@ builder.Services.AddSingleton<ICommandHandler, BaseballPitchingRankingCommandHan
 builder.Services.AddSingleton<ICommandHandler, BaseballCrowdRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballNewsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballGameScheduleCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, BaseballGameSubscriptionCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WordRankCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageSetCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageRemoveCommandHandler>();
@@ -174,9 +179,9 @@ using (var scope = app.Services.CreateScope())
         await migrationService.RunMigrationsAsync();
         logger.LogInformation("[STARTUP] Database migrations completed.");
     }
-    catch (Exception ex)
+    catch (Exception exception)
     {
-        logger.LogError(ex, "[STARTUP] Error during database migrations");
+        logger.LogError(exception, "[STARTUP] Error during database migrations");
     }
 
     try
@@ -185,9 +190,9 @@ using (var scope = app.Services.CreateScope())
         var deletedCount = await cleanupService.DeleteBlacklistedMessagesAsync();
         logger.LogInformation("[STARTUP] Cleanup completed. Deleted {Count} blacklisted messages.", deletedCount);
     }
-    catch (Exception ex)
+    catch (Exception exception)
     {
-        logger.LogError(ex, "[STARTUP] Error during cleanup of blacklisted messages");
+        logger.LogError(exception, "[STARTUP] Error during cleanup of blacklisted messages");
     }
 
     try
@@ -198,9 +203,9 @@ using (var scope = app.Services.CreateScope())
         logger.LogInformation("[STARTUP] Cleanup completed. Deleted {AdminCodes} admin approval codes and {LimitCodes} limit approval codes.", 
             deletedAdminCodes, deletedLimitCodes);
     }
-    catch (Exception ex)
+    catch (Exception exception)
     {
-        logger.LogError(ex, "[STARTUP] Error during cleanup of expired approval codes");
+        logger.LogError(exception, "[STARTUP] Error during cleanup of expired approval codes");
     }
 }
 
