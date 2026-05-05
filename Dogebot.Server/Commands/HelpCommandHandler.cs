@@ -113,7 +113,7 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger) : ICommandHa
                          "━━━━━━━━━━━━━━━━━━\n" +
                          "👨‍💻 제작자: 이호원\n" +
                          "📦 소스코드:\n" +
-                         "github.com/airtaxi-fork/Dogebot";
+                         "https://github.com/airtaxi/Dogebot";
 
             if (logger.IsEnabled(LogLevel.Information))
                 logger.LogInformation("[HELP] Showing help message to {Sender} in room {RoomId}", 
