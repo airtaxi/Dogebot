@@ -1,6 +1,5 @@
 using Dogebot.Commons;
 using Dogebot.Server.Commands;
-using System.Diagnostics;
 
 namespace Dogebot.Server.Services;
 
@@ -14,6 +13,7 @@ public class KakaoService(
     IRequestLimitService requestLimitService,
     IScheduledMessageService scheduledMessageService,
     IImaxNotificationService imaxNotificationService,
+    IBaseballGameSubscriptionService baseballGameSubscriptionService,
     DebugLogService debugLogService) : IKakaoService
 {
 
@@ -63,6 +63,7 @@ public class KakaoService(
                                 handler.Command == "!아이맥스설정" ||
                                 handler.Command == "!아이맥스해제" ||
                                 handler.Command == "!아이맥스목록" ||
+                                data.Content.Trim().StartsWith("!야구구독해제", StringComparison.OrdinalIgnoreCase) ||
                                 handler.Command == "!디버그";
 
             if (!isAdminCommand)
@@ -104,6 +105,14 @@ public class KakaoService(
             return imaxResponse;
         }
 
+        // Check for baseball game subscription messages to deliver
+        var baseballGameSubscriptionResponse = await baseballGameSubscriptionService.CheckAndDeliverAsync(data);
+        if (baseballGameSubscriptionResponse is not null)
+        {
+            debugLogService.Log("NOTIFY", $"야구 구독 알림 전달 → {data.RoomName}");
+            return baseballGameSubscriptionResponse;
+        }
+
         // Check for scheduled messages to trigger
         var scheduledResponse = await scheduledMessageService.CheckAndSendScheduledMessageAsync(data);
         if (scheduledResponse is not null)
@@ -116,7 +125,7 @@ public class KakaoService(
     }
 
     /// <summary>
-    /// Retrieves queued commands. Checks for due IMAX notifications and scheduled messages
+    /// Retrieves queued commands. Checks for due IMAX notifications, baseball subscription messages, and scheduled messages
     /// for rooms where the client has reply actions available.
     /// </summary>
     public async Task<ServerResponse> GetPendingCommandAsync(IEnumerable<string> availableRoomIds)
@@ -135,6 +144,16 @@ public class KakaoService(
             if (logger.IsEnabled(LogLevel.Information))
                 logger.LogInformation("[COMMAND] Delivering IMAX notification to room {RoomId}", imaxResponse.RoomId);
             return imaxResponse;
+        }
+
+        // Check baseball game subscriptions before scheduled messages
+        var baseballGameSubscriptionResponse = await baseballGameSubscriptionService.CheckAndDeliverForRoomsAsync(roomIds);
+        if (baseballGameSubscriptionResponse is not null)
+        {
+            debugLogService.Log("POLL", $"야구 구독 알림 전달 (proactive) → {baseballGameSubscriptionResponse.RoomId}");
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("[COMMAND] Delivering baseball game subscription message to room {RoomId}", baseballGameSubscriptionResponse.RoomId);
+            return baseballGameSubscriptionResponse;
         }
 
         // Check scheduled messages

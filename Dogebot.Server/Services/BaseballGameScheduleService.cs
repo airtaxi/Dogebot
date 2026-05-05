@@ -26,16 +26,22 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
     private readonly HttpClient _baseballGameScheduleClient = httpClientFactory.CreateClient();
 
     public Task<BaseballGameScheduleSnapshot?> GetTodayGameSnapshotAsync() =>
-        GetGameSnapshotAsync(GetTodayKoreanDate(), "오늘");
+        FetchGameSnapshotAsync(GetTodayKoreanDate(), "오늘");
 
     public Task<BaseballGameDetail?> GetTodayGameDetailAsync(long gameId) =>
-        GetGameDetailAsync(gameId, GetTodayKoreanDate(), "오늘");
+        FetchGameDetailAsync(gameId, GetTodayKoreanDate(), "오늘");
 
     public Task<BaseballGameScheduleSnapshot?> GetTomorrowGameSnapshotAsync() =>
-        GetGameSnapshotAsync(GetTodayKoreanDate().AddDays(1), "내일");
+        FetchGameSnapshotAsync(GetTodayKoreanDate().AddDays(1), "내일");
 
     public Task<BaseballGameDetail?> GetTomorrowGameDetailAsync(long gameId) =>
-        GetGameDetailAsync(gameId, GetTodayKoreanDate().AddDays(1), "내일");
+        FetchGameDetailAsync(gameId, GetTodayKoreanDate().AddDays(1), "내일");
+
+    public Task<BaseballGameScheduleSnapshot?> GetGameSnapshotAsync(DateOnly targetDate) =>
+        FetchGameSnapshotAsync(targetDate, targetDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+
+    public Task<BaseballGameDetail?> GetGameDetailAsync(DateOnly targetDate, long gameId) =>
+        FetchGameDetailAsync(gameId, targetDate, targetDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
 
     public string? GetLastGameScheduleErrorDetails()
     {
@@ -45,7 +51,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
         }
     }
 
-    private async Task<BaseballGameScheduleSnapshot?> GetGameSnapshotAsync(DateOnly targetDate, string dayLabel)
+    private async Task<BaseballGameScheduleSnapshot?> FetchGameSnapshotAsync(DateOnly targetDate, string dayLabel)
     {
         lock (s_gameSnapshotCacheLock)
         {
@@ -93,7 +99,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
         }
     }
 
-    private async Task<BaseballGameDetail?> GetGameDetailAsync(long gameId, DateOnly targetDate, string dayLabel)
+    private async Task<BaseballGameDetail?> FetchGameDetailAsync(long gameId, DateOnly targetDate, string dayLabel)
     {
         var cacheKey = new BaseballGameDetailCacheKey(targetDate, gameId);
 

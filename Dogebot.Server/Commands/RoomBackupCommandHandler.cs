@@ -46,13 +46,13 @@ public class RoomBackupCommandHandler(
                          $"⏳ 유효시간: 10분\n\n" +
                          $"새 방에서 아래 명령어를 입력하세요:\n" +
                          $"!방복원 {code}\n\n" +
-                         $"⚠️ 모든 통계, 설정, 반복 메시지가 이전됩니다.\n" +
+                         $"⚠️ 모든 통계, 설정, 반복 메시지, 알림 구독이 이전됩니다.\n" +
                          $"이전 후 이 방의 데이터는 삭제됩니다."
             };
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            logger.LogError(ex, "[ROOM_BACKUP] Error processing room backup command");
+            logger.LogError(exception, "[ROOM_BACKUP] Error processing room backup command");
             return new ServerResponse
             {
                 Action = "send_text",
