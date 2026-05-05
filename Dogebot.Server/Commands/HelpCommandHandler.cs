@@ -100,7 +100,9 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger) : ICommandHa
                          "• !야구타자순위 - 타율 TOP5, 홈런 TOP5 조회\n" +
                          "• !야구투수순위 - 평균자책점 TOP5, 승리 TOP5 조회\n" +
                          "• !야구관중순위 - 구단별 관중 수 순위 조회\n" +
-                         "• !야구뉴스 - 오늘 기준 KBO 뉴스 조회 (다음날 오전6시까지 오늘)\n\n" +
+                         "• !야구뉴스 - 오늘 기준 KBO 뉴스 조회 (다음날 오전6시까지 오늘)\n" +
+                         "• !오늘야구 [팀명] - 오늘 KBO 경기 조회 (팀명 입력 시 상세 정보)\n" +
+                         "• !내일야구 [팀명] - 내일 KBO 경기 조회 (팀명 입력 시 경기 전 상세 정보)\n\n" +
                          "ℹ️ 기타\n" +
                          "• !날씨 [지역] - 현재 날씨 확인 (기본: 이전 도시 또는 서울)\n" +
                          "• !내일날씨 [지역] - 내일 날씨 확인 (기본: 이전 도시 또는 서울)\n" +
@@ -116,7 +118,7 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger) : ICommandHa
                          "https://github.com/airtaxi/Dogebot";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[HELP] Showing help message to {Sender} in room {RoomId}", 
+                logger.LogInformation("[HELP] Showing help message to {Sender} in room {RoomId}",
                     data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
@@ -126,9 +128,9 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger) : ICommandHa
                 Message = message
             });
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            logger.LogError(ex, "[HELP] Error processing help command");
+            logger.LogError(exception, "[HELP] Error processing help command");
             return Task.FromResult(new ServerResponse
             {
                 Action = "send_text",

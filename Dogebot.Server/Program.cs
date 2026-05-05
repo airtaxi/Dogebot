@@ -37,6 +37,9 @@ builder.Services.AddSingleton<IHotDealService, HotDealService>();
 // Register Baseball team ranking service
 builder.Services.AddSingleton<IBaseballTeamRankingService, BaseballTeamRankingService>();
 
+// Register Baseball game schedule service
+builder.Services.AddSingleton<IBaseballGameScheduleService, BaseballGameScheduleService>();
+
 // Register Migration service
 builder.Services.AddSingleton<IMigrationService, MigrationService>();
 
@@ -132,6 +135,7 @@ builder.Services.AddSingleton<ICommandHandler, BaseballBattingRankingCommandHand
 builder.Services.AddSingleton<ICommandHandler, BaseballPitchingRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballCrowdRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballNewsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, BaseballGameScheduleCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WordRankCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageSetCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageRemoveCommandHandler>();
