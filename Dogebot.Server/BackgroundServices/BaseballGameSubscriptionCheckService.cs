@@ -10,7 +10,7 @@ public class BaseballGameSubscriptionCheckService(
     ILogger<BaseballGameSubscriptionCheckService> logger) : BackgroundService
 {
     private static readonly TimeSpan s_checkInterval = TimeSpan.FromSeconds(30);
-    private const int MaximumEventsPerMessage = 5;
+    private const int MaximumEventsPerMessage = 30;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -119,22 +119,6 @@ public class BaseballGameSubscriptionCheckService(
             lineupNotified = true;
         }
 
-        if (newLiveEvents.Count > 0)
-        {
-            lastDeliveredLiveEventIndex = liveEvents.Count - 1;
-            lastDeliveredLiveEventKey = BaseballGameFormatter.BuildLiveEventKey(liveEvents[^1]);
-
-            var omittedEventCount = Math.Max(0, newLiveEvents.Count - MaximumEventsPerMessage);
-            var displayedLiveEvents = newLiveEvents
-                .Skip(omittedEventCount)
-                .Take(MaximumEventsPerMessage)
-                .ToList();
-            pendingMessages.Add(BaseballGameFormatter.FormatSubscriptionLiveEventNotification(
-                gameDetail,
-                displayedLiveEvents,
-                omittedEventCount));
-        }
-
         var currentHomeScore = gameDetail.GameSummary.HomeScore?.Run;
         var currentAwayScore = gameDetail.GameSummary.AwayScore?.Run;
         var hasPreviousScore = subscription.LastHomeScore.HasValue || subscription.LastAwayScore.HasValue;
@@ -143,7 +127,33 @@ public class BaseballGameSubscriptionCheckService(
                            hasCurrentScore &&
                            (subscription.LastHomeScore != currentHomeScore || subscription.LastAwayScore != currentAwayScore);
 
-        if (scoreChanged && newLiveEvents.Count == 0) pendingMessages.Add(BaseballGameFormatter.FormatScoreChangedNotification(gameDetail, subscription.LastHomeScore, subscription.LastAwayScore));
+        if (scoreChanged)
+        {
+            if (newLiveEvents.Count > 0)
+            {
+                lastDeliveredLiveEventIndex = liveEvents.Count - 1;
+                lastDeliveredLiveEventKey = BaseballGameFormatter.BuildLiveEventKey(liveEvents[^1]);
+
+                var omittedEventCount = Math.Max(0, newLiveEvents.Count - MaximumEventsPerMessage);
+                var displayedLiveEvents = newLiveEvents
+                    .TakeLast(MaximumEventsPerMessage)
+                    .Reverse()
+                    .ToList();
+                pendingMessages.Add(BaseballGameFormatter.FormatScoreChangedWithEventsNotification(
+                    gameDetail,
+                    subscription.LastHomeScore,
+                    subscription.LastAwayScore,
+                    displayedLiveEvents,
+                    omittedEventCount));
+            }
+            else
+            {
+                pendingMessages.Add(BaseballGameFormatter.FormatScoreChangedNotification(
+                    gameDetail,
+                    subscription.LastHomeScore,
+                    subscription.LastAwayScore));
+            }
+        }
 
         var status = BaseballGameSubscriptionStatus.Active;
         long? completedAt = null;

@@ -50,31 +50,6 @@ public static class BaseballGameFormatter
         return stringBuilder.ToString().TrimEnd();
     }
 
-    public static string FormatSubscriptionLiveEventNotification(
-        BaseballGameDetail gameDetail,
-        IReadOnlyList<BaseballGameLiveEvent> liveEvents,
-        int omittedEventCount)
-    {
-        var stringBuilder = new StringBuilder();
-        stringBuilder.AppendLine($"⚾ {FormatGameMatchDescription(gameDetail.GameSummary)} 경기 이벤트");
-        if (omittedEventCount > 0) stringBuilder.AppendLine($"이전 {omittedEventCount}개 이벤트는 표시하지 못했습니다.");
-        stringBuilder.AppendLine();
-
-        for (var liveEventIndex = 0; liveEventIndex < liveEvents.Count; liveEventIndex++)
-        {
-            if (liveEventIndex > 0)
-            {
-                stringBuilder.AppendLine();
-                stringBuilder.AppendLine(MessageSeparator);
-                stringBuilder.AppendLine();
-            }
-
-            AppendLiveEventText(stringBuilder, gameDetail, liveEvents[liveEventIndex], includeDetails: true);
-        }
-
-        return stringBuilder.ToString().TrimEnd();
-    }
-
     public static string FormatLineupConfirmedNotification(BaseballGameDetail gameDetail)
     {
         var stringBuilder = new StringBuilder();
@@ -93,6 +68,41 @@ public static class BaseballGameFormatter
         return $"⚾ {FormatGameMatchDescription(gameSummary)} 점수 변경\n\n" +
                $"이전: {previousScoreText}\n" +
                $"현재: {FormatHomeAwayScoreLine(gameSummary)}";
+    }
+
+    public static string FormatScoreChangedWithEventsNotification(
+        BaseballGameDetail gameDetail,
+        int? previousHomeScore,
+        int? previousAwayScore,
+        IReadOnlyList<BaseballGameLiveEvent> liveEvents,
+        int omittedEventCount)
+    {
+        var gameSummary = gameDetail.GameSummary;
+        var stringBuilder = new StringBuilder();
+        stringBuilder.AppendLine($"⚾ {FormatGameMatchDescription(gameSummary)} 점수 변경");
+        AppendScoreChangedInformation(stringBuilder, gameSummary, previousHomeScore, previousAwayScore);
+
+        if (omittedEventCount > 0)
+        {
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine($"이전 {omittedEventCount}개 이벤트는 표시하지 못했습니다.");
+        }
+
+        stringBuilder.AppendLine();
+        stringBuilder.AppendLine("관련 이벤트");
+        for (var liveEventIndex = 0; liveEventIndex < liveEvents.Count; liveEventIndex++)
+        {
+            if (liveEventIndex > 0)
+            {
+                stringBuilder.AppendLine();
+                stringBuilder.AppendLine(MessageSeparator);
+                stringBuilder.AppendLine();
+            }
+
+            AppendLiveEventText(stringBuilder, gameDetail, liveEvents[liveEventIndex], includeDetails: true);
+        }
+
+        return stringBuilder.ToString().TrimEnd();
     }
 
     public static string FormatRainCanceledNotification(BaseballGameDetail gameDetail) =>
@@ -234,6 +244,20 @@ public static class BaseballGameFormatter
         var awayTeamName = GetTeamDisplayName(gameSummary.AwayParticipant.Team);
         stringBuilder.AppendLine($"홈 {homeTeamName}: 안타 {FormatNullableNumber(gameSummary.HomeScore?.Hit)} / 실책 {FormatNullableNumber(gameSummary.HomeScore?.Error)} / 볼넷 {FormatNullableNumber(gameSummary.HomeScore?.Walks)}");
         stringBuilder.AppendLine($"원정 {awayTeamName}: 안타 {FormatNullableNumber(gameSummary.AwayScore?.Hit)} / 실책 {FormatNullableNumber(gameSummary.AwayScore?.Error)} / 볼넷 {FormatNullableNumber(gameSummary.AwayScore?.Walks)}");
+    }
+
+    private static void AppendScoreChangedInformation(
+        StringBuilder stringBuilder,
+        BaseballGameScheduleSummary gameSummary,
+        int? previousHomeScore,
+        int? previousAwayScore)
+    {
+        var homeTeamName = GetTeamDisplayName(gameSummary.HomeParticipant.Team);
+        var awayTeamName = GetTeamDisplayName(gameSummary.AwayParticipant.Team);
+        var previousScoreText = $"홈 {homeTeamName} {FormatNullableNumber(previousHomeScore)} : {FormatNullableNumber(previousAwayScore)} {awayTeamName} 원정";
+        stringBuilder.AppendLine();
+        stringBuilder.AppendLine($"이전: {previousScoreText}");
+        stringBuilder.AppendLine($"현재: {FormatHomeAwayScoreLine(gameSummary)}");
     }
 
     private static void AppendBeforeGameInformation(StringBuilder stringBuilder, BaseballGameDetail gameDetail)
