@@ -189,6 +189,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
         new(
             gamePayload.GameId,
             gamePayload.GameStatus ?? string.Empty,
+            gamePayload.GameDetailStatus ?? string.Empty,
             gamePayload.PeriodType ?? string.Empty,
             gamePayload.LiveData?.Ground?.LastPeriod ?? string.Empty,
             gamePayload.StartDate ?? string.Empty,
@@ -349,6 +350,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
         [property: JsonPropertyName("startTime")] string? StartTime,
         [property: JsonPropertyName("periodType")] string? PeriodType,
         [property: JsonPropertyName("gameStatus")] string? GameStatus,
+        [property: JsonPropertyName("gameDetailStatus")] string? GameDetailStatus,
         [property: JsonPropertyName("home")] BaseballParticipantPayload? HomeParticipant,
         [property: JsonPropertyName("away")] BaseballParticipantPayload? AwayParticipant,
         [property: JsonPropertyName("homeScore")] BaseballScorePayload? HomeScore,

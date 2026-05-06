@@ -42,12 +42,10 @@ public static class BaseballGameFormatter
         AppendTeamScoreStatistics(stringBuilder, gameSummary);
         stringBuilder.AppendLine($"경기 상태: {FormatGameStatus(gameSummary, gameDetail)}");
 
-        if (IsBeforeGame(gameSummary))
-            AppendBeforeGameInformation(stringBuilder, gameDetail);
-        else if (IsEndedGame(gameSummary))
-            AppendAfterGameInformation(stringBuilder, gameDetail);
-        else
-            AppendLiveGameInformation(stringBuilder, gameDetail);
+        if (IsBeforeGame(gameSummary)) AppendBeforeGameInformation(stringBuilder, gameDetail);
+        else if (IsEndedGame(gameSummary)) AppendAfterGameInformation(stringBuilder, gameDetail);
+        else if (IsCanceledGame(gameSummary)) AppendCanceledGameInformation(stringBuilder, gameSummary);
+        else AppendLiveGameInformation(stringBuilder, gameDetail);
 
         return stringBuilder.ToString().TrimEnd();
     }
@@ -97,6 +95,11 @@ public static class BaseballGameFormatter
                $"현재: {FormatHomeAwayScoreLine(gameSummary)}";
     }
 
+    public static string FormatRainCanceledNotification(BaseballGameDetail gameDetail) =>
+        $"⚾ {FormatGameMatchDescription(gameDetail.GameSummary)} 우천취소 안내\n\n" +
+        $"{FormatFieldName(gameDetail.GameSummary.Field)} 경기가 우천취소되었습니다.\n" +
+        "해당 경기 구독은 완료 처리됩니다.";
+
     public static List<BaseballGameScheduleSummary> FindMatchingGameSummaries(IReadOnlyList<BaseballGameScheduleSummary> gameSummaries, string teamSearchText)
     {
         var normalizedTeamSearchText = NormalizeTeamSearchText(teamSearchText);
@@ -130,10 +133,8 @@ public static class BaseballGameFormatter
 
     public static string GetMatchingTeamDisplayName(BaseballGameScheduleSummary gameSummary, string teamSearchText)
     {
-        if (DoesTeamMatch(gameSummary.HomeParticipant.Team, teamSearchText))
-            return GetTeamDisplayName(gameSummary.HomeParticipant.Team);
-        if (DoesTeamMatch(gameSummary.AwayParticipant.Team, teamSearchText))
-            return GetTeamDisplayName(gameSummary.AwayParticipant.Team);
+        if (DoesTeamMatch(gameSummary.HomeParticipant.Team, teamSearchText)) return GetTeamDisplayName(gameSummary.HomeParticipant.Team);
+        if (DoesTeamMatch(gameSummary.AwayParticipant.Team, teamSearchText)) return GetTeamDisplayName(gameSummary.AwayParticipant.Team);
         return teamSearchText;
     }
 
@@ -171,6 +172,8 @@ public static class BaseballGameFormatter
 
     public static string FormatGameStatus(BaseballGameScheduleSummary gameSummary, BaseballGameDetail? gameDetail)
     {
+        if (IsRainCanceledGame(gameSummary)) return "우천취소";
+
         var gameStatusText = FormatPeriodText(gameSummary.GameStatus);
         if (IsCanceledStatusText(gameStatusText)) return gameStatusText;
         if (IsBeforeGame(gameSummary)) return "경기 전";
@@ -195,6 +198,10 @@ public static class BaseballGameFormatter
         var periodTypeText = FormatPeriodText(gameSummary.PeriodType);
         return IsCanceledStatusText(gameStatusText) || IsCanceledStatusText(periodTypeText);
     }
+
+    public static bool IsRainCanceledGame(BaseballGameScheduleSummary gameSummary) =>
+        IsCanceledGame(gameSummary) &&
+        gameSummary.GameDetailStatus.Equals("RAIN", StringComparison.OrdinalIgnoreCase);
 
     public static bool IsFinishedOrUnavailableGame(BaseballGameScheduleSummary gameSummary) =>
         IsEndedGame(gameSummary) || IsCanceledGame(gameSummary);
@@ -252,8 +259,7 @@ public static class BaseballGameFormatter
         if (lineupPlayers.Count == 0) return false;
 
         stringBuilder.AppendLine($"{homeAwayText} {GetTeamDisplayName(team)}");
-        foreach (var player in lineupPlayers)
-            stringBuilder.AppendLine($"{player.BattingOrder}번 {FormatPlayerNameWithPosition(player)}");
+        foreach (var player in lineupPlayers) stringBuilder.AppendLine($"{player.BattingOrder}번 {FormatPlayerNameWithPosition(player)}");
 
         return true;
     }
@@ -318,8 +324,15 @@ public static class BaseballGameFormatter
             return;
         }
 
-        foreach (var afterGameText in afterGameTexts)
-            stringBuilder.AppendLine(afterGameText);
+        foreach (var afterGameText in afterGameTexts) stringBuilder.AppendLine(afterGameText);
+    }
+
+    private static void AppendCanceledGameInformation(StringBuilder stringBuilder, BaseballGameScheduleSummary gameSummary)
+    {
+        stringBuilder.AppendLine();
+        stringBuilder.AppendLine(IsRainCanceledGame(gameSummary)
+            ? "우천취소로 경기가 취소되었습니다."
+            : "경기가 취소되었습니다.");
     }
 
     private static IReadOnlyList<string> GetAfterGameTexts(IReadOnlyList<BaseballGameLiveEvent> liveEvents)
