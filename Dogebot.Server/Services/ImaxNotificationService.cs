@@ -909,14 +909,13 @@ public class ImaxNotificationService : IImaxNotificationService
     public async Task<ServerResponse?> CheckAndDeliverAsync(KakaoMessageData data)
     {
         var filter = Builders<ImaxNotification>.Filter.And(
-            Builders<ImaxNotification>.Filter.Eq(x => x.RoomId, data.RoomId),
-            Builders<ImaxNotification>.Filter.Ne(x => x.PendingMessage, null));
+            Builders<ImaxNotification>.Filter.Eq(notification => notification.RoomId, data.RoomId),
+            Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
 
         // Atomically find and delete: prevents duplicate delivery
         var notification = await _imaxNotifications.FindOneAndDeleteAsync(filter);
 
-        if (notification is null)
-            return null;
+        if (notification is null) return null;
 
         return new ServerResponse
         {
@@ -926,21 +925,28 @@ public class ImaxNotificationService : IImaxNotificationService
         };
     }
 
+    public async Task<List<ServerResponseItem>> CheckAndDeliverManyAsync(KakaoMessageData data)
+    {
+        var filter = Builders<ImaxNotification>.Filter.And(
+            Builders<ImaxNotification>.Filter.Eq(notification => notification.RoomId, data.RoomId),
+            Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
+
+        return await FindAndDeletePendingMessagesAsync(filter);
+    }
+
     public async Task<ServerResponse?> CheckAndDeliverForRoomsAsync(IEnumerable<string> roomIds)
     {
         var roomIdList = roomIds.ToList();
-        if (roomIdList.Count == 0)
-            return null;
+        if (roomIdList.Count == 0) return null;
 
         var filter = Builders<ImaxNotification>.Filter.And(
-            Builders<ImaxNotification>.Filter.In(x => x.RoomId, roomIdList),
-            Builders<ImaxNotification>.Filter.Ne(x => x.PendingMessage, null));
+            Builders<ImaxNotification>.Filter.In(notification => notification.RoomId, roomIdList),
+            Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
 
         // Atomically find and delete: prevents duplicate delivery
         var notification = await _imaxNotifications.FindOneAndDeleteAsync(filter);
 
-        if (notification is null)
-            return null;
+        if (notification is null) return null;
 
         return new ServerResponse
         {
@@ -948,6 +954,36 @@ public class ImaxNotificationService : IImaxNotificationService
             RoomId = notification.RoomId,
             Message = notification.PendingMessage!
         };
+    }
+
+    public async Task<List<ServerResponseItem>> CheckAndDeliverManyForRoomsAsync(IEnumerable<string> roomIds)
+    {
+        var roomIdList = roomIds.ToList();
+        if (roomIdList.Count == 0) return [];
+
+        var filter = Builders<ImaxNotification>.Filter.And(
+            Builders<ImaxNotification>.Filter.In(notification => notification.RoomId, roomIdList),
+            Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
+
+        return await FindAndDeletePendingMessagesAsync(filter);
+    }
+
+    private async Task<List<ServerResponseItem>> FindAndDeletePendingMessagesAsync(FilterDefinition<ImaxNotification> filter)
+    {
+        var responseItems = new List<ServerResponseItem>();
+
+        while (true)
+        {
+            var notification = await _imaxNotifications.FindOneAndDeleteAsync(filter);
+            if (notification is null) return responseItems;
+
+            responseItems.Add(new ServerResponseItem
+            {
+                Action = "send_text",
+                RoomId = notification.RoomId,
+                Message = notification.PendingMessage!
+            });
+        }
     }
 
     public async Task<int> CleanupExpiredNotificationsAsync()

@@ -317,24 +317,22 @@ public class ScheduledMessageService : IScheduledMessageService
         var trackingKey = $"{data.RoomId}:{dateKey}:{currentHour}";
 
         // Already sent for this room/date/hour
-        if (_sentTracking.ContainsKey(trackingKey))
-            return null;
+        if (_sentTracking.ContainsKey(trackingKey)) return null;
 
         var filter = Builders<ScheduledMessage>.Filter.And(
-            Builders<ScheduledMessage>.Filter.Eq(x => x.RoomId, data.RoomId),
-            Builders<ScheduledMessage>.Filter.AnyEq(x => x.Hours, currentHour),
-            Builders<ScheduledMessage>.Filter.AnyEq(x => x.Days, currentDay)
+            Builders<ScheduledMessage>.Filter.Eq(message => message.RoomId, data.RoomId),
+            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour),
+            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay)
         );
 
         var messages = await _scheduledMessages.Find(filter).ToListAsync();
-        if (messages.Count == 0)
-            return null;
+        if (messages.Count == 0) return null;
 
         // Mark as sent
         _sentTracking.TryAdd(trackingKey, 0);
 
         var combined = string.Join("\n\n━━━━━━━━━━━━━━━━━━\n\n",
-            messages.Select(m => m.Message));
+            messages.Select(message => message.Message));
 
         return new ServerResponse
         {
@@ -342,6 +340,29 @@ public class ScheduledMessageService : IScheduledMessageService
             RoomId = data.RoomId,
             Message = combined
         };
+    }
+
+    public async Task<List<ServerResponseItem>> CheckAndSendScheduledMessagesAsync(KakaoMessageData data)
+    {
+        var now = DateTimeOffset.UtcNow.ToOffset(KstOffset);
+        var currentHour = now.Hour;
+        var currentDay = (int)now.DayOfWeek;
+        var dateKey = now.ToString("yyyy-MM-dd");
+        var trackingKey = $"{data.RoomId}:{dateKey}:{currentHour}";
+
+        if (_sentTracking.ContainsKey(trackingKey)) return [];
+
+        var filter = Builders<ScheduledMessage>.Filter.And(
+            Builders<ScheduledMessage>.Filter.Eq(message => message.RoomId, data.RoomId),
+            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour),
+            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay)
+        );
+
+        var messages = await _scheduledMessages.Find(filter).ToListAsync();
+        if (messages.Count == 0) return [];
+        if (!_sentTracking.TryAdd(trackingKey, 0)) return [];
+
+        return [CreateScheduledMessageResponseItem(data.RoomId, messages)];
     }
 
     public async Task<ServerResponse?> CheckAndSendScheduledMessageForRoomsAsync(IEnumerable<string> roomIds)
@@ -356,30 +377,77 @@ public class ScheduledMessageService : IScheduledMessageService
             .Where(roomId => !_sentTracking.ContainsKey($"{roomId}:{dateKey}:{currentHour}"))
             .ToList();
 
-        if (candidateRoomIds.Count == 0)
-            return null;
+        if (candidateRoomIds.Count == 0) return null;
 
         var filter = Builders<ScheduledMessage>.Filter.And(
-            Builders<ScheduledMessage>.Filter.In(x => x.RoomId, candidateRoomIds),
-            Builders<ScheduledMessage>.Filter.AnyEq(x => x.Hours, currentHour),
-            Builders<ScheduledMessage>.Filter.AnyEq(x => x.Days, currentDay)
+            Builders<ScheduledMessage>.Filter.In(message => message.RoomId, candidateRoomIds),
+            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour),
+            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay)
         );
 
         var messages = await _scheduledMessages.Find(filter).ToListAsync();
-        if (messages.Count == 0)
-            return null;
+        if (messages.Count == 0) return null;
 
         // Send messages for the first matching room
-        var firstRoomGroup = messages.GroupBy(m => m.RoomId).First();
+        var firstRoomGroup = messages.GroupBy(message => message.RoomId).First();
         var roomId = firstRoomGroup.Key;
         var trackingKey = $"{roomId}:{dateKey}:{currentHour}";
 
         _sentTracking.TryAdd(trackingKey, 0);
 
         var combined = string.Join("\n\n━━━━━━━━━━━━━━━━━━\n\n",
-            firstRoomGroup.Select(m => m.Message));
+            firstRoomGroup.Select(message => message.Message));
 
         return new ServerResponse
+        {
+            Action = "send_text",
+            RoomId = roomId,
+            Message = combined
+        };
+    }
+
+    public async Task<List<ServerResponseItem>> CheckAndSendScheduledMessagesForRoomsAsync(IEnumerable<string> roomIds)
+    {
+        var now = DateTimeOffset.UtcNow.ToOffset(KstOffset);
+        var currentHour = now.Hour;
+        var currentDay = (int)now.DayOfWeek;
+        var dateKey = now.ToString("yyyy-MM-dd");
+
+        var candidateRoomIds = roomIds
+            .Where(roomId => !_sentTracking.ContainsKey($"{roomId}:{dateKey}:{currentHour}"))
+            .ToList();
+
+        if (candidateRoomIds.Count == 0) return [];
+
+        var filter = Builders<ScheduledMessage>.Filter.And(
+            Builders<ScheduledMessage>.Filter.In(message => message.RoomId, candidateRoomIds),
+            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour),
+            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay)
+        );
+
+        var messages = await _scheduledMessages.Find(filter).ToListAsync();
+        if (messages.Count == 0) return [];
+
+        var responseItems = new List<ServerResponseItem>();
+        foreach (var roomMessageGroup in messages.GroupBy(message => message.RoomId))
+        {
+            var trackingKey = $"{roomMessageGroup.Key}:{dateKey}:{currentHour}";
+            if (!_sentTracking.TryAdd(trackingKey, 0)) continue;
+
+            responseItems.Add(CreateScheduledMessageResponseItem(roomMessageGroup.Key, roomMessageGroup));
+        }
+
+        return responseItems;
+    }
+
+    private static ServerResponseItem CreateScheduledMessageResponseItem(
+        string roomId,
+        IEnumerable<ScheduledMessage> messages)
+    {
+        var combined = string.Join("\n\n━━━━━━━━━━━━━━━━━━\n\n",
+            messages.Select(message => message.Message));
+
+        return new ServerResponseItem
         {
             Action = "send_text",
             RoomId = roomId,

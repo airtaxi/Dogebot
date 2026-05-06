@@ -23,6 +23,11 @@ public interface IScheduledMessageService
     Task<ServerResponse?> CheckAndSendScheduledMessageAsync(KakaoMessageData data);
 
     /// <summary>
+    /// Checks whether scheduled messages should be triggered for the given room and returns all due response items.
+    /// </summary>
+    Task<List<ServerResponseItem>> CheckAndSendScheduledMessagesAsync(KakaoMessageData data);
+
+    /// <summary>
     /// Gets all scheduled messages for a room.
     /// </summary>
     Task<List<ScheduledMessage>> GetScheduledMessagesAsync(string roomId);
@@ -43,6 +48,11 @@ public interface IScheduledMessageService
     /// Returns null if no scheduled message should be sent at this time.
     /// </summary>
     Task<ServerResponse?> CheckAndSendScheduledMessageForRoomsAsync(IEnumerable<string> roomIds);
+
+    /// <summary>
+    /// Checks whether scheduled messages should be triggered for any of the given rooms and returns all due response items.
+    /// </summary>
+    Task<List<ServerResponseItem>> CheckAndSendScheduledMessagesForRoomsAsync(IEnumerable<string> roomIds);
 
     /// <summary>
     /// Cleans up expired setup sessions (older than 5 minutes).

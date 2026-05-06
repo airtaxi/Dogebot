@@ -25,6 +25,25 @@ public class DiscordResponseExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_Items_DelegatesAllSendTextItemsToGateway()
+    {
+        var fakeGateway = new FakeGatewayClient();
+        var executor = new DiscordResponseExecutor(fakeGateway, NullLogger<DiscordResponseExecutor>.Instance);
+
+        await executor.ExecuteAsync(new ServerResponse
+        {
+            Items =
+            [
+                new ServerResponseItem { Action = "send_text", RoomId = "10", Message = "first" },
+                new ServerResponseItem { Action = "send_text", RoomId = "20", Message = "second" }
+            ]
+        }, CancellationToken.None);
+
+        Assert.Equal(["10", "20"], fakeGateway.SentMessages.Select(sentMessage => sentMessage.ChannelId).ToList());
+        Assert.Equal(["first", "second"], fakeGateway.SentMessages.Select(sentMessage => sentMessage.Message).ToList());
+    }
+
+    [Fact]
     public async Task ExecuteAsync_Read_DoesNotSendMessage()
     {
         var fakeGateway = new FakeGatewayClient();
@@ -44,6 +63,7 @@ public class DiscordResponseExecutorTests
 
         public string? LastChannelId { get; private set; }
         public string? LastMessage { get; private set; }
+        public List<(string ChannelId, string Message)> SentMessages { get; } = [];
 
         public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -52,6 +72,7 @@ public class DiscordResponseExecutorTests
         {
             LastChannelId = channelId;
             LastMessage = message;
+            SentMessages.Add((channelId, message));
             return Task.CompletedTask;
         }
 
