@@ -44,11 +44,15 @@ public class BaseballGameScheduleCommandHandler(
 
             if (string.IsNullOrWhiteSpace(commandContext.TeamSearchText))
             {
+                var gameDetailsByGameId = await GetGameDetailsByGameIdAsync(commandContext, gameSnapshot.GameSummaries);
                 return new ServerResponse
                 {
                     Action = "send_text",
                     RoomId = data.RoomId,
-                    Message = BaseballGameFormatter.FormatGameSummaryMessage(gameSnapshot, commandContext.DayLabel)
+                    Message = BaseballGameFormatter.FormatGameSummaryMessage(
+                        gameSnapshot,
+                        commandContext.DayLabel,
+                        gameDetailsByGameId)
                 };
             }
 
@@ -119,6 +123,38 @@ public class BaseballGameScheduleCommandHandler(
             ? baseballGameScheduleService.GetTomorrowGameDetailAsync(gameId)
             : baseballGameScheduleService.GetTodayGameDetailAsync(gameId);
 
+    private async Task<IReadOnlyDictionary<long, BaseballGameDetail>> GetGameDetailsByGameIdAsync(
+        BaseballGameCommandContext commandContext,
+        IReadOnlyList<BaseballGameScheduleSummary> gameSummaries)
+    {
+        var gameSummariesRequiringDetails = gameSummaries
+            .Where(ShouldFetchGameDetailForLeftOnBase)
+            .ToList();
+        if (gameSummariesRequiringDetails.Count == 0) return new Dictionary<long, BaseballGameDetail>();
+
+        var gameDetailTasks = gameSummariesRequiringDetails
+            .Select(async gameSummary =>
+            {
+                var gameDetail = await GetGameDetailAsync(commandContext, gameSummary.GameId);
+                return new BaseballGameDetailResult(gameSummary.GameId, gameDetail);
+            });
+        var gameDetailResults = await Task.WhenAll(gameDetailTasks);
+        return gameDetailResults
+            .Where(gameDetailResult => gameDetailResult.GameDetail != null)
+            .ToDictionary(
+                gameDetailResult => gameDetailResult.GameId,
+                gameDetailResult => gameDetailResult.GameDetail!);
+    }
+
+    private static bool ShouldFetchGameDetailForLeftOnBase(BaseballGameScheduleSummary gameSummary)
+    {
+        var hasLeftOnBase = gameSummary.HomeTeamStatistics?.BattingLeftOnBase != null ||
+                            gameSummary.AwayTeamStatistics?.BattingLeftOnBase != null;
+        if (hasLeftOnBase) return false;
+        return !BaseballGameFormatter.IsBeforeGame(gameSummary) &&
+               !BaseballGameFormatter.IsCanceledGame(gameSummary);
+    }
+
     private static BaseballGameCommandContext? TryCreateCommandContext(string content)
     {
         if (content.StartsWith(TodayCommand, StringComparison.OrdinalIgnoreCase))
@@ -136,4 +172,6 @@ public class BaseballGameScheduleCommandHandler(
     }
 
     private sealed record BaseballGameCommandContext(string Command, string DayLabel, string TeamSearchText);
+
+    private sealed record BaseballGameDetailResult(long GameId, BaseballGameDetail? GameDetail);
 }

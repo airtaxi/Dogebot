@@ -16,7 +16,9 @@ public sealed record BaseballGameScheduleSummary(
     BaseballGameParticipant AwayParticipant,
     BaseballGameScore? HomeScore,
     BaseballGameScore? AwayScore,
-    BaseballGameField? Field);
+    BaseballGameField? Field,
+    BaseballGameTeamStatistics? HomeTeamStatistics,
+    BaseballGameTeamStatistics? AwayTeamStatistics);
 
 public sealed record BaseballGameDetail(
     BaseballGameScheduleSummary GameSummary,
@@ -40,6 +42,9 @@ public sealed record BaseballGameScore(
     int? Hit,
     int? Error,
     int? Walks);
+
+public sealed record BaseballGameTeamStatistics(
+    int? BattingLeftOnBase);
 
 public sealed record BaseballGameField(
     string Name,

@@ -198,7 +198,9 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
             MapParticipant(gamePayload.AwayParticipant),
             MapScore(gamePayload.HomeScore),
             MapScore(gamePayload.AwayScore),
-            MapField(gamePayload.Field));
+            MapField(gamePayload.Field),
+            MapTeamStatistics(gamePayload.HomeTeamStatistics),
+            MapTeamStatistics(gamePayload.AwayTeamStatistics));
 
     private static BaseballGameParticipant MapParticipant(BaseballParticipantPayload? participantPayload) =>
         new(participantPayload?.Result ?? string.Empty, MapTeam(participantPayload?.Team));
@@ -211,6 +213,11 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
 
     private static BaseballGameScore? MapScore(BaseballScorePayload? scorePayload) =>
         scorePayload == null ? null : new BaseballGameScore(scorePayload.Run, scorePayload.Hit, scorePayload.Error, scorePayload.Walks);
+
+    private static BaseballGameTeamStatistics? MapTeamStatistics(BaseballTeamStatisticsPayload? teamStatisticsPayload) =>
+        teamStatisticsPayload == null
+            ? null
+            : new BaseballGameTeamStatistics(teamStatisticsPayload.BattingLeftOnBase);
 
     private static BaseballGameField? MapField(BaseballFieldPayload? fieldPayload)
     {
@@ -355,6 +362,8 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
         [property: JsonPropertyName("away")] BaseballParticipantPayload? AwayParticipant,
         [property: JsonPropertyName("homeScore")] BaseballScorePayload? HomeScore,
         [property: JsonPropertyName("awayScore")] BaseballScorePayload? AwayScore,
+        [property: JsonPropertyName("homeTeamStat")] BaseballTeamStatisticsPayload? HomeTeamStatistics,
+        [property: JsonPropertyName("awayTeamStat")] BaseballTeamStatisticsPayload? AwayTeamStatistics,
         [property: JsonPropertyName("field")] BaseballFieldPayload? Field,
         [property: JsonPropertyName("homeStartPitcher")] BaseballPersonPayload? HomeStartingPitcher,
         [property: JsonPropertyName("awayStartPitcher")] BaseballPersonPayload? AwayStartingPitcher,
@@ -379,6 +388,9 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
         [property: JsonPropertyName("hit")] int? Hit,
         [property: JsonPropertyName("error")] int? Error,
         [property: JsonPropertyName("ballfour")] int? Walks);
+
+    private sealed record BaseballTeamStatisticsPayload(
+        [property: JsonPropertyName("batLob")] int? BattingLeftOnBase);
 
     private sealed record BaseballFieldPayload(
         [property: JsonPropertyName("nameMain")] string? NameMain,

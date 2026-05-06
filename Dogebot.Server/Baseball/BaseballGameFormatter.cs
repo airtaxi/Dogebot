@@ -8,7 +8,10 @@ public static class BaseballGameFormatter
 {
     private const string MessageSeparator = "━━━━━━━━━━━━━━━━━━";
 
-    public static string FormatGameSummaryMessage(BaseballGameScheduleSnapshot gameSnapshot, string dayLabel)
+    public static string FormatGameSummaryMessage(
+        BaseballGameScheduleSnapshot gameSnapshot,
+        string dayLabel,
+        IReadOnlyDictionary<long, BaseballGameDetail>? gameDetailsByGameId = null)
     {
         var gameDateText = gameSnapshot.GameDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         if (gameSnapshot.GameSummaries.Count == 0) return $"⚾ {dayLabel} KBO 경기 ({gameDateText})\n\n{dayLabel} 예정된 KBO 경기가 없습니다.";
@@ -26,7 +29,11 @@ public static class BaseballGameFormatter
             var homeScoreText = FormatParticipantScore(gameSummary.HomeParticipant, gameSummary.HomeScore);
             var gameStatusText = FormatGameStatus(gameSummary, null);
             var startTimeText = FormatStartTime(gameSummary.StartTime);
-            stringBuilder.AppendLine($"{gameIndex + 1}. {awayTeamName} {awayScoreText} : {homeScoreText} {homeTeamName} / {gameStatusText} / {startTimeText}");
+            var gameSummaryForStatistics = GetGameSummaryForStatistics(gameSummary, gameDetailsByGameId);
+            var leftOnBaseText = FormatLeftOnBaseSummary(gameSummaryForStatistics);
+            stringBuilder.AppendLine(
+                $"{gameIndex + 1}. {awayTeamName} {awayScoreText} : {homeScoreText} {homeTeamName}" +
+                $"{leftOnBaseText} / {gameStatusText} / {startTimeText}");
         }
 
         return stringBuilder.ToString().TrimEnd();
@@ -242,9 +249,29 @@ public static class BaseballGameFormatter
     {
         var homeTeamName = GetTeamDisplayName(gameSummary.HomeParticipant.Team);
         var awayTeamName = GetTeamDisplayName(gameSummary.AwayParticipant.Team);
-        stringBuilder.AppendLine($"홈 {homeTeamName}: 안타 {FormatNullableNumber(gameSummary.HomeScore?.Hit)} / 실책 {FormatNullableNumber(gameSummary.HomeScore?.Error)} / 볼넷 {FormatNullableNumber(gameSummary.HomeScore?.Walks)}");
-        stringBuilder.AppendLine($"원정 {awayTeamName}: 안타 {FormatNullableNumber(gameSummary.AwayScore?.Hit)} / 실책 {FormatNullableNumber(gameSummary.AwayScore?.Error)} / 볼넷 {FormatNullableNumber(gameSummary.AwayScore?.Walks)}");
+        stringBuilder.AppendLine($"홈 {homeTeamName}: {FormatTeamScoreStatistics(gameSummary.HomeScore, gameSummary.HomeTeamStatistics)}");
+        stringBuilder.AppendLine($"원정 {awayTeamName}: {FormatTeamScoreStatistics(gameSummary.AwayScore, gameSummary.AwayTeamStatistics)}");
     }
+
+    private static BaseballGameScheduleSummary GetGameSummaryForStatistics(
+        BaseballGameScheduleSummary gameSummary,
+        IReadOnlyDictionary<long, BaseballGameDetail>? gameDetailsByGameId)
+    {
+        if (gameDetailsByGameId != null && gameDetailsByGameId.TryGetValue(gameSummary.GameId, out var gameDetail)) return gameDetail.GameSummary;
+        return gameSummary;
+    }
+
+    private static string FormatLeftOnBaseSummary(BaseballGameScheduleSummary gameSummary)
+    {
+        var homeLeftOnBase = gameSummary.HomeTeamStatistics?.BattingLeftOnBase;
+        var awayLeftOnBase = gameSummary.AwayTeamStatistics?.BattingLeftOnBase;
+        if (homeLeftOnBase == null && awayLeftOnBase == null) return string.Empty;
+        return $" / 잔루 {FormatNullableNumber(awayLeftOnBase)} : {FormatNullableNumber(homeLeftOnBase)}";
+    }
+
+    private static string FormatTeamScoreStatistics(BaseballGameScore? score, BaseballGameTeamStatistics? teamStatistics) =>
+        $"안타 {FormatNullableNumber(score?.Hit)} / 실책 {FormatNullableNumber(score?.Error)} / 볼넷 {FormatNullableNumber(score?.Walks)} / " +
+        $"잔루 {FormatNullableNumber(teamStatistics?.BattingLeftOnBase)}";
 
     private static void AppendScoreChangedInformation(
         StringBuilder stringBuilder,
