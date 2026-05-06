@@ -9,34 +9,49 @@ public class DiscordResponseExecutor(
 {
     public async Task ExecuteAsync(ServerResponse response, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(response.Action))
-            return;
-
-        if (response.Action == "send_text")
+        if (response.Items.Count > 0)
         {
-            if (string.IsNullOrWhiteSpace(response.RoomId) || string.IsNullOrWhiteSpace(response.Message))
+            foreach (var responseItem in response.Items) await ExecuteResponseItemAsync(responseItem, cancellationToken);
+            return;
+        }
+
+        await ExecuteResponseItemAsync(new ServerResponseItem
+        {
+            Action = response.Action,
+            RoomId = response.RoomId,
+            Message = response.Message
+        }, cancellationToken);
+    }
+
+    private async Task ExecuteResponseItemAsync(ServerResponseItem responseItem, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(responseItem.Action)) return;
+
+        if (responseItem.Action == "send_text")
+        {
+            if (string.IsNullOrWhiteSpace(responseItem.RoomId) || string.IsNullOrWhiteSpace(responseItem.Message))
             {
                 logger.LogWarning("[DISCORD_EXECUTOR] Invalid send_text payload.");
                 return;
             }
 
-            await gatewayClient.SendMessageAsync(response.RoomId, response.Message, cancellationToken);
+            await gatewayClient.SendMessageAsync(responseItem.RoomId, responseItem.Message, cancellationToken);
             return;
         }
 
-        if (response.Action == "read")
+        if (responseItem.Action == "read")
         {
-            logger.LogDebug("[DISCORD_EXECUTOR] read action received for room {RoomId}", response.RoomId);
+            logger.LogDebug("[DISCORD_EXECUTOR] read action received for room {RoomId}", responseItem.RoomId);
             return;
         }
 
-        if (response.Action == "error")
+        if (responseItem.Action == "error")
         {
-            logger.LogWarning("[DISCORD_EXECUTOR] server error action: {Message}", response.Message);
+            logger.LogWarning("[DISCORD_EXECUTOR] server error action: {Message}", responseItem.Message);
             return;
         }
 
-        logger.LogDebug("[DISCORD_EXECUTOR] unsupported action ignored: {Action}", response.Action);
+        logger.LogDebug("[DISCORD_EXECUTOR] unsupported action ignored: {Action}", responseItem.Action);
     }
 }
 

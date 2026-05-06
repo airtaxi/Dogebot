@@ -19,7 +19,11 @@ public interface IBaseballGameSubscriptionService
 
     Task<ServerResponse?> CheckAndDeliverAsync(KakaoMessageData data);
 
+    Task<List<ServerResponseItem>> CheckAndDeliverManyAsync(KakaoMessageData data);
+
     Task<ServerResponse?> CheckAndDeliverForRoomsAsync(IEnumerable<string> roomIds);
+
+    Task<List<ServerResponseItem>> CheckAndDeliverManyForRoomsAsync(IEnumerable<string> roomIds);
 }
 
 public sealed record BaseballGameSubscriptionRegisterResult(

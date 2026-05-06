@@ -1,5 +1,6 @@
 using Dogebot.Commons;
 using Dogebot.Server.Commands;
+using Dogebot.Server.Models;
 
 namespace Dogebot.Server.Services;
 
@@ -14,6 +15,7 @@ public class KakaoService(
     IScheduledMessageService scheduledMessageService,
     IImaxNotificationService imaxNotificationService,
     IBaseballGameSubscriptionService baseballGameSubscriptionService,
+    IBotSettingService botSettingService,
     DebugLogService debugLogService) : IKakaoService
 {
 
@@ -63,6 +65,8 @@ public class KakaoService(
                                 handler.Command == "!아이맥스설정" ||
                                 handler.Command == "!아이맥스해제" ||
                                 handler.Command == "!아이맥스목록" ||
+                                handler.Command == "!멀티메시지" ||
+                                handler.Command == "!싱글메시지" ||
                                 data.Content.Trim().StartsWith("!야구구독해제", StringComparison.OrdinalIgnoreCase) ||
                                 handler.Command == "!디버그";
 
@@ -96,6 +100,9 @@ public class KakaoService(
 
             return await handler.HandleAsync(data);
         }
+
+        var messageDeliveryMode = await botSettingService.GetMessageDeliveryModeAsync();
+        if (messageDeliveryMode == MessageDeliveryMode.Multi) return await GetPendingCommandsForRoomAsync(data);
 
         // Check for IMAX notifications to deliver
         var imaxResponse = await imaxNotificationService.CheckAndDeliverAsync(data);
@@ -136,6 +143,9 @@ public class KakaoService(
 
         debugLogService.Log("POLL", $"폴링 수신: {roomIds.Count}개 방");
 
+        var messageDeliveryMode = await botSettingService.GetMessageDeliveryModeAsync();
+        if (messageDeliveryMode == MessageDeliveryMode.Multi) return await GetPendingCommandsForRoomsAsync(roomIds);
+
         // Check IMAX first (higher priority - time-sensitive)
         var imaxResponse = await imaxNotificationService.CheckAndDeliverForRoomsAsync(roomIds);
         if (imaxResponse is not null)
@@ -167,5 +177,70 @@ public class KakaoService(
         }
 
         return new ServerResponse();
+    }
+
+    private async Task<ServerResponse> GetPendingCommandsForRoomAsync(KakaoMessageData data)
+    {
+        var responseItems = new List<ServerResponseItem>();
+
+        var imaxResponseItems = await imaxNotificationService.CheckAndDeliverManyAsync(data);
+        if (imaxResponseItems.Count > 0) debugLogService.Log("NOTIFY", $"IMAX 알림 {imaxResponseItems.Count}개 전달 → {data.RoomName}");
+        responseItems.AddRange(imaxResponseItems);
+
+        var baseballGameSubscriptionResponseItems = await baseballGameSubscriptionService.CheckAndDeliverManyAsync(data);
+        if (baseballGameSubscriptionResponseItems.Count > 0) debugLogService.Log("NOTIFY", $"야구 구독 알림 {baseballGameSubscriptionResponseItems.Count}개 전달 → {data.RoomName}");
+        responseItems.AddRange(baseballGameSubscriptionResponseItems);
+
+        var scheduledResponseItems = await scheduledMessageService.CheckAndSendScheduledMessagesAsync(data);
+        if (scheduledResponseItems.Count > 0) debugLogService.Log("NOTIFY", $"반복메시지 {scheduledResponseItems.Count}개 전달 (fallback) → {data.RoomName}");
+        responseItems.AddRange(scheduledResponseItems);
+
+        return CreateResponseFromItems(responseItems);
+    }
+
+    private async Task<ServerResponse> GetPendingCommandsForRoomsAsync(IEnumerable<string> roomIds)
+    {
+        var roomIdList = roomIds.ToList();
+        var responseItems = new List<ServerResponseItem>();
+
+        var imaxResponseItems = await imaxNotificationService.CheckAndDeliverManyForRoomsAsync(roomIdList);
+        if (imaxResponseItems.Count > 0)
+        {
+            debugLogService.Log("POLL", $"IMAX 알림 {imaxResponseItems.Count}개 전달 (proactive)");
+            if (logger.IsEnabled(LogLevel.Information)) logger.LogInformation("[COMMAND] Delivering {Count} IMAX notifications", imaxResponseItems.Count);
+        }
+        responseItems.AddRange(imaxResponseItems);
+
+        var baseballGameSubscriptionResponseItems = await baseballGameSubscriptionService.CheckAndDeliverManyForRoomsAsync(roomIdList);
+        if (baseballGameSubscriptionResponseItems.Count > 0)
+        {
+            debugLogService.Log("POLL", $"야구 구독 알림 {baseballGameSubscriptionResponseItems.Count}개 전달 (proactive)");
+            if (logger.IsEnabled(LogLevel.Information)) logger.LogInformation("[COMMAND] Delivering {Count} baseball game subscription messages", baseballGameSubscriptionResponseItems.Count);
+        }
+        responseItems.AddRange(baseballGameSubscriptionResponseItems);
+
+        var scheduledResponseItems = await scheduledMessageService.CheckAndSendScheduledMessagesForRoomsAsync(roomIdList);
+        if (scheduledResponseItems.Count > 0)
+        {
+            debugLogService.Log("POLL", $"반복메시지 {scheduledResponseItems.Count}개 전달 (proactive)");
+            if (logger.IsEnabled(LogLevel.Information)) logger.LogInformation("[COMMAND] Delivering {Count} scheduled messages", scheduledResponseItems.Count);
+        }
+        responseItems.AddRange(scheduledResponseItems);
+
+        return CreateResponseFromItems(responseItems);
+    }
+
+    private static ServerResponse CreateResponseFromItems(IReadOnlyList<ServerResponseItem> responseItems)
+    {
+        if (responseItems.Count == 0) return new ServerResponse();
+
+        var firstResponseItem = responseItems[0];
+        return new ServerResponse
+        {
+            Action = firstResponseItem.Action,
+            RoomId = firstResponseItem.RoomId,
+            Message = firstResponseItem.Message,
+            Items = [.. responseItems]
+        };
     }
 }

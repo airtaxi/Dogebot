@@ -130,27 +130,16 @@ public partial class MainViewModel : ObservableObject
                 var responseJson = await response.Content.ReadAsStringAsync();
                 var serverResponse = JsonSerializer.Deserialize<ServerResponse>(responseJson);
 
-                if (serverResponse?.Action == "send_text" && !string.IsNullOrEmpty(serverResponse.Message))
-                {
-                    LogText = $"[OUT] Attempting to reply to {data.RoomName}: {serverResponse.Message}";
-                    bool success = await _kakaoBotService.SendReplyAsync(data.RoomId, serverResponse.Message);
-                    LogText += success ? " (Success)" : " (Failed: Notification action may have disappeared)";
-                }
-                else if (serverResponse?.Action == "read")
-                {
-                    LogText = $"[OUT] Attempting to mark {data.RoomName} as read";
-                    bool success = await _kakaoBotService.MarkAsReadAsync(data.RoomId);
-                    LogText += success ? " (Success)" : " (Failed: Notification action may have disappeared)";
-                }
+                if (serverResponse is not null) await ExecuteServerResponseAsync(serverResponse, "[OUT]", data.RoomName);
             }
             else
             {
                 LogText = $"❌ Server response error: Status code {response.StatusCode}";
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            LogText = $"❌ Server communication error: {ex.Message}";
+            LogText = $"❌ Server communication error: {exception.Message}";
         }
     }
 
@@ -172,19 +161,7 @@ public partial class MainViewModel : ObservableObject
                     var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
                     var serverResponse = JsonSerializer.Deserialize<ServerResponse>(responseJson);
 
-                    if (serverResponse != null)
-                    {
-                        if (serverResponse.Action == "send_text" && !string.IsNullOrEmpty(serverResponse.Message))
-                        {
-                            LogText = $"[CMD] Attempting to reply to {serverResponse.RoomId}: {serverResponse.Message}";
-                            await _kakaoBotService.SendReplyAsync(serverResponse.RoomId, serverResponse.Message);
-                        }
-                        else if (serverResponse.Action == "read")
-                        {
-                            LogText = $"[CMD] Attempting to mark {serverResponse.RoomId} as read";
-                            await _kakaoBotService.MarkAsReadAsync(serverResponse.RoomId);
-                        }
-                    }
+                    if (serverResponse != null) await ExecuteServerResponseAsync(serverResponse, "[CMD]", serverResponse.RoomId);
                 }
                 else
                 {
@@ -196,13 +173,48 @@ public partial class MainViewModel : ObservableObject
                 // Bot stopped, exit polling loop
                 break;
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                LogText = $"❌ Error during polling: {ex.Message}";
+                LogText = $"❌ Error during polling: {exception.Message}";
             }
 
             // Poll every 5 seconds
             await Task.Delay(5000, cancellationToken);
         }
     }
+
+    private async Task ExecuteServerResponseAsync(ServerResponse serverResponse, string logPrefix, string defaultTargetName)
+    {
+        var responseItems = serverResponse.Items.Count > 0
+            ? serverResponse.Items
+            : CreateSingleResponseItemList(serverResponse);
+
+        foreach (var responseItem in responseItems)
+        {
+            var targetName = responseItems.Count == 1 ? defaultTargetName : responseItem.RoomId;
+
+            if (responseItem.Action == "send_text" && !string.IsNullOrEmpty(responseItem.Message))
+            {
+                LogText = $"{logPrefix} Attempting to reply to {targetName}: {responseItem.Message}";
+                var success = await _kakaoBotService.SendReplyAsync(responseItem.RoomId, responseItem.Message);
+                LogText += success ? " (Success)" : " (Failed: Notification action may have disappeared)";
+            }
+            else if (responseItem.Action == "read")
+            {
+                LogText = $"{logPrefix} Attempting to mark {targetName} as read";
+                var success = await _kakaoBotService.MarkAsReadAsync(responseItem.RoomId);
+                LogText += success ? " (Success)" : " (Failed: Notification action may have disappeared)";
+            }
+        }
+    }
+
+    private static List<ServerResponseItem> CreateSingleResponseItemList(ServerResponse serverResponse) =>
+    [
+        new ServerResponseItem
+        {
+            Action = serverResponse.Action,
+            RoomId = serverResponse.RoomId,
+            Message = serverResponse.Message
+        }
+    ];
 }

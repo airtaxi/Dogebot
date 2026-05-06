@@ -31,6 +31,9 @@ builder.Services.AddSingleton<IRequestLimitService, RequestLimitService>();
 // Register User Preference service
 builder.Services.AddSingleton<IUserPreferenceService, UserPreferenceService>();
 
+// Register Bot Setting service
+builder.Services.AddSingleton<IBotSettingService, BotSettingService>();
+
 // Register Hot Deal service
 builder.Services.AddSingleton<IHotDealService, HotDealService>();
 
@@ -123,6 +126,8 @@ builder.Services.AddSingleton<ICommandHandler, ChoiceCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, AdminAddCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, AdminRemoveCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, AdminListCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, MultiMessageCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, SingleMessageCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SetRequestLimitCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RemoveRequestLimitCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, EnableRankingCommandHandler>();

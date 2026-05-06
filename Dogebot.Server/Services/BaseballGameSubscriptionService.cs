@@ -192,6 +192,12 @@ public class BaseballGameSubscriptionService : IBaseballGameSubscriptionService
         return await FindAndDeletePendingMessageAsync(filter);
     }
 
+    public async Task<List<ServerResponseItem>> CheckAndDeliverManyAsync(KakaoMessageData data)
+    {
+        var filter = Builders<BaseballGameSubscriptionMessage>.Filter.Eq(message => message.RoomId, data.RoomId);
+        return await FindAndDeletePendingMessagesAsync(filter);
+    }
+
     public async Task<ServerResponse?> CheckAndDeliverForRoomsAsync(IEnumerable<string> roomIds)
     {
         var roomIdList = roomIds.ToList();
@@ -199,6 +205,15 @@ public class BaseballGameSubscriptionService : IBaseballGameSubscriptionService
 
         var filter = Builders<BaseballGameSubscriptionMessage>.Filter.In(message => message.RoomId, roomIdList);
         return await FindAndDeletePendingMessageAsync(filter);
+    }
+
+    public async Task<List<ServerResponseItem>> CheckAndDeliverManyForRoomsAsync(IEnumerable<string> roomIds)
+    {
+        var roomIdList = roomIds.ToList();
+        if (roomIdList.Count == 0) return [];
+
+        var filter = Builders<BaseballGameSubscriptionMessage>.Filter.In(message => message.RoomId, roomIdList);
+        return await FindAndDeletePendingMessagesAsync(filter);
     }
 
     private async Task<ServerResponse?> FindAndDeletePendingMessageAsync(FilterDefinition<BaseballGameSubscriptionMessage> filter)
@@ -218,6 +233,30 @@ public class BaseballGameSubscriptionService : IBaseballGameSubscriptionService
             RoomId = pendingMessage.RoomId,
             Message = pendingMessage.Message
         };
+    }
+
+    private async Task<List<ServerResponseItem>> FindAndDeletePendingMessagesAsync(FilterDefinition<BaseballGameSubscriptionMessage> filter)
+    {
+        var responseItems = new List<ServerResponseItem>();
+        var options = new FindOneAndDeleteOptions<BaseballGameSubscriptionMessage>
+        {
+            Sort = Builders<BaseballGameSubscriptionMessage>.Sort
+                .Ascending(message => message.CreatedAt)
+                .Ascending(message => message.Id)
+        };
+
+        while (true)
+        {
+            var pendingMessage = await _messages.FindOneAndDeleteAsync(filter, options);
+            if (pendingMessage is null) return responseItems;
+
+            responseItems.Add(new ServerResponseItem
+            {
+                Action = "send_text",
+                RoomId = pendingMessage.RoomId,
+                Message = pendingMessage.Message
+            });
+        }
     }
 
     private static bool MatchesSubscriptionTeam(BaseballGameSubscription subscription, string teamSearchText)
