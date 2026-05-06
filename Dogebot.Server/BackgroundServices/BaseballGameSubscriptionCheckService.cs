@@ -90,6 +90,20 @@ public class BaseballGameSubscriptionCheckService(
     private static BaseballGameSubscriptionCheckResult BuildCheckResult(BaseballGameSubscription subscription, BaseballGameDetail gameDetail)
     {
         var pendingMessages = new List<string>();
+        if (BaseballGameFormatter.IsRainCanceledGame(gameDetail.GameSummary))
+        {
+            pendingMessages.Add(BaseballGameFormatter.FormatRainCanceledNotification(gameDetail));
+            return new BaseballGameSubscriptionCheckResult(
+                subscription.LastDeliveredLiveEventKey,
+                subscription.LastDeliveredLiveEventIndex,
+                gameDetail.GameSummary.HomeScore?.Run,
+                gameDetail.GameSummary.AwayScore?.Run,
+                subscription.LineupNotified,
+                BaseballGameSubscriptionStatus.Completed,
+                DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                pendingMessages);
+        }
+
         var liveEvents = BaseballGameFormatter.GetLiveGameEvents(gameDetail).ToList();
         var previousLiveEventIndex = ResolveLastDeliveredLiveEventIndex(subscription, liveEvents);
         var newLiveEvents = previousLiveEventIndex < liveEvents.Count - 1
@@ -129,8 +143,7 @@ public class BaseballGameSubscriptionCheckService(
                            hasCurrentScore &&
                            (subscription.LastHomeScore != currentHomeScore || subscription.LastAwayScore != currentAwayScore);
 
-        if (scoreChanged && newLiveEvents.Count == 0)
-            pendingMessages.Add(BaseballGameFormatter.FormatScoreChangedNotification(gameDetail, subscription.LastHomeScore, subscription.LastAwayScore));
+        if (scoreChanged && newLiveEvents.Count == 0) pendingMessages.Add(BaseballGameFormatter.FormatScoreChangedNotification(gameDetail, subscription.LastHomeScore, subscription.LastAwayScore));
 
         var status = BaseballGameSubscriptionStatus.Active;
         long? completedAt = null;
@@ -156,22 +169,22 @@ public class BaseballGameSubscriptionCheckService(
         IReadOnlyList<BaseballGameLiveEvent> liveEvents)
     {
         if (liveEvents.Count == 0) return -1;
-        if (subscription.LastDeliveredLiveEventIndex >= 0 &&
-            subscription.LastDeliveredLiveEventIndex < liveEvents.Count &&
-            BaseballGameFormatter.BuildLiveEventKey(liveEvents[subscription.LastDeliveredLiveEventIndex])
-                .Equals(subscription.LastDeliveredLiveEventKey, StringComparison.Ordinal))
-            return subscription.LastDeliveredLiveEventIndex;
+        var cachedLiveEventIndexMatches = subscription.LastDeliveredLiveEventIndex >= 0 &&
+                                          subscription.LastDeliveredLiveEventIndex < liveEvents.Count &&
+                                          BaseballGameFormatter.BuildLiveEventKey(liveEvents[subscription.LastDeliveredLiveEventIndex])
+                                              .Equals(subscription.LastDeliveredLiveEventKey, StringComparison.Ordinal);
+        if (cachedLiveEventIndexMatches) return subscription.LastDeliveredLiveEventIndex;
 
         if (!string.IsNullOrWhiteSpace(subscription.LastDeliveredLiveEventKey))
         {
             for (var liveEventIndex = liveEvents.Count - 1; liveEventIndex >= 0; liveEventIndex--)
-                if (BaseballGameFormatter.BuildLiveEventKey(liveEvents[liveEventIndex])
-                    .Equals(subscription.LastDeliveredLiveEventKey, StringComparison.Ordinal))
-                    return liveEventIndex;
+            {
+                var liveEventKey = BaseballGameFormatter.BuildLiveEventKey(liveEvents[liveEventIndex]);
+                if (liveEventKey.Equals(subscription.LastDeliveredLiveEventKey, StringComparison.Ordinal)) return liveEventIndex;
+            }
         }
 
-        if (subscription.LastDeliveredLiveEventIndex >= 0)
-            return Math.Min(subscription.LastDeliveredLiveEventIndex, liveEvents.Count - 1);
+        if (subscription.LastDeliveredLiveEventIndex >= 0) return Math.Min(subscription.LastDeliveredLiveEventIndex, liveEvents.Count - 1);
 
         return -1;
     }

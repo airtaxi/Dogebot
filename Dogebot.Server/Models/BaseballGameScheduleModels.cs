@@ -7,6 +7,7 @@ public sealed record BaseballGameScheduleSnapshot(
 public sealed record BaseballGameScheduleSummary(
     long GameId,
     string GameStatus,
+    string GameDetailStatus,
     string PeriodType,
     string CurrentPeriod,
     string StartDate,
