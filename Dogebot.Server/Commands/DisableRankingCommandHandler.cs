@@ -55,12 +55,12 @@ public class DisableRankingCommandHandler(
                          "기존 메시지 내용 기록이 모두 삭제되었습니다.\n" +
                          "이제 메시지 내용이 기록되지 않으며\n" +
                          "!랭크 명령어를 사용할 수 없습니다.\n\n" +
-                         "💡 채팅 통계(!조회, !내랭킹 등)는 계속 사용 가능합니다."
+                         "💡 채팅 통계(!랭킹, !내랭킹 등)는 계속 사용 가능합니다."
             };
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            logger.LogError(ex, "[RANKING_DISABLE] Error processing disable ranking command");
+            logger.LogError(exception, "[RANKING_DISABLE] Error processing disable ranking command");
             return new ServerResponse
             {
                 Action = "send_text",
