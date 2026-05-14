@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dogebot.Commons;
 using Dogebot.Server.Services;
 
@@ -8,7 +7,7 @@ public class RankingCommandHandler(
     IChatStatisticsService statisticsService,
     ILogger<RankingCommandHandler> logger) : ICommandHandler
 {
-    private const string ZeroWidthSpace = "\u200B";
+    private const string WordJoiner = "\u2060";
 
     public string Command => "!랭킹";
 
@@ -53,7 +52,7 @@ public class RankingCommandHandler(
                     _ => $"{index + 1}."
                 };
 
-                message += $"{medal} {InsertZeroWidthSpaces(senderName)}: {messageCount:N0}회\n";
+                message += $"{medal} {InsertWordJoiners(senderName)}: {messageCount:N0}회\n";
             }
 
             if (logger.IsEnabled(LogLevel.Information))
@@ -78,12 +77,6 @@ public class RankingCommandHandler(
         }
     }
 
-    private static string InsertZeroWidthSpaces(string value)
-    {
-        var textElements = new List<string>();
-        var textElementEnumerator = StringInfo.GetTextElementEnumerator(value);
-        while (textElementEnumerator.MoveNext()) textElements.Add(textElementEnumerator.GetTextElement());
-
-        return textElements.Count <= 1 ? value : string.Join(ZeroWidthSpace, textElements);
-    }
+    private static string InsertWordJoiners(string value) =>
+        value.Length <= 1 ? value : string.Join(WordJoiner, value.Select(character => character.ToString()));
 }
