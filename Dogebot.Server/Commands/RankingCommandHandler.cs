@@ -1,46 +1,89 @@
+using System.Globalization;
 using Dogebot.Commons;
 using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class RankingCommandHandler(ILogger<RankingCommandHandler> logger) : ICommandHandler
+public class RankingCommandHandler(
+    IChatStatisticsService statisticsService,
+    ILogger<RankingCommandHandler> logger) : ICommandHandler
 {
+    private const string ZeroWidthSpace = "\u200B";
+
     public string Command => "!랭킹";
 
     public bool CanHandle(string content)
     {
-        return content.Trim().Equals(Command, StringComparison.OrdinalIgnoreCase);
+        var trimmed = content.Trim();
+        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) ||
+               trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
     }
 
-    public Task<ServerResponse> HandleAsync(KakaoMessageData data)
+    public async Task<ServerResponse> HandleAsync(KakaoMessageData data)
     {
         try
         {
-            var message = "📊 채팅 랭킹 조회 안내\n\n" +
-                         "키워드 알림 방지를 위해 개인톡에서 사용하는 것을 권장합니다.\n\n" +
-                         "사용법: !조회 (roomId)\n" +
-                         $"현재 방 조회: !조회 {data.RoomId}";
+            var parts = data.Content.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var limit = 10;
+
+            if (parts.Length > 1 && int.TryParse(parts[1], out var parsedLimit))
+                limit = Math.Max(1, Math.Min(parsedLimit, 50));
+
+            var topUsers = await statisticsService.GetTopUsersAsync(data.RoomId, limit);
+
+            if (topUsers.Count == 0)
+            {
+                return new ServerResponse
+                {
+                    Action = "send_text",
+                    RoomId = data.RoomId,
+                    Message = "아직 통계 데이터가 없습니다."
+                };
+            }
+
+            var message = $"📊 채팅 랭킹 TOP {limit}\n\n";
+            for (var index = 0; index < topUsers.Count; index++)
+            {
+                var (senderName, messageCount) = topUsers[index];
+                var medal = index switch
+                {
+                    0 => "🥇",
+                    1 => "🥈",
+                    2 => "🥉",
+                    _ => $"{index + 1}."
+                };
+
+                message += $"{medal} {InsertZeroWidthSpaces(senderName)}: {messageCount:N0}회\n";
+            }
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[RANKING] Showing ranking guide for room {RoomId}", data.RoomId);
+                logger.LogInformation("[RANKING] Showing top {Limit} users for room {RoomId}", limit, data.RoomId);
 
-            return Task.FromResult(new ServerResponse
+            return new ServerResponse
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
-                Message = message
-            });
+                Message = message.TrimEnd()
+            };
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            logger.LogError(ex, "[RANKING] Error processing ranking command");
-            return Task.FromResult(new ServerResponse
+            logger.LogError(exception, "[RANKING] Error processing ranking command");
+            return new ServerResponse
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
-                Message = "랭킹 안내 중 오류가 발생했습니다."
-            });
+                Message = "랭킹 조회 중 오류가 발생했습니다."
+            };
         }
     }
-}
 
+    private static string InsertZeroWidthSpaces(string value)
+    {
+        var textElements = new List<string>();
+        var textElementEnumerator = StringInfo.GetTextElementEnumerator(value);
+        while (textElementEnumerator.MoveNext()) textElements.Add(textElementEnumerator.GetTextElement());
+
+        return textElements.Count <= 1 ? value : string.Join(ZeroWidthSpace, textElements);
+    }
+}
