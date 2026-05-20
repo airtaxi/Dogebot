@@ -198,15 +198,19 @@ public class ChatStatisticsService : IChatStatisticsService
         return [.. results.Select(r => (r.SenderName, r.MessageCount))];
     }
 
-    public async Task<List<string>> GetKnownSenderNamesAsync(string roomId, string excludedSenderHash)
+    public async Task<List<string>> GetKnownSenderNamesAsync(string roomId, string excludedSenderHash, long? minimumLastMessageTimeMilliseconds = null)
     {
-        var filter = Builders<ChatStatistics>.Filter.And(
+        var filters = new List<FilterDefinition<ChatStatistics>>
+        {
             Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, roomId),
             Builders<ChatStatistics>.Filter.Ne(x => x.SenderHash, excludedSenderHash)
-        );
+        };
+
+        if (minimumLastMessageTimeMilliseconds.HasValue)
+            filters.Add(Builders<ChatStatistics>.Filter.Gte(x => x.LastMessageTime, minimumLastMessageTimeMilliseconds.Value));
 
         var users = await _chatStatistics
-            .Find(filter)
+            .Find(Builders<ChatStatistics>.Filter.And(filters))
             .SortBy(x => x.SenderName)
             .ToListAsync();
 
