@@ -1,3 +1,4 @@
+using Dogebot.Commons;
 using Dogebot.DiscordClient.Contracts;
 using Dogebot.DiscordClient.Models;
 
@@ -25,6 +26,7 @@ public class DiscordMessageMapperTests
         var notification = mapper.MapToNotification(inboundMessage);
 
         Assert.Equal("message", notification.Event);
+        Assert.Equal(KakaoMessageData.DiscordSource, notification.Data.Source);
         Assert.Equal("doge/general", notification.Data.RoomName);
         Assert.Equal("1234", notification.Data.RoomId);
         Assert.Equal("5678", notification.Data.SenderHash);

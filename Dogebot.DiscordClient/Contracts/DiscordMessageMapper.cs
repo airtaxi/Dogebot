@@ -10,6 +10,7 @@ public class DiscordMessageMapper : IDiscordMessageMapper
         Event = "message",
         Data = new KakaoMessageData
         {
+            Source = KakaoMessageData.DiscordSource,
             RoomName = string.IsNullOrWhiteSpace(message.GuildName)
                 ? message.ChannelName
                 : $"{message.GuildName}/{message.ChannelName}",
