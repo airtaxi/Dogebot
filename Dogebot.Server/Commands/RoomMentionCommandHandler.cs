@@ -8,6 +8,8 @@ namespace Dogebot.Server.Commands;
 
 public class RoomMentionCommandHandler(IChatStatisticsService chatStatisticsService, IRoomMentionUsageService roomMentionUsageService, IAdminService adminService, ILogger<RoomMentionCommandHandler> logger) : ICommandHandler
 {
+    private const int HereMentionLookbackDays = 10;
+
     private static readonly Regex s_mentionCommandRegularExpression = new(@"(?<![\p{L}\p{Nd}_@.])@(here|everyone)(?![\p{L}\p{Nd}_.])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
     private static readonly TimeSpan s_koreaStandardTimeOffset = TimeSpan.FromHours(9);
 
@@ -23,7 +25,10 @@ public class RoomMentionCommandHandler(IChatStatisticsService chatStatisticsServ
 
             if (!TryGetMentionCommand(data.Content, out var mentionCommand)) return new ServerResponse();
 
-            var knownSenderNames = await chatStatisticsService.GetKnownSenderNamesAsync(data.RoomId, data.SenderHash);
+            var minimumLastMessageTimeMilliseconds = mentionCommand == "@Here"
+                ? DateTimeOffset.UtcNow.AddDays(-HereMentionLookbackDays).ToUnixTimeMilliseconds()
+                : (long?)null;
+            var knownSenderNames = await chatStatisticsService.GetKnownSenderNamesAsync(data.RoomId, data.SenderHash, minimumLastMessageTimeMilliseconds);
             if (knownSenderNames.Count == 0)
             {
                 return new ServerResponse

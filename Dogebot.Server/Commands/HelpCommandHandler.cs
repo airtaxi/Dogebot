@@ -109,7 +109,8 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger) : ICommandHa
         new("ℹ️ 기타", ["기타"], [
             new("!날씨 [지역]", ["!날씨"], "현재 날씨 확인 (기본: 이전 도시 또는 서울)"),
             new("!내일날씨 [지역]", ["!내일날씨"], "내일 날씨 확인 (기본: 이전 도시 또는 서울)"),
-            new("@Here / @everyone", ["@Here", "@everyone"], "방의 알려진 사용자 호출 (일반 사용자 24시간 1회)"),
+            new("@Here", ["@Here", "Here"], "최근 10일간 활동한 사용자 호출 (일반 사용자 24시간 1회)"),
+            new("@everyone", ["@everyone", "everyone"], "방의 알려진 전체 사용자 호출 (일반 사용자 24시간 1회)"),
             new("!핫딜", ["!핫딜"], "랜덤 핫딜 상품 추천"),
             new("!영화목록 [검색어]", ["!영화목록"], "CGV 영화 목록 조회 (영화관 선택)"),
             new("!아이맥스조회 [영화이름]", ["!아이맥스조회"], "IMAX 시간표 조회 (영화관 선택)"),
