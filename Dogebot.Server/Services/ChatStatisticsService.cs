@@ -198,6 +198,24 @@ public class ChatStatisticsService : IChatStatisticsService
         return [.. results.Select(r => (r.SenderName, r.MessageCount))];
     }
 
+    public async Task<List<string>> GetKnownSenderNamesAsync(string roomId, string excludedSenderHash)
+    {
+        var filter = Builders<ChatStatistics>.Filter.And(
+            Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, roomId),
+            Builders<ChatStatistics>.Filter.Ne(x => x.SenderHash, excludedSenderHash)
+        );
+
+        var users = await _chatStatistics
+            .Find(filter)
+            .SortBy(x => x.SenderName)
+            .ToListAsync();
+
+        return [.. users
+            .Select(user => user.SenderName.Trim())
+            .Where(senderName => senderName.Length > 0)
+            .Distinct(StringComparer.Ordinal)];
+    }
+
     public async Task<(int Rank, long MessageCount)?> GetUserRankAsync(string roomId, string senderHash)
     {
         var filter = Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, roomId);

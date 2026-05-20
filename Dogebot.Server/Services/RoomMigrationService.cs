@@ -82,11 +82,13 @@ public class RoomMigrationService : IRoomMigrationService
         totalMigrated += await UpdateRoomIdAsync<BaseballGameSubscriptionMessage>("baseballGameSubscriptionMessages", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<RoomRequestLimit>("roomRequestLimits", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<UserDailyRequest>("userDailyRequests", sourceRoomId, targetRoomId);
+        totalMigrated += await UpdateRoomIdAsync<RoomMentionUsage>("roomMentionUsages", sourceRoomId, targetRoomId);
 
         // Also update roomName in settings/limits that store it
         await UpdateRoomNameAsync<RoomRankingSettings>("roomRankingSettings", targetRoomId, targetRoomName);
         await UpdateRoomNameAsync<RoomRequestLimit>("roomRequestLimits", targetRoomId, targetRoomName);
         await UpdateRoomNameAsync<BaseballGameSubscription>("baseballGameSubscriptions", targetRoomId, targetRoomName);
+        await UpdateRoomNameAsync<RoomMentionUsage>("roomMentionUsages", targetRoomId, targetRoomName);
 
         // Record senderName→oldSenderHash mappings for lazy hash migration.
         // When a user sends a message in the target room, their old hash data
@@ -196,6 +198,13 @@ public class RoomMigrationService : IRoomMigrationService
         await MergeHashInCollectionAsync("monthlyChatStatistics", roomId, oldSenderHash, newSenderHash,
             additionalKeyFields: ["month"],
             incrementFields: ["messageCount"]);
+
+        // roomMentionUsages: keep the latest cooldown when a sender hash changes
+        await MergeHashInCollectionAsync("roomMentionUsages", roomId, oldSenderHash, newSenderHash,
+            additionalKeyFields: [],
+            incrementFields: [],
+            maxFields: ["lastUsedAt", "nextAvailableAt"],
+            setFields: ["roomName", "senderName"]);
     }
 
     /// <summary>

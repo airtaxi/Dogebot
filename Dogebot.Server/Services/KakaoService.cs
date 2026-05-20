@@ -47,30 +47,31 @@ public class KakaoService(
         var handler = commandHandlerFactory.FindHandler(data.Content);
         if (handler != null)
         {
-            // Check if the command should be rate-limited
-            // Exclude limit management commands and admin commands from rate limiting
-            var isAdminCommand = handler.Command == "!제한설정" || 
-                                handler.Command == "!제한해제" ||
-                                handler.Command == "!관리추가" ||
-                                handler.Command == "!관리제거" ||
-                                handler.Command == "!관리목록" ||
-                                handler.Command == "!랭크활성화" ||
-                                handler.Command == "!랭크비활성화" ||
-                                handler.Command == "!심삭제" ||
-                                handler.Command == "!반복설정" ||
-                                handler.Command == "!반복해제" ||
-                                handler.Command == "!반복목록" ||
-                                handler.Command == "!방백업" ||
-                                handler.Command == "!방복원" ||
-                                handler.Command == "!아이맥스설정" ||
-                                handler.Command == "!아이맥스해제" ||
-                                handler.Command == "!아이맥스목록" ||
-                                handler.Command == "!멀티메시지" ||
-                                handler.Command == "!싱글메시지" ||
-                                data.Content.Trim().StartsWith("!야구구독해제", StringComparison.OrdinalIgnoreCase) ||
-                                handler.Command == "!디버그";
+            // Check if the command should use the room request limit.
+            // Exclude admin commands and commands that handle their own limits.
+            var isRequestLimitExcludedCommand = handler.Command == "!제한설정" ||
+                handler.Command == "!제한해제" ||
+                handler.Command == "!관리추가" ||
+                handler.Command == "!관리제거" ||
+                handler.Command == "!관리목록" ||
+                handler.Command == "!랭크활성화" ||
+                handler.Command == "!랭크비활성화" ||
+                handler.Command == "!심삭제" ||
+                handler.Command == "!반복설정" ||
+                handler.Command == "!반복해제" ||
+                handler.Command == "!반복목록" ||
+                handler.Command == "!방백업" ||
+                handler.Command == "!방복원" ||
+                handler.Command == "!아이맥스설정" ||
+                handler.Command == "!아이맥스해제" ||
+                handler.Command == "!아이맥스목록" ||
+                handler.Command == "!멀티메시지" ||
+                handler.Command == "!싱글메시지" ||
+                handler.Command == "@Here" ||
+                data.Content.Trim().StartsWith("!야구구독해제", StringComparison.OrdinalIgnoreCase) ||
+                handler.Command == "!디버그";
 
-            if (!isAdminCommand)
+            if (!isRequestLimitExcludedCommand)
             {
                 // Check request limit
                 var canExecute = await requestLimitService.CheckRequestLimitAsync(data.RoomId, data.SenderHash);

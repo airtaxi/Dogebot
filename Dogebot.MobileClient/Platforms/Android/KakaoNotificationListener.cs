@@ -93,6 +93,7 @@ public class KakaoNotificationListener : NotificationListenerService
 
             var data = new KakaoMessageData
             {
+                Source = KakaoMessageData.KakaoSource,
                 RoomName = roomName,
                 RoomId = roomId,
                 SenderName = senderName,

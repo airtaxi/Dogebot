@@ -28,6 +28,9 @@ builder.Services.AddSingleton<IAdminService, AdminService>();
 // Register Request Limit service
 builder.Services.AddSingleton<IRequestLimitService, RequestLimitService>();
 
+// Register Room Mention service
+builder.Services.AddSingleton<IRoomMentionUsageService, RoomMentionUsageService>();
+
 // Register User Preference service
 builder.Services.AddSingleton<IUserPreferenceService, UserPreferenceService>();
 
@@ -111,6 +114,7 @@ builder.Services.AddSingleton<ICommandHandler, OddEvenCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DiceCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, LottoCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MagicConchCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, RoomMentionCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HelpCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RoomInfoCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, CarGachaCommandHandler>();

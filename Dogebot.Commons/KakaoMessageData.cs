@@ -4,6 +4,12 @@ namespace Dogebot.Commons;
 
 public class KakaoMessageData
 {
+    public const string KakaoSource = "kakao";
+    public const string DiscordSource = "discord";
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = string.Empty;
+
     [JsonPropertyName("roomName")]
     public string RoomName { get; set; } = string.Empty;
 
