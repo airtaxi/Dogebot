@@ -35,19 +35,26 @@ dotnet run --project Dogebot.Server
 1. 클라이언트 → `POST /api/kakao/notify` → 서버가 커맨드 핸들러 실행 → 즉시 응답 반환
 2. 클라이언트 → `GET /api/kakao/command?availableRooms=...` → 서버가 대기 중인 예약 메시지/IMAX 알림 반환
 
+서버 시작 시 흐름 (`Dogebot.Server/Program.cs`):
+- `MigrationService.RunMigrationsAsync()` 실행
+- `MessageCleanupService`로 블랙리스트 메시지 정리
+- `IAdminService`/`IRequestLimitService`로 만료 승인 코드 정리
+
 ## Technology Stack
 
 - .NET 10 / C# 14, Nullable reference types 전역 활성화
 - MongoDB (MongoDB.Driver) — 통계, 관리자, 예약 메시지 등 저장
 - Selenium + HtmlAgilityPack — 일부 커맨드에서 웹 스크래핑
 - CommunityToolkit.Mvvm — MAUI 클라이언트 MVVM 패턴
+- OpenWeatherMap API — 날씨 커맨드 (`WEATHER_API_KEY` 또는 `Weather:ApiKey`)
+- 외부 데이터 소스 — IMAX API (`https://imax.kagamine-rin.com`), 아카 핫딜 (`https://arca.live/b/hotdeal`)
 
 ## Naming Conventions
 
 | 대상 | 규칙 | 예시 |
 |------|------|------|
 | Private instance fields | `_camelCase` | `_wakeLock`, `_random` |
-| Private static fields | `s_camelCase` | `s_instance` |
+| Private static fields | `s_camelCase` | `s_cacheLock`, `s_driverLock` |
 | Properties, methods, classes, enums | `PascalCase` | `HandleAsync`, `SenderHash` |
 | Async 메서드 | `Async` 접미사 | `HandleNotificationAsync` |
 | 인터페이스 | `I` 접두사 | `ICommandHandler` |
@@ -56,7 +63,7 @@ dotnet run --project Dogebot.Server
 
 ## C# Code Style
 
-- Single-line `if`/`for`/`foreach`/`while`은 중괄호 생략: `if (condition) myValue = true;`
+- Single-line `if`/`for`/`foreach`/`while`은 중괄호를 생략하고 같은 물리 줄에 둔다.
 - ~100자 초과 시 다음 줄로 내리되 중괄호는 여전히 생략.
 - Single-line 메서드는 expression-bodied syntax (`=>`) 사용.
 - Single-line `try`/`catch`/`finally`:
@@ -66,7 +73,7 @@ dotnet run --project Dogebot.Server
   ```
 - Primary constructor를 적극 사용.
 - Collection expression (`[item1, item2]`, `[]`) 적극 사용.
-- 변수명에 약어 사용 금지. 풀네임 사용 (예: `GreatestCommonDivisor`, 아닌 `Gcd`).
+- 변수명에 약어 사용 금지. 단, `IP`, `AC`/`DC`, `Regex`처럼 약어 형태가 압도적으로 더 일반적이거나 표준 용어인 경우는 허용한다.
 - 최신 C# 언어 기능 적극 활용.
 
 ## XAML Style (MAUI)
@@ -80,6 +87,7 @@ dotnet run --project Dogebot.Server
 
 1. `Dogebot.Server\Commands\` 에 `ICommandHandler` 구현 클래스 생성.
 2. `Program.cs`에 `builder.Services.AddSingleton<ICommandHandler, YourHandler>();` 등록.
+3. `HelpCommandHandler.cs`에 명령어 설명 추가 (`!도움`, `!도움말`, `!help` 노출 목록).
 
 핸들러 구현 규칙:
 - Primary constructor로 의존성 주입 (`ILogger<T>`, 서비스 등).
@@ -124,7 +132,8 @@ public class ExampleCommandHandler(ILogger<ExampleCommandHandler> logger) : ICom
 
 ## Dependency Injection
 
-- 모든 서비스와 커맨드 핸들러는 `AddSingleton`으로 등록.
+- 일반 서비스와 커맨드 핸들러는 `AddSingleton`으로 등록.
+- 주기 실행 작업은 `AddHostedService`로 등록 (예: `ApprovalCodeCleanupService`, `ImaxNotificationCheckService`).
 - `CommandHandlerFactory`가 `IEnumerable<ICommandHandler>`를 주입받아 핸들러를 검색.
 - 핸들러 등록 순서가 우선순위를 결정한다 (`FindHandler`는 첫 번째 매칭 반환).
 
@@ -153,6 +162,7 @@ public class ExampleCommandHandler(ILogger<ExampleCommandHandler> logger) : ICom
 1. `Models/` 에 BSON 모델 생성 (`[BsonId]`, `[BsonElement("camelCase")]`).
 2. `Services/` 에 인터페이스 + 구현 클래스 생성.
 3. `Program.cs`에 `builder.Services.AddSingleton<IYourService, YourService>();` 등록.
+4. 방 관련 MongoDB 컬렉션을 추가하고 문서에 `roomId`가 포함된다면 반드시 `RoomMigrationService.MigrateRoomDataAsync()`에 해당 컬렉션의 `UpdateRoomIdAsync<T>()` 호출을 추가한다. 문서에 `roomName`도 저장하면 `UpdateRoomNameAsync<T>()`에도 추가하고, `senderHash`를 저장해 방 복원 후 사용자 해시 병합이 필요하면 `MergeUserHashAsync()`에도 병합 로직을 추가한다.
 
 서비스 구현 규칙:
 - 생성자에서 `IMongoDbService`를 주입받아 `GetCollection<T>("collectionName")` 호출.

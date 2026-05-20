@@ -54,7 +54,7 @@ dotnet run --project Dogebot.Server
 | 대상 | 규칙 | 예시 |
 |------|------|------|
 | Private instance fields | `_camelCase` | `_wakeLock`, `_random` |
-| Private static fields | `_camelCase` | `_cacheLock`, `_driverLock` |
+| Private static fields | `s_camelCase` | `s_cacheLock`, `s_driverLock` |
 | Properties, methods, classes, enums | `PascalCase` | `HandleAsync`, `SenderHash` |
 | Async 메서드 | `Async` 접미사 | `HandleNotificationAsync` |
 | 인터페이스 | `I` 접두사 | `ICommandHandler` |
@@ -63,7 +63,7 @@ dotnet run --project Dogebot.Server
 
 ## C# Code Style
 
-- Single-line `if`/`for`/`foreach`/`while`은 중괄호 생략을 권장하되, 기존 코드 스타일을 우선한다.
+- Single-line `if`/`for`/`foreach`/`while`은 중괄호를 생략하고 같은 물리 줄에 둔다.
 - ~100자 초과 시 다음 줄로 내리되 중괄호는 여전히 생략.
 - Single-line 메서드는 expression-bodied syntax (`=>`) 사용.
 - Single-line `try`/`catch`/`finally`:
@@ -73,7 +73,7 @@ dotnet run --project Dogebot.Server
   ```
 - Primary constructor를 적극 사용.
 - Collection expression (`[item1, item2]`, `[]`) 적극 사용.
-- 새 코드에서는 불필요한 약어를 지양하되, 기존 코드의 통용 약어(`ex`, `Kst` 등)와 일관성을 유지한다.
+- 변수명에 약어 사용 금지. 단, `IP`, `AC`/`DC`, `Regex`처럼 약어 형태가 압도적으로 더 일반적이거나 표준 용어인 경우는 허용한다.
 - 최신 C# 언어 기능 적극 활용.
 
 ## XAML Style (MAUI)
@@ -162,6 +162,7 @@ public class ExampleCommandHandler(ILogger<ExampleCommandHandler> logger) : ICom
 1. `Models/` 에 BSON 모델 생성 (`[BsonId]`, `[BsonElement("camelCase")]`).
 2. `Services/` 에 인터페이스 + 구현 클래스 생성.
 3. `Program.cs`에 `builder.Services.AddSingleton<IYourService, YourService>();` 등록.
+4. 방 관련 MongoDB 컬렉션을 추가하고 문서에 `roomId`가 포함된다면 반드시 `RoomMigrationService.MigrateRoomDataAsync()`에 해당 컬렉션의 `UpdateRoomIdAsync<T>()` 호출을 추가한다. 문서에 `roomName`도 저장하면 `UpdateRoomNameAsync<T>()`에도 추가하고, `senderHash`를 저장해 방 복원 후 사용자 해시 병합이 필요하면 `MergeUserHashAsync()`에도 병합 로직을 추가한다.
 
 서비스 구현 규칙:
 - 생성자에서 `IMongoDbService`를 주입받아 `GetCollection<T>("collectionName")` 호출.
