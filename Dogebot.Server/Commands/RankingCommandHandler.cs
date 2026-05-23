@@ -3,9 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class RankingCommandHandler(
-    IChatStatisticsService statisticsService,
-    ILogger<RankingCommandHandler> logger) : ICommandHandler
+public class RankingCommandHandler(IChatStatisticsService statisticsService, ILogger<RankingCommandHandler> logger) : ICommandHandler
 {
     private const string WordJoiner = "\u2060";
 
@@ -14,8 +12,7 @@ public class RankingCommandHandler(
     public bool CanHandle(string content)
     {
         var trimmed = content.Trim();
-        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) ||
-               trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
+        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<ServerResponse> HandleAsync(KakaoMessageData data)

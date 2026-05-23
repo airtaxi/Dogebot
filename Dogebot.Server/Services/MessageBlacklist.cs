@@ -70,11 +70,7 @@ public static class MessageBlacklist
             return true;
 
         // Filter out command messages
-        if (content.TrimStart().StartsWith('/')
-            || content.TrimStart().StartsWith('!')
-            || content.TrimStart().StartsWith("심심아")
-            || content.TrimStart().StartsWith("판사님")
-            || content.TrimStart().StartsWith("소라고동님"))
+        if (content.TrimStart().StartsWith('/') || content.TrimStart().StartsWith('!') || content.TrimStart().StartsWith("심심아") || content.TrimStart().StartsWith("판사님") || content.TrimStart().StartsWith("소라고동님"))
             return true;
 
         if (senderName.EndsWith("봇", StringComparison.OrdinalIgnoreCase))

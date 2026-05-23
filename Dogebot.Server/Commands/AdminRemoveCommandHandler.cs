@@ -3,9 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class AdminRemoveCommandHandler(
-    IAdminService adminService,
-    ILogger<AdminRemoveCommandHandler> logger) : ICommandHandler
+public class AdminRemoveCommandHandler(IAdminService adminService, ILogger<AdminRemoveCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!관리제거";
 
@@ -49,8 +47,7 @@ public class AdminRemoveCommandHandler(
             if (!removed)
             {
                 if (logger.IsEnabled(LogLevel.Warning))
-                    logger.LogWarning("[ADMIN_REMOVE] Failed to remove admin {Hash} by {Sender}",
-                        senderHash, data.SenderName);
+                    logger.LogWarning("[ADMIN_REMOVE] Failed to remove admin {Hash} by {Sender}", senderHash, data.SenderName);
 
                 return new ServerResponse
                 {
@@ -63,8 +60,7 @@ public class AdminRemoveCommandHandler(
             }
 
             if (logger.IsEnabled(LogLevel.Warning))
-                logger.LogWarning("[ADMIN_REMOVE] Admin {Hash} removed by {Sender}",
-                    senderHash, data.SenderName);
+                logger.LogWarning("[ADMIN_REMOVE] Admin {Hash} removed by {Sender}", senderHash, data.SenderName);
 
             return new ServerResponse
             {

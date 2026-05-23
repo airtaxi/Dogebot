@@ -40,8 +40,7 @@ public class CarGachaCommandHandler : ICommandHandler
                              "눈 오는 날 타기 딱 좋은 썰매입니다! ❄️";
 
                 if (_logger.IsEnabled(LogLevel.Information))
-                    _logger.LogInformation("[CAR_GACHA] {Sender} got a SLEDGE in room {RoomId}", 
-                        data.SenderName, data.RoomId);
+                    _logger.LogInformation("[CAR_GACHA] {Sender} got a SLEDGE in room {RoomId}", data.SenderName, data.RoomId);
 
                 return Task.FromResult(new ServerResponse
                 {
@@ -72,8 +71,7 @@ public class CarGachaCommandHandler : ICommandHandler
                           $"트림: {trim}";
 
             if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[CAR_GACHA] {Sender} got {Brand} {Model} {Trim} in room {RoomId}", 
-                    data.SenderName, brand.Brand, model.Name, trim, data.RoomId);
+                _logger.LogInformation("[CAR_GACHA] {Sender} got {Brand} {Model} {Trim} in room {RoomId}", data.SenderName, brand.Brand, model.Name, trim, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {

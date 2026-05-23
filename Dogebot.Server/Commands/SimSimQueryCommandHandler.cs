@@ -6,9 +6,7 @@ namespace Dogebot.Server.Commands;
 /// <summary>
 /// Handles the 심심아 command to get a random response for a message.
 /// </summary>
-public class SimSimQueryCommandHandler(
-    ISimSimService simSimService,
-    ILogger<SimSimQueryCommandHandler> logger) : ICommandHandler
+public class SimSimQueryCommandHandler(ISimSimService simSimService, ILogger<SimSimQueryCommandHandler> logger) : ICommandHandler
 {
     private readonly Random _random = new();
 
@@ -52,8 +50,7 @@ public class SimSimQueryCommandHandler(
             var randomResponse = responses[_random.Next(responses.Count)];
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[SIMSIM_QUERY] Message '{Message}' got response '{Response}' for {Sender} in room {RoomId}",
-                    message, randomResponse, data.SenderName, data.RoomId);
+                logger.LogInformation("[SIMSIM_QUERY] Message '{Message}' got response '{Response}' for {Sender} in room {RoomId}", message, randomResponse, data.SenderName, data.RoomId);
 
             return new ServerResponse
             {

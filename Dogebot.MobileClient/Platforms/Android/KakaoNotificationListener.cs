@@ -71,8 +71,7 @@ public class KakaoNotificationListener : NotificationListenerService
             var remoteInputs = action.GetRemoteInputs();
 
             // Reply (With RemoteInputs & title with 'reply' or 'Reply')
-            if (remoteInputs != null && remoteInputs.Length > 0 &&
-                (title == "reply" || title == "답장"))
+            if (remoteInputs != null && remoteInputs.Length > 0 && (title == "reply" || title == "답장"))
             {
                 replyAction = action;
             }

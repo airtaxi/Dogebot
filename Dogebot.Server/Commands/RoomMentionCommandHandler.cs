@@ -25,9 +25,7 @@ public class RoomMentionCommandHandler(IChatStatisticsService chatStatisticsServ
 
             if (!TryGetMentionCommand(data.Content, out var mentionCommand)) return new ServerResponse();
 
-            var minimumLastMessageTimeMilliseconds = mentionCommand == "@Here"
-                ? DateTimeOffset.UtcNow.AddDays(-HereMentionLookbackDays).ToUnixTimeMilliseconds()
-                : (long?)null;
+            var minimumLastMessageTimeMilliseconds = mentionCommand == "@Here" ? DateTimeOffset.UtcNow.AddDays(-HereMentionLookbackDays).ToUnixTimeMilliseconds() : (long? )null;
             var knownSenderNames = await chatStatisticsService.GetKnownSenderNamesAsync(data.RoomId, data.SenderHash, minimumLastMessageTimeMilliseconds);
             if (knownSenderNames.Count == 0)
             {
@@ -91,9 +89,7 @@ public class RoomMentionCommandHandler(IChatStatisticsService chatStatisticsServ
             return false;
         }
 
-        mentionCommand = match.Groups[1].Value.Equals("everyone", StringComparison.OrdinalIgnoreCase)
-            ? "@everyone"
-            : "@Here";
+        mentionCommand = match.Groups[1].Value.Equals("everyone", StringComparison.OrdinalIgnoreCase) ? "@everyone" : "@Here";
         return true;
     }
 

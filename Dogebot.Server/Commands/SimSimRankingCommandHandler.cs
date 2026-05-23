@@ -6,17 +6,14 @@ namespace Dogebot.Server.Commands;
 /// <summary>
 /// Handles the !심랭킹 command to show top messages with most responses.
 /// </summary>
-public class SimSimRankingCommandHandler(
-    ISimSimService simSimService,
-    ILogger<SimSimRankingCommandHandler> logger) : ICommandHandler
+public class SimSimRankingCommandHandler(ISimSimService simSimService, ILogger<SimSimRankingCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!심랭킹";
 
     public bool CanHandle(string content)
     {
         var trimmed = content.Trim();
-        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) ||
-               trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
+        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<ServerResponse> HandleAsync(KakaoMessageData data)
@@ -55,16 +52,13 @@ public class SimSimRankingCommandHandler(
                     _ => $"{i + 1}."
                 };
 
-                var displayMsg = msg.Length > 20
-                    ? msg.Substring(0, 17) + "..."
-                    : msg;
+                var displayMsg = msg.Length > 20 ? msg.Substring(0, 17) + "..." : msg;
 
                 message += $"{medal} {displayMsg} ({count:N0}개)\n";
             }
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[SIMSIM_RANKING] Showing top {Limit} simsim messages for {Sender}",
-                    limit, data.SenderName);
+                logger.LogInformation("[SIMSIM_RANKING] Showing top {Limit} simsim messages for {Sender}", limit, data.SenderName);
 
             return new ServerResponse
             {

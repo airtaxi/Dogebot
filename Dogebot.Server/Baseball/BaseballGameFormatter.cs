@@ -8,10 +8,7 @@ public static class BaseballGameFormatter
 {
     private const string MessageSeparator = "━━━━━━━━━━━━━━━━━━";
 
-    public static string FormatGameSummaryMessage(
-        BaseballGameScheduleSnapshot gameSnapshot,
-        string dayLabel,
-        IReadOnlyDictionary<long, BaseballGameDetail>? gameDetailsByGameId = null)
+    public static string FormatGameSummaryMessage(BaseballGameScheduleSnapshot gameSnapshot, string dayLabel, IReadOnlyDictionary<long, BaseballGameDetail>? gameDetailsByGameId = null)
     {
         var gameDateText = gameSnapshot.GameDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         if (gameSnapshot.GameSummaries.Count == 0) return $"⚾ {dayLabel} KBO 경기 ({gameDateText})\n\n{dayLabel} 예정된 KBO 경기가 없습니다.";
@@ -31,9 +28,7 @@ public static class BaseballGameFormatter
             var startTimeText = FormatStartTime(gameSummary.StartTime);
             var gameSummaryForStatistics = GetGameSummaryForStatistics(gameSummary, gameDetailsByGameId);
             var leftOnBaseText = FormatLeftOnBaseSummary(gameSummaryForStatistics);
-            stringBuilder.AppendLine(
-                $"{gameIndex + 1}. {awayTeamName} {awayScoreText} : {homeScoreText} {homeTeamName}" +
-                $"{leftOnBaseText} / {gameStatusText} / {startTimeText}");
+            stringBuilder.AppendLine($"{gameIndex + 1}. {awayTeamName} {awayScoreText} : {homeScoreText} {homeTeamName}" + $"{leftOnBaseText} / {gameStatusText} / {startTimeText}");
         }
 
         return stringBuilder.ToString().TrimEnd();
@@ -77,12 +72,7 @@ public static class BaseballGameFormatter
                $"현재: {FormatHomeAwayScoreLine(gameSummary)}";
     }
 
-    public static string FormatScoreChangedWithEventsNotification(
-        BaseballGameDetail gameDetail,
-        int? previousHomeScore,
-        int? previousAwayScore,
-        IReadOnlyList<BaseballGameLiveEvent> liveEvents,
-        int omittedEventCount)
+    public static string FormatScoreChangedWithEventsNotification(BaseballGameDetail gameDetail, int? previousHomeScore, int? previousAwayScore, IReadOnlyList<BaseballGameLiveEvent> liveEvents, int omittedEventCount)
     {
         var gameSummary = gameDetail.GameSummary;
         var stringBuilder = new StringBuilder();
@@ -156,21 +146,10 @@ public static class BaseballGameFormatter
     }
 
     public static IReadOnlyList<BaseballGameLiveEvent> GetLiveGameEvents(BaseballGameDetail gameDetail) =>
-        gameDetail.LiveData?.LiveEvents
-            .Where(liveEvent => !IsSeparatorEvent(liveEvent))
-            .ToList() ?? [];
+        gameDetail.LiveData?.LiveEvents.Where(liveEvent => !IsSeparatorEvent(liveEvent)).ToList() ?? [];
 
     public static string BuildLiveEventKey(BaseballGameLiveEvent liveEvent) =>
-        string.Join("|",
-            liveEvent.Period,
-            liveEvent.BatterProviderPersonId,
-            liveEvent.BallCount?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            liveEvent.Ball?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            liveEvent.Strike?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            liveEvent.Speed?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            liveEvent.PitcherProviderPersonId,
-            liveEvent.Text,
-            liveEvent.PitchKind);
+        string.Join("|", liveEvent.Period, liveEvent.BatterProviderPersonId, liveEvent.BallCount?.ToString(CultureInfo.InvariantCulture) ?? string.Empty, liveEvent.Ball?.ToString(CultureInfo.InvariantCulture) ?? string.Empty, liveEvent.Strike?.ToString(CultureInfo.InvariantCulture) ?? string.Empty, liveEvent.Speed?.ToString(CultureInfo.InvariantCulture) ?? string.Empty, liveEvent.PitcherProviderPersonId, liveEvent.Text, liveEvent.PitchKind);
 
     public static bool HasCompleteLineups(BaseballGameDetail gameDetail) =>
         HasCompleteLineup(gameDetail.HomePlayers) && HasCompleteLineup(gameDetail.AwayPlayers);
@@ -202,12 +181,10 @@ public static class BaseballGameFormatter
     }
 
     public static bool IsBeforeGame(BaseballGameScheduleSummary gameSummary) =>
-        gameSummary.GameStatus.Equals("BEFORE", StringComparison.OrdinalIgnoreCase) ||
-        gameSummary.PeriodType.Equals("BEFORE", StringComparison.OrdinalIgnoreCase);
+        gameSummary.GameStatus.Equals("BEFORE", StringComparison.OrdinalIgnoreCase) || gameSummary.PeriodType.Equals("BEFORE", StringComparison.OrdinalIgnoreCase);
 
     public static bool IsEndedGame(BaseballGameScheduleSummary gameSummary) =>
-        gameSummary.GameStatus.Equals("END", StringComparison.OrdinalIgnoreCase) ||
-        gameSummary.PeriodType.Equals("END", StringComparison.OrdinalIgnoreCase);
+        gameSummary.GameStatus.Equals("END", StringComparison.OrdinalIgnoreCase) || gameSummary.PeriodType.Equals("END", StringComparison.OrdinalIgnoreCase);
 
     public static bool IsCanceledGame(BaseballGameScheduleSummary gameSummary)
     {
@@ -217,8 +194,7 @@ public static class BaseballGameFormatter
     }
 
     public static bool IsRainCanceledGame(BaseballGameScheduleSummary gameSummary) =>
-        IsCanceledGame(gameSummary) &&
-        gameSummary.GameDetailStatus.Equals("RAIN", StringComparison.OrdinalIgnoreCase);
+        IsCanceledGame(gameSummary) && gameSummary.GameDetailStatus.Equals("RAIN", StringComparison.OrdinalIgnoreCase);
 
     public static bool IsFinishedOrUnavailableGame(BaseballGameScheduleSummary gameSummary) =>
         IsEndedGame(gameSummary) || IsCanceledGame(gameSummary);
@@ -253,9 +229,7 @@ public static class BaseballGameFormatter
         stringBuilder.AppendLine($"원정 {awayTeamName}: {FormatTeamScoreStatistics(gameSummary.AwayScore, gameSummary.AwayTeamStatistics)}");
     }
 
-    private static BaseballGameScheduleSummary GetGameSummaryForStatistics(
-        BaseballGameScheduleSummary gameSummary,
-        IReadOnlyDictionary<long, BaseballGameDetail>? gameDetailsByGameId)
+    private static BaseballGameScheduleSummary GetGameSummaryForStatistics(BaseballGameScheduleSummary gameSummary, IReadOnlyDictionary<long, BaseballGameDetail>? gameDetailsByGameId)
     {
         if (gameDetailsByGameId != null && gameDetailsByGameId.TryGetValue(gameSummary.GameId, out var gameDetail)) return gameDetail.GameSummary;
         return gameSummary;
@@ -273,11 +247,7 @@ public static class BaseballGameFormatter
         $"안타 {FormatNullableNumber(score?.Hit)} / 실책 {FormatNullableNumber(score?.Error)} / 볼넷 {FormatNullableNumber(score?.Walks)} / " +
         $"잔루 {FormatNullableNumber(teamStatistics?.BattingLeftOnBase)}";
 
-    private static void AppendScoreChangedInformation(
-        StringBuilder stringBuilder,
-        BaseballGameScheduleSummary gameSummary,
-        int? previousHomeScore,
-        int? previousAwayScore)
+    private static void AppendScoreChangedInformation(StringBuilder stringBuilder, BaseballGameScheduleSummary gameSummary, int? previousHomeScore, int? previousAwayScore)
     {
         var homeTeamName = GetTeamDisplayName(gameSummary.HomeParticipant.Team);
         var awayTeamName = GetTeamDisplayName(gameSummary.AwayParticipant.Team);
@@ -338,11 +308,7 @@ public static class BaseballGameFormatter
         }
     }
 
-    private static void AppendLiveEventText(
-        StringBuilder stringBuilder,
-        BaseballGameDetail gameDetail,
-        BaseballGameLiveEvent liveEvent,
-        bool includeDetails)
+    private static void AppendLiveEventText(StringBuilder stringBuilder, BaseballGameDetail gameDetail, BaseballGameLiveEvent liveEvent, bool includeDetails)
     {
         var periodText = FormatPeriodText(liveEvent.Period);
         var eventPeriodPrefix = string.IsNullOrWhiteSpace(periodText) ? string.Empty : $"[{periodText}] ";
@@ -381,9 +347,7 @@ public static class BaseballGameFormatter
     private static void AppendCanceledGameInformation(StringBuilder stringBuilder, BaseballGameScheduleSummary gameSummary)
     {
         stringBuilder.AppendLine();
-        stringBuilder.AppendLine(IsRainCanceledGame(gameSummary)
-            ? "우천취소로 경기가 취소되었습니다."
-            : "경기가 취소되었습니다.");
+        stringBuilder.AppendLine(IsRainCanceledGame(gameSummary) ? "우천취소로 경기가 취소되었습니다." : "경기가 취소되었습니다.");
     }
 
     private static IReadOnlyList<string> GetAfterGameTexts(IReadOnlyList<BaseballGameLiveEvent> liveEvents)
@@ -407,11 +371,8 @@ public static class BaseballGameFormatter
             .Where(searchAlias => !string.IsNullOrWhiteSpace(searchAlias))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        var hasExactMatch = normalizedSearchAliases.Any(searchAlias =>
-            searchAlias.Equals(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase));
-        var hasPartialMatch = normalizedSearchAliases.Any(searchAlias =>
-            searchAlias.Contains(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase) ||
-            normalizedTeamSearchText.Contains(searchAlias, StringComparison.OrdinalIgnoreCase));
+        var hasExactMatch = normalizedSearchAliases.Any(searchAlias => searchAlias.Equals(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase));
+        var hasPartialMatch = normalizedSearchAliases.Any(searchAlias => searchAlias.Contains(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase) || normalizedTeamSearchText.Contains(searchAlias, StringComparison.OrdinalIgnoreCase));
 
         return new BaseballTeamMatchResult(hasExactMatch, hasPartialMatch);
     }
@@ -457,13 +418,9 @@ public static class BaseballGameFormatter
         if (periodText.Equals("END", StringComparison.OrdinalIgnoreCase)) return "경기 종료";
         if (periodText.Equals("CANCEL", StringComparison.OrdinalIgnoreCase)) return "경기 취소";
         if (periodText.Equals("POSTPONE", StringComparison.OrdinalIgnoreCase)) return "경기 연기";
-        if (periodText.Equals("PLAY", StringComparison.OrdinalIgnoreCase) ||
-            periodText.Equals("LIVE", StringComparison.OrdinalIgnoreCase) ||
-            periodText.Equals("START", StringComparison.OrdinalIgnoreCase))
+        if (periodText.Equals("PLAY", StringComparison.OrdinalIgnoreCase) || periodText.Equals("LIVE", StringComparison.OrdinalIgnoreCase) || periodText.Equals("START", StringComparison.OrdinalIgnoreCase))
             return "경기 중";
-        if (periodText.Length >= 2 &&
-            (periodText[0] == 'T' || periodText[0] == 'B') &&
-            int.TryParse(periodText[1..], out var inning))
+        if (periodText.Length >= 2 && (periodText[0] == 'T' || periodText[0] == 'B') && int.TryParse(periodText[1..], out var inning))
             return $"{inning}회{(periodText[0] == 'T' ? "초" : "말")}";
 
         return periodText;
@@ -491,9 +448,7 @@ public static class BaseballGameFormatter
     }
 
     private static string FindPlayerName(string providerPersonId, IReadOnlyDictionary<string, string> playerNameMap) =>
-        !string.IsNullOrWhiteSpace(providerPersonId) && playerNameMap.TryGetValue(providerPersonId, out var playerName)
-            ? playerName
-            : string.Empty;
+        !string.IsNullOrWhiteSpace(providerPersonId) && playerNameMap.TryGetValue(providerPersonId, out var playerName) ? playerName : string.Empty;
 
     private static string FormatPlayerName(BaseballGamePlayer? player) =>
         player == null || string.IsNullOrWhiteSpace(player.Name) ? "미정" : player.Name;
@@ -531,8 +486,7 @@ public static class BaseballGameFormatter
             .Count() >= 9;
 
     private static bool IsCanceledStatusText(string statusText) =>
-        statusText.Equals("경기 취소", StringComparison.Ordinal) ||
-        statusText.Equals("경기 연기", StringComparison.Ordinal);
+        statusText.Equals("경기 취소", StringComparison.Ordinal) || statusText.Equals("경기 연기", StringComparison.Ordinal);
 
     private static bool IsSeparatorEvent(BaseballGameLiveEvent liveEvent) =>
         liveEvent.Text.Trim().StartsWith("====", StringComparison.Ordinal);

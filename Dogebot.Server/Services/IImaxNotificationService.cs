@@ -15,8 +15,7 @@ public interface IImaxNotificationService
     /// <summary>
     /// Starts a multi-stage session for IMAX-related operations (setup, schedule query, or movie list).
     /// </summary>
-    void StartSession(string roomId, string senderHash, string senderName, string roomName,
-        ImaxSessionType type = ImaxSessionType.Setup, string? movieSearchQuery = null);
+    void StartSession(string roomId, string senderHash, string senderName, string roomName, ImaxSessionType type = ImaxSessionType.Setup, string? movieSearchQuery = null);
 
     /// <summary>
     /// Handles input from a user who has an active setup session.
@@ -27,10 +26,7 @@ public interface IImaxNotificationService
     /// <summary>
     /// Registers an IMAX notification for a room. Only one notification per room is allowed.
     /// </summary>
-    Task<(bool Success, string Message)> RegisterAsync(
-        string roomId, string screeningDate, string movieName, string movieNumber,
-        string siteNumber, string siteName, string? keyword,
-        string senderHash, string senderName, string roomName);
+    Task<(bool Success, string Message)> RegisterAsync(string roomId, string screeningDate, string movieName, string movieNumber, string siteNumber, string siteName, string? keyword, string senderHash, string senderName, string roomName);
 
     /// <summary>
     /// Gets the active IMAX notification for a room, or null if none exists.

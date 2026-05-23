@@ -85,83 +85,45 @@ public class ChatStatisticsService : IChatStatisticsService
         // Lazy senderHash migration: merge old hash data into new hash if a mapping exists
         await _roomMigrationService.TryMigrateUserHashAsync(data.RoomId, data.SenderName, data.SenderHash);
 
-        var chatStatsFilter = Builders<ChatStatistics>.Filter.And(
-            Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId),
-            Builders<ChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash)
-        );
+        var chatStatsFilter = Builders<ChatStatistics>.Filter.And(Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId), Builders<ChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash));
 
         var chatStatsUpdate = Builders<ChatStatistics>.Update
             .Inc(x => x.MessageCount, 1)
             .Set(x => x.LastMessageTime, data.Time)
             .Set(x => x.SenderName, data.SenderName);
 
-        await _chatStatistics.UpdateOneAsync(
-            chatStatsFilter,
-            chatStatsUpdate,
-            new UpdateOptions { IsUpsert = true }
-        );
+        await _chatStatistics.UpdateOneAsync(chatStatsFilter, chatStatsUpdate, new UpdateOptions { IsUpsert = true });
 
         // Record per-minute statistics (truncated to minute for future granularity)
         var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(data.Time).UtcDateTime;
         var truncatedToMinute = new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, dateTime.Minute, 0, DateTimeKind.Utc);
-        var hourlyFilter = Builders<HourlyChatStatistics>.Filter.And(
-            Builders<HourlyChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId),
-            Builders<HourlyChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash),
-            Builders<HourlyChatStatistics>.Filter.Eq(x => x.DateTime, truncatedToMinute)
-        );
+        var hourlyFilter = Builders<HourlyChatStatistics>.Filter.And(Builders<HourlyChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId), Builders<HourlyChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash), Builders<HourlyChatStatistics>.Filter.Eq(x => x.DateTime, truncatedToMinute));
         var hourlyUpdate = Builders<HourlyChatStatistics>.Update.Inc(x => x.MessageCount, 1);
-        await _hourlyChatStatistics.UpdateOneAsync(
-            hourlyFilter,
-            hourlyUpdate,
-            new UpdateOptions { IsUpsert = true }
-        );
+        await _hourlyChatStatistics.UpdateOneAsync(hourlyFilter, hourlyUpdate, new UpdateOptions { IsUpsert = true });
 
         // Record day-of-week statistics (KST)
         var kstDayOfWeek = (int)DateTimeOffset.FromUnixTimeMilliseconds(data.Time).ToOffset(KstOffset).DayOfWeek;
-        var dailyFilter = Builders<DailyChatStatistics>.Filter.And(
-            Builders<DailyChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId),
-            Builders<DailyChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash),
-            Builders<DailyChatStatistics>.Filter.Eq(x => x.DayOfWeek, kstDayOfWeek)
-        );
+        var dailyFilter = Builders<DailyChatStatistics>.Filter.And(Builders<DailyChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId), Builders<DailyChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash), Builders<DailyChatStatistics>.Filter.Eq(x => x.DayOfWeek, kstDayOfWeek));
         var dailyUpdate = Builders<DailyChatStatistics>.Update.Inc(x => x.MessageCount, 1);
-        await _dailyChatStatistics.UpdateOneAsync(
-            dailyFilter,
-            dailyUpdate,
-            new UpdateOptions { IsUpsert = true }
-        );
+        await _dailyChatStatistics.UpdateOneAsync(dailyFilter, dailyUpdate, new UpdateOptions { IsUpsert = true });
 
         // Record monthly statistics (KST)
         var kstMonth = DateTimeOffset.FromUnixTimeMilliseconds(data.Time).ToOffset(KstOffset).Month;
-        var monthlyFilter = Builders<MonthlyChatStatistics>.Filter.And(
-            Builders<MonthlyChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId),
-            Builders<MonthlyChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash),
-            Builders<MonthlyChatStatistics>.Filter.Eq(x => x.Month, kstMonth)
-        );
+        var monthlyFilter = Builders<MonthlyChatStatistics>.Filter.And(Builders<MonthlyChatStatistics>.Filter.Eq(x => x.RoomId, data.RoomId), Builders<MonthlyChatStatistics>.Filter.Eq(x => x.SenderHash, data.SenderHash), Builders<MonthlyChatStatistics>.Filter.Eq(x => x.Month, kstMonth));
         var monthlyUpdate = Builders<MonthlyChatStatistics>.Update.Inc(x => x.MessageCount, 1);
-        await _monthlyChatStatistics.UpdateOneAsync(
-            monthlyFilter,
-            monthlyUpdate,
-            new UpdateOptions { IsUpsert = true }
-        );
+        await _monthlyChatStatistics.UpdateOneAsync(monthlyFilter, monthlyUpdate, new UpdateOptions { IsUpsert = true });
 
         // Only record message content if enabled for this room
         if (await IsMessageContentEnabledAsync(data.RoomId))
         {
             var normalizedContent = NormalizeMessageContent(data.Content);
-            var messageContentFilter = Builders<MessageContent>.Filter.And(
-                Builders<MessageContent>.Filter.Eq(x => x.RoomId, data.RoomId),
-                Builders<MessageContent>.Filter.Eq(x => x.Content, normalizedContent)
-            );
+            var messageContentFilter = Builders<MessageContent>.Filter.And(Builders<MessageContent>.Filter.Eq(x => x.RoomId, data.RoomId), Builders<MessageContent>.Filter.Eq(x => x.Content, normalizedContent));
 
             var messageContentUpdate = Builders<MessageContent>.Update
                 .Inc(x => x.Count, 1)
                 .Set(x => x.LastTime, data.Time);
 
-            await _messageContents.UpdateOneAsync(
-                messageContentFilter,
-                messageContentUpdate,
-                new UpdateOptions { IsUpsert = true }
-            );
+            await _messageContents.UpdateOneAsync(messageContentFilter, messageContentUpdate, new UpdateOptions { IsUpsert = true });
 
             // Record word-level statistics (normalize repeated Korean consonants)
             var words = data.Content
@@ -172,10 +134,7 @@ public class ChatStatisticsService : IChatStatisticsService
 
             foreach (var word in words)
             {
-                var wordFilter = Builders<WordContent>.Filter.And(
-                    Builders<WordContent>.Filter.Eq(x => x.RoomId, data.RoomId),
-                    Builders<WordContent>.Filter.Eq(x => x.Word, word)
-                );
+                var wordFilter = Builders<WordContent>.Filter.And(Builders<WordContent>.Filter.Eq(x => x.RoomId, data.RoomId), Builders<WordContent>.Filter.Eq(x => x.Word, word));
                 var wordUpdate = Builders<WordContent>.Update
                     .Inc(x => x.Count, 1)
                     .Set(x => x.LastTime, data.Time);
@@ -385,10 +344,7 @@ public class ChatStatisticsService : IChatStatisticsService
 
     public async Task<List<(int Hour, long MessageCount)>> GetUserHourlyStatisticsAsync(string roomId, string senderHash)
     {
-        var filter = Builders<HourlyChatStatistics>.Filter.And(
-            Builders<HourlyChatStatistics>.Filter.Eq(x => x.RoomId, roomId),
-            Builders<HourlyChatStatistics>.Filter.Eq(x => x.SenderHash, senderHash)
-        );
+        var filter = Builders<HourlyChatStatistics>.Filter.And(Builders<HourlyChatStatistics>.Filter.Eq(x => x.RoomId, roomId), Builders<HourlyChatStatistics>.Filter.Eq(x => x.SenderHash, senderHash));
 
         var results = await _hourlyChatStatistics
             .Find(filter)
@@ -416,10 +372,7 @@ public class ChatStatisticsService : IChatStatisticsService
 
     public async Task<List<(DayOfWeek Day, long MessageCount)>> GetUserDailyStatisticsAsync(string roomId, string senderHash)
     {
-        var filter = Builders<DailyChatStatistics>.Filter.And(
-            Builders<DailyChatStatistics>.Filter.Eq(x => x.RoomId, roomId),
-            Builders<DailyChatStatistics>.Filter.Eq(x => x.SenderHash, senderHash)
-        );
+        var filter = Builders<DailyChatStatistics>.Filter.And(Builders<DailyChatStatistics>.Filter.Eq(x => x.RoomId, roomId), Builders<DailyChatStatistics>.Filter.Eq(x => x.SenderHash, senderHash));
 
         var results = await _dailyChatStatistics
             .Find(filter)
@@ -447,10 +400,7 @@ public class ChatStatisticsService : IChatStatisticsService
 
     public async Task<List<(int Month, long MessageCount)>> GetUserMonthlyStatisticsAsync(string roomId, string senderHash)
     {
-        var filter = Builders<MonthlyChatStatistics>.Filter.And(
-            Builders<MonthlyChatStatistics>.Filter.Eq(x => x.RoomId, roomId),
-            Builders<MonthlyChatStatistics>.Filter.Eq(x => x.SenderHash, senderHash)
-        );
+        var filter = Builders<MonthlyChatStatistics>.Filter.And(Builders<MonthlyChatStatistics>.Filter.Eq(x => x.RoomId, roomId), Builders<MonthlyChatStatistics>.Filter.Eq(x => x.SenderHash, senderHash));
 
         var results = await _monthlyChatStatistics
             .Find(filter)

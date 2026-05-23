@@ -3,18 +3,14 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class ScheduledMessageRemoveCommandHandler(
-    IScheduledMessageService scheduledMessageService,
-    IAdminService adminService,
-    ILogger<ScheduledMessageRemoveCommandHandler> logger) : ICommandHandler
+public class ScheduledMessageRemoveCommandHandler(IScheduledMessageService scheduledMessageService, IAdminService adminService, ILogger<ScheduledMessageRemoveCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!반복해제";
 
     public bool CanHandle(string content)
     {
         var trimmed = content.Trim();
-        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) ||
-               trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
+        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<ServerResponse> HandleAsync(KakaoMessageData data)
@@ -78,8 +74,7 @@ public class ScheduledMessageRemoveCommandHandler(
                 }
 
                 if (logger.IsEnabled(LogLevel.Warning))
-                    logger.LogWarning("[SCHEDULED_REMOVE] All {Count} scheduled messages removed from room {RoomName} by {Sender}",
-                        deletedCount, data.RoomName, data.SenderName);
+                    logger.LogWarning("[SCHEDULED_REMOVE] All {Count} scheduled messages removed from room {RoomName} by {Sender}", deletedCount, data.RoomName, data.SenderName);
 
                 return new ServerResponse
                 {
@@ -117,8 +112,7 @@ public class ScheduledMessageRemoveCommandHandler(
             }
 
             if (logger.IsEnabled(LogLevel.Warning))
-                logger.LogWarning("[SCHEDULED_REMOVE] Scheduled message #{Index} removed from room {RoomName} by {Sender}",
-                    index, data.RoomName, data.SenderName);
+                logger.LogWarning("[SCHEDULED_REMOVE] Scheduled message #{Index} removed from room {RoomName} by {Sender}", index, data.RoomName, data.SenderName);
 
             return new ServerResponse
             {
@@ -145,9 +139,7 @@ public class ScheduledMessageRemoveCommandHandler(
         for (int i = 0; i < messages.Count; i++)
         {
             var message = messages[i];
-            var preview = message.Message.Length > 30
-                ? message.Message[..27] + "..."
-                : message.Message;
+            var preview = message.Message.Length > 30 ? message.Message[..27] + "..." : message.Message;
             // Replace newlines for preview
             preview = preview.Replace("\n", " ").Replace("\r", "");
             var daysDisplay = FormatDays(message.Days);

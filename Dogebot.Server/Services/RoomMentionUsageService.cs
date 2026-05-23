@@ -47,11 +47,7 @@ public class RoomMentionUsageService : IRoomMentionUsageService
             // Existing usage is checked below so concurrent requests cannot bypass the cooldown.
         }
 
-        var availableUsageFilter = Builders<RoomMentionUsage>.Filter.And(
-            Builders<RoomMentionUsage>.Filter.Eq(x => x.RoomId, roomId),
-            Builders<RoomMentionUsage>.Filter.Eq(x => x.SenderHash, senderHash),
-            Builders<RoomMentionUsage>.Filter.Lte(x => x.NextAvailableAt, currentUnixTimeSeconds)
-        );
+        var availableUsageFilter = Builders<RoomMentionUsage>.Filter.And(Builders<RoomMentionUsage>.Filter.Eq(x => x.RoomId, roomId), Builders<RoomMentionUsage>.Filter.Eq(x => x.SenderHash, senderHash), Builders<RoomMentionUsage>.Filter.Lte(x => x.NextAvailableAt, currentUnixTimeSeconds));
 
         var update = Builders<RoomMentionUsage>.Update
             .Set(x => x.RoomName, roomName)
@@ -62,10 +58,7 @@ public class RoomMentionUsageService : IRoomMentionUsageService
         var updateResult = await _roomMentionUsages.UpdateOneAsync(availableUsageFilter, update);
         if (updateResult.ModifiedCount > 0) return (true, nextAvailableAt);
 
-        var existingUsageFilter = Builders<RoomMentionUsage>.Filter.And(
-            Builders<RoomMentionUsage>.Filter.Eq(x => x.RoomId, roomId),
-            Builders<RoomMentionUsage>.Filter.Eq(x => x.SenderHash, senderHash)
-        );
+        var existingUsageFilter = Builders<RoomMentionUsage>.Filter.And(Builders<RoomMentionUsage>.Filter.Eq(x => x.RoomId, roomId), Builders<RoomMentionUsage>.Filter.Eq(x => x.SenderHash, senderHash));
         var existingUsage = await _roomMentionUsages.Find(existingUsageFilter).FirstOrDefaultAsync();
         return (false, existingUsage?.NextAvailableAt ?? currentUnixTimeSeconds);
     }

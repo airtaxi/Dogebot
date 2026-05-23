@@ -55,8 +55,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
     {
         lock (s_gameSnapshotCacheLock)
         {
-            if (s_cachedGameSnapshots.TryGetValue(targetDate, out var cachedGameSnapshot) &&
-                DateTimeOffset.UtcNow - cachedGameSnapshot.CacheTime < s_cacheDuration)
+            if (s_cachedGameSnapshots.TryGetValue(targetDate, out var cachedGameSnapshot) && DateTimeOffset.UtcNow - cachedGameSnapshot.CacheTime < s_cacheDuration)
                 return cachedGameSnapshot.GameSnapshot;
         }
 
@@ -70,10 +69,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
             var responsePayload = JsonSerializer.Deserialize<BaseballGameListResponsePayload>(responseContent, s_jsonSerializerOptions);
             if (responsePayload?.Document?.Games == null || responsePayload.ResponseCode != 200)
             {
-                SetLastGameScheduleErrorDetails(
-                    $"{dayLabel} KBO 경기 목록 응답 파싱에 실패했습니다.",
-                    Environment.StackTrace,
-                    $"RequestAddress: {requestAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
+                SetLastGameScheduleErrorDetails($"{dayLabel} KBO 경기 목록 응답 파싱에 실패했습니다.", Environment.StackTrace, $"RequestAddress: {requestAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
                 logger.LogError("[BASEBALL_SCHEDULE] Failed to parse {DayLabel} game list response", dayLabel);
                 return null;
             }
@@ -105,8 +101,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
 
         lock (s_gameDetailCacheLock)
         {
-            if (s_cachedGameDetails.TryGetValue(cacheKey, out var cachedGameDetail) &&
-                DateTimeOffset.UtcNow - cachedGameDetail.CacheTime < s_cacheDuration)
+            if (s_cachedGameDetails.TryGetValue(cacheKey, out var cachedGameDetail) && DateTimeOffset.UtcNow - cachedGameDetail.CacheTime < s_cacheDuration)
                 return cachedGameDetail.GameDetail;
         }
 
@@ -119,10 +114,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
             var responsePayload = JsonSerializer.Deserialize<BaseballGameDetailResponsePayload>(responseContent, s_jsonSerializerOptions);
             if (responsePayload?.Game == null || responsePayload.ResponseCode != 200)
             {
-                SetLastGameScheduleErrorDetails(
-                    $"{dayLabel} KBO 경기 상세 응답 파싱에 실패했습니다.",
-                    Environment.StackTrace,
-                    $"RequestAddress: {requestAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
+                SetLastGameScheduleErrorDetails($"{dayLabel} KBO 경기 상세 응답 파싱에 실패했습니다.", Environment.StackTrace, $"RequestAddress: {requestAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
                 logger.LogError("[BASEBALL_SCHEDULE] Failed to parse {DayLabel} game detail response for {GameId}", dayLabel, gameId);
                 return null;
             }
@@ -153,10 +145,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
         var responseContent = await responseMessage.Content.ReadAsStringAsync();
         if (responseMessage.IsSuccessStatusCode) return responseContent;
 
-        SetLastGameScheduleErrorDetails(
-            $"HTTP 요청이 실패했습니다. StatusCode={(int)responseMessage.StatusCode} ({responseMessage.StatusCode})",
-            Environment.StackTrace,
-            $"RequestAddress: {requestAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
+        SetLastGameScheduleErrorDetails($"HTTP 요청이 실패했습니다. StatusCode={(int)responseMessage.StatusCode} ({responseMessage.StatusCode})", Environment.StackTrace, $"RequestAddress: {requestAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
         logger.LogError("[BASEBALL_SCHEDULE] API request failed with status code {StatusCode}", responseMessage.StatusCode);
         return null;
     }
@@ -176,48 +165,23 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
         var homePlayers = MapPlayers(gamePayload.HomePlayers);
         var awayPlayers = MapPlayers(gamePayload.AwayPlayers);
 
-        return new BaseballGameDetail(
-            MapGameSummary(gamePayload),
-            homeStartingPitcher,
-            awayStartingPitcher,
-            homePlayers,
-            awayPlayers,
-            MapLiveData(gamePayload.LiveData));
+        return new BaseballGameDetail(MapGameSummary(gamePayload), homeStartingPitcher, awayStartingPitcher, homePlayers, awayPlayers, MapLiveData(gamePayload.LiveData));
     }
 
     private static BaseballGameScheduleSummary MapGameSummary(BaseballGamePayload gamePayload) =>
-        new(
-            gamePayload.GameId,
-            gamePayload.GameStatus ?? string.Empty,
-            gamePayload.GameDetailStatus ?? string.Empty,
-            gamePayload.PeriodType ?? string.Empty,
-            gamePayload.LiveData?.Ground?.LastPeriod ?? string.Empty,
-            gamePayload.StartDate ?? string.Empty,
-            gamePayload.StartTime ?? string.Empty,
-            MapParticipant(gamePayload.HomeParticipant),
-            MapParticipant(gamePayload.AwayParticipant),
-            MapScore(gamePayload.HomeScore),
-            MapScore(gamePayload.AwayScore),
-            MapField(gamePayload.Field),
-            MapTeamStatistics(gamePayload.HomeTeamStatistics),
-            MapTeamStatistics(gamePayload.AwayTeamStatistics));
+        new(gamePayload.GameId, gamePayload.GameStatus ?? string.Empty, gamePayload.GameDetailStatus ?? string.Empty, gamePayload.PeriodType ?? string.Empty, gamePayload.LiveData?.Ground?.LastPeriod ?? string.Empty, gamePayload.StartDate ?? string.Empty, gamePayload.StartTime ?? string.Empty, MapParticipant(gamePayload.HomeParticipant), MapParticipant(gamePayload.AwayParticipant), MapScore(gamePayload.HomeScore), MapScore(gamePayload.AwayScore), MapField(gamePayload.Field), MapTeamStatistics(gamePayload.HomeTeamStatistics), MapTeamStatistics(gamePayload.AwayTeamStatistics));
 
     private static BaseballGameParticipant MapParticipant(BaseballParticipantPayload? participantPayload) =>
         new(participantPayload?.Result ?? string.Empty, MapTeam(participantPayload?.Team));
 
     private static BaseballGameTeam MapTeam(BaseballTeamPayload? teamPayload) =>
-        new(
-            teamPayload?.ProviderTeamId ?? string.Empty,
-            GetFirstText(teamPayload?.NameKo, teamPayload?.Name, teamPayload?.NameMain, teamPayload?.ShortNameKo, teamPayload?.ShortName),
-            GetFirstText(teamPayload?.ShortNameKo, teamPayload?.ShortName, teamPayload?.NameKo, teamPayload?.Name, teamPayload?.NameMain));
+        new(teamPayload?.ProviderTeamId ?? string.Empty, GetFirstText(teamPayload?.NameKo, teamPayload?.Name, teamPayload?.NameMain, teamPayload?.ShortNameKo, teamPayload?.ShortName), GetFirstText(teamPayload?.ShortNameKo, teamPayload?.ShortName, teamPayload?.NameKo, teamPayload?.Name, teamPayload?.NameMain));
 
     private static BaseballGameScore? MapScore(BaseballScorePayload? scorePayload) =>
         scorePayload == null ? null : new BaseballGameScore(scorePayload.Run, scorePayload.Hit, scorePayload.Error, scorePayload.Walks);
 
     private static BaseballGameTeamStatistics? MapTeamStatistics(BaseballTeamStatisticsPayload? teamStatisticsPayload) =>
-        teamStatisticsPayload == null
-            ? null
-            : new BaseballGameTeamStatistics(teamStatisticsPayload.BattingLeftOnBase);
+        teamStatisticsPayload == null ? null : new BaseballGameTeamStatistics(teamStatisticsPayload.BattingLeftOnBase);
 
     private static BaseballGameField? MapField(BaseballFieldPayload? fieldPayload)
     {
@@ -229,10 +193,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
     }
 
     private static IReadOnlyList<BaseballGamePlayer> MapPlayers(IReadOnlyList<BaseballPersonPayload>? personPayloads) =>
-        personPayloads?
-            .Select(MapPlayer)
-            .OfType<BaseballGamePlayer>()
-            .ToList() ?? [];
+        personPayloads?.Select(MapPlayer).OfType<BaseballGamePlayer>().ToList() ?? [];
 
     private static BaseballGamePlayer? MapPlayer(BaseballPersonPayload? personPayload)
     {
@@ -250,10 +211,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
     {
         if (liveDataPayload == null) return null;
 
-        var liveEvents = liveDataPayload.LiveEvents?
-            .Select(MapLiveEvent)
-            .Where(liveEvent => !string.IsNullOrWhiteSpace(liveEvent.Text))
-            .ToList() ?? [];
+        var liveEvents = liveDataPayload.LiveEvents?.Select(MapLiveEvent).Where(liveEvent => !string.IsNullOrWhiteSpace(liveEvent.Text)).ToList() ?? [];
         return new BaseballGameLiveData(MapGround(liveDataPayload.Ground), liveEvents);
     }
 
@@ -261,27 +219,11 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
     {
         if (groundPayload == null) return null;
 
-        return new BaseballGameGround(
-            groundPayload.Ball,
-            groundPayload.Strike,
-            groundPayload.Out,
-            groundPayload.BaseFirstRunnerProviderPersonId ?? string.Empty,
-            groundPayload.BaseSecondRunnerProviderPersonId ?? string.Empty,
-            groundPayload.BaseThirdRunnerProviderPersonId ?? string.Empty,
-            groundPayload.LastPeriod ?? string.Empty);
+        return new BaseballGameGround(groundPayload.Ball, groundPayload.Strike, groundPayload.Out, groundPayload.BaseFirstRunnerProviderPersonId ?? string.Empty, groundPayload.BaseSecondRunnerProviderPersonId ?? string.Empty, groundPayload.BaseThirdRunnerProviderPersonId ?? string.Empty, groundPayload.LastPeriod ?? string.Empty);
     }
 
     private static BaseballGameLiveEvent MapLiveEvent(BaseballLiveEventPayload liveEventPayload) =>
-        new(
-            liveEventPayload.Period ?? string.Empty,
-            liveEventPayload.BatterProviderPersonId ?? string.Empty,
-            liveEventPayload.BallCount,
-            liveEventPayload.Ball,
-            liveEventPayload.Strike,
-            liveEventPayload.Speed,
-            liveEventPayload.PitcherProviderPersonId ?? string.Empty,
-            liveEventPayload.Text ?? string.Empty,
-            liveEventPayload.PitchKind ?? string.Empty);
+        new(liveEventPayload.Period ?? string.Empty, liveEventPayload.BatterProviderPersonId ?? string.Empty, liveEventPayload.BallCount, liveEventPayload.Ball, liveEventPayload.Strike, liveEventPayload.Speed, liveEventPayload.PitcherProviderPersonId ?? string.Empty, liveEventPayload.Text ?? string.Empty, liveEventPayload.PitchKind ?? string.Empty);
 
     private static DateOnly GetTodayKoreanDate()
     {
@@ -338,100 +280,29 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
 
     private sealed record BaseballGameDetailCacheKey(DateOnly GameDate, long GameId);
 
-    private sealed record BaseballGameListResponsePayload(
-        [property: JsonPropertyName("code")] int ResponseCode,
-        [property: JsonPropertyName("message")] string? Message,
-        [property: JsonPropertyName("document")] BaseballGameListDocumentPayload? Document);
+    private sealed record BaseballGameListResponsePayload([property: JsonPropertyName("code")] int ResponseCode, [property: JsonPropertyName("message")] string? Message, [property: JsonPropertyName("document")] BaseballGameListDocumentPayload? Document);
 
-    private sealed record BaseballGameListDocumentPayload(
-        [property: JsonPropertyName("list")] IReadOnlyList<BaseballGamePayload>? Games);
+    private sealed record BaseballGameListDocumentPayload([property: JsonPropertyName("list")] IReadOnlyList<BaseballGamePayload>? Games);
 
-    private sealed record BaseballGameDetailResponsePayload(
-        [property: JsonPropertyName("code")] int ResponseCode,
-        [property: JsonPropertyName("message")] string? Message,
-        [property: JsonPropertyName("document")] BaseballGamePayload? Game);
+    private sealed record BaseballGameDetailResponsePayload([property: JsonPropertyName("code")] int ResponseCode, [property: JsonPropertyName("message")] string? Message, [property: JsonPropertyName("document")] BaseballGamePayload? Game);
 
-    private sealed record BaseballGamePayload(
-        [property: JsonPropertyName("gameId")] long GameId,
-        [property: JsonPropertyName("startDate")] string? StartDate,
-        [property: JsonPropertyName("startTime")] string? StartTime,
-        [property: JsonPropertyName("periodType")] string? PeriodType,
-        [property: JsonPropertyName("gameStatus")] string? GameStatus,
-        [property: JsonPropertyName("gameDetailStatus")] string? GameDetailStatus,
-        [property: JsonPropertyName("home")] BaseballParticipantPayload? HomeParticipant,
-        [property: JsonPropertyName("away")] BaseballParticipantPayload? AwayParticipant,
-        [property: JsonPropertyName("homeScore")] BaseballScorePayload? HomeScore,
-        [property: JsonPropertyName("awayScore")] BaseballScorePayload? AwayScore,
-        [property: JsonPropertyName("homeTeamStat")] BaseballTeamStatisticsPayload? HomeTeamStatistics,
-        [property: JsonPropertyName("awayTeamStat")] BaseballTeamStatisticsPayload? AwayTeamStatistics,
-        [property: JsonPropertyName("field")] BaseballFieldPayload? Field,
-        [property: JsonPropertyName("homeStartPitcher")] BaseballPersonPayload? HomeStartingPitcher,
-        [property: JsonPropertyName("awayStartPitcher")] BaseballPersonPayload? AwayStartingPitcher,
-        [property: JsonPropertyName("homePerson")] IReadOnlyList<BaseballPersonPayload>? HomePlayers,
-        [property: JsonPropertyName("awayPerson")] IReadOnlyList<BaseballPersonPayload>? AwayPlayers,
-        [property: JsonPropertyName("liveData")] BaseballLiveDataPayload? LiveData);
+    private sealed record BaseballGamePayload([property: JsonPropertyName("gameId")] long GameId, [property: JsonPropertyName("startDate")] string? StartDate, [property: JsonPropertyName("startTime")] string? StartTime, [property: JsonPropertyName("periodType")] string? PeriodType, [property: JsonPropertyName("gameStatus")] string? GameStatus, [property: JsonPropertyName("gameDetailStatus")] string? GameDetailStatus, [property: JsonPropertyName("home")] BaseballParticipantPayload? HomeParticipant, [property: JsonPropertyName("away")] BaseballParticipantPayload? AwayParticipant, [property: JsonPropertyName("homeScore")] BaseballScorePayload? HomeScore, [property: JsonPropertyName("awayScore")] BaseballScorePayload? AwayScore, [property: JsonPropertyName("homeTeamStat")] BaseballTeamStatisticsPayload? HomeTeamStatistics, [property: JsonPropertyName("awayTeamStat")] BaseballTeamStatisticsPayload? AwayTeamStatistics, [property: JsonPropertyName("field")] BaseballFieldPayload? Field, [property: JsonPropertyName("homeStartPitcher")] BaseballPersonPayload? HomeStartingPitcher, [property: JsonPropertyName("awayStartPitcher")] BaseballPersonPayload? AwayStartingPitcher, [property: JsonPropertyName("homePerson")] IReadOnlyList<BaseballPersonPayload>? HomePlayers, [property: JsonPropertyName("awayPerson")] IReadOnlyList<BaseballPersonPayload>? AwayPlayers, [property: JsonPropertyName("liveData")] BaseballLiveDataPayload? LiveData);
 
-    private sealed record BaseballParticipantPayload(
-        [property: JsonPropertyName("result")] string? Result,
-        [property: JsonPropertyName("team")] BaseballTeamPayload? Team);
+    private sealed record BaseballParticipantPayload([property: JsonPropertyName("result")] string? Result, [property: JsonPropertyName("team")] BaseballTeamPayload? Team);
 
-    private sealed record BaseballTeamPayload(
-        [property: JsonPropertyName("cpTeamId")] string? ProviderTeamId,
-        [property: JsonPropertyName("nameMain")] string? NameMain,
-        [property: JsonPropertyName("nameKo")] string? NameKo,
-        [property: JsonPropertyName("shortNameKo")] string? ShortNameKo,
-        [property: JsonPropertyName("name")] string? Name,
-        [property: JsonPropertyName("shortName")] string? ShortName);
+    private sealed record BaseballTeamPayload([property: JsonPropertyName("cpTeamId")] string? ProviderTeamId, [property: JsonPropertyName("nameMain")] string? NameMain, [property: JsonPropertyName("nameKo")] string? NameKo, [property: JsonPropertyName("shortNameKo")] string? ShortNameKo, [property: JsonPropertyName("name")] string? Name, [property: JsonPropertyName("shortName")] string? ShortName);
 
-    private sealed record BaseballScorePayload(
-        [property: JsonPropertyName("run")] int? Run,
-        [property: JsonPropertyName("hit")] int? Hit,
-        [property: JsonPropertyName("error")] int? Error,
-        [property: JsonPropertyName("ballfour")] int? Walks);
+    private sealed record BaseballScorePayload([property: JsonPropertyName("run")] int? Run, [property: JsonPropertyName("hit")] int? Hit, [property: JsonPropertyName("error")] int? Error, [property: JsonPropertyName("ballfour")] int? Walks);
 
-    private sealed record BaseballTeamStatisticsPayload(
-        [property: JsonPropertyName("batLob")] int? BattingLeftOnBase);
+    private sealed record BaseballTeamStatisticsPayload([property: JsonPropertyName("batLob")] int? BattingLeftOnBase);
 
-    private sealed record BaseballFieldPayload(
-        [property: JsonPropertyName("nameMain")] string? NameMain,
-        [property: JsonPropertyName("nameKo")] string? NameKo,
-        [property: JsonPropertyName("shortNameKo")] string? ShortNameKo,
-        [property: JsonPropertyName("name")] string? Name,
-        [property: JsonPropertyName("shortName")] string? ShortName);
+    private sealed record BaseballFieldPayload([property: JsonPropertyName("nameMain")] string? NameMain, [property: JsonPropertyName("nameKo")] string? NameKo, [property: JsonPropertyName("shortNameKo")] string? ShortNameKo, [property: JsonPropertyName("name")] string? Name, [property: JsonPropertyName("shortName")] string? ShortName);
 
-    private sealed record BaseballPersonPayload(
-        [property: JsonPropertyName("personId")] long? PersonId,
-        [property: JsonPropertyName("cpPersonId")] string? ProviderPersonId,
-        [property: JsonPropertyName("battingOrder")] int? BattingOrder,
-        [property: JsonPropertyName("nameMain")] string? NameMain,
-        [property: JsonPropertyName("nameKo")] string? NameKo,
-        [property: JsonPropertyName("lastNameKo")] string? LastNameKo,
-        [property: JsonPropertyName("name")] string? Name,
-        [property: JsonPropertyName("lastName")] string? LastName,
-        [property: JsonPropertyName("positionName")] string? PositionName,
-        [property: JsonPropertyName("positionNameKo")] string? PositionNameKo);
+    private sealed record BaseballPersonPayload([property: JsonPropertyName("personId")] long? PersonId, [property: JsonPropertyName("cpPersonId")] string? ProviderPersonId, [property: JsonPropertyName("battingOrder")] int? BattingOrder, [property: JsonPropertyName("nameMain")] string? NameMain, [property: JsonPropertyName("nameKo")] string? NameKo, [property: JsonPropertyName("lastNameKo")] string? LastNameKo, [property: JsonPropertyName("name")] string? Name, [property: JsonPropertyName("lastName")] string? LastName, [property: JsonPropertyName("positionName")] string? PositionName, [property: JsonPropertyName("positionNameKo")] string? PositionNameKo);
 
-    private sealed record BaseballLiveDataPayload(
-        [property: JsonPropertyName("ground")] BaseballGroundPayload? Ground,
-        [property: JsonPropertyName("liveText")] IReadOnlyList<BaseballLiveEventPayload>? LiveEvents);
+    private sealed record BaseballLiveDataPayload([property: JsonPropertyName("ground")] BaseballGroundPayload? Ground, [property: JsonPropertyName("liveText")] IReadOnlyList<BaseballLiveEventPayload>? LiveEvents);
 
-    private sealed record BaseballGroundPayload(
-        [property: JsonPropertyName("ball")] int? Ball,
-        [property: JsonPropertyName("strike")] int? Strike,
-        [property: JsonPropertyName("out")] int? Out,
-        [property: JsonPropertyName("base1")] string? BaseFirstRunnerProviderPersonId,
-        [property: JsonPropertyName("base2")] string? BaseSecondRunnerProviderPersonId,
-        [property: JsonPropertyName("base3")] string? BaseThirdRunnerProviderPersonId,
-        [property: JsonPropertyName("lastPeriod")] string? LastPeriod);
+    private sealed record BaseballGroundPayload([property: JsonPropertyName("ball")] int? Ball, [property: JsonPropertyName("strike")] int? Strike, [property: JsonPropertyName("out")] int? Out, [property: JsonPropertyName("base1")] string? BaseFirstRunnerProviderPersonId, [property: JsonPropertyName("base2")] string? BaseSecondRunnerProviderPersonId, [property: JsonPropertyName("base3")] string? BaseThirdRunnerProviderPersonId, [property: JsonPropertyName("lastPeriod")] string? LastPeriod);
 
-    private sealed record BaseballLiveEventPayload(
-        [property: JsonPropertyName("period")] string? Period,
-        [property: JsonPropertyName("batter")] string? BatterProviderPersonId,
-        [property: JsonPropertyName("ballCount")] int? BallCount,
-        [property: JsonPropertyName("ball")] int? Ball,
-        [property: JsonPropertyName("strike")] int? Strike,
-        [property: JsonPropertyName("speed")] int? Speed,
-        [property: JsonPropertyName("pitcher")] string? PitcherProviderPersonId,
-        [property: JsonPropertyName("text")] string? Text,
-        [property: JsonPropertyName("stuff")] string? PitchKind);
+    private sealed record BaseballLiveEventPayload([property: JsonPropertyName("period")] string? Period, [property: JsonPropertyName("batter")] string? BatterProviderPersonId, [property: JsonPropertyName("ballCount")] int? BallCount, [property: JsonPropertyName("ball")] int? Ball, [property: JsonPropertyName("strike")] int? Strike, [property: JsonPropertyName("speed")] int? Speed, [property: JsonPropertyName("pitcher")] string? PitcherProviderPersonId, [property: JsonPropertyName("text")] string? Text, [property: JsonPropertyName("stuff")] string? PitchKind);
 }

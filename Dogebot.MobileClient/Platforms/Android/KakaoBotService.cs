@@ -35,8 +35,7 @@ public class KakaoBotService : IKakaoBotService
 
     public void RequestIgnoreBatteryOptimizations()
     {
-        var intent = new Intent(Settings.ActionRequestIgnoreBatteryOptimizations,
-            global::Android.Net.Uri.Parse($"package:{(global::Android.App.Application.Context.PackageName)}"));
+        var intent = new Intent(Settings.ActionRequestIgnoreBatteryOptimizations, global::Android.Net.Uri.Parse($"package:{(global::Android.App.Application.Context.PackageName)}"));
         intent.SetFlags(ActivityFlags.NewTask);
         Platform.CurrentActivity?.StartActivity(intent);
     }

@@ -34,9 +34,7 @@ public class KakaoController(IKakaoService kakaoService, ILogger<KakaoController
     [ProducesResponseType(typeof(ServerResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Command([FromQuery] string? availableRooms)
     {
-        var roomIds = string.IsNullOrEmpty(availableRooms)
-            ? []
-            : availableRooms.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var roomIds = string.IsNullOrEmpty(availableRooms) ? [] : availableRooms.Split(',', StringSplitOptions.RemoveEmptyEntries);
 
         logger.LogInformation("[COMMAND] Polling with {Count} available rooms ({Query})", roomIds.Length, availableRooms ?? "N/A");
 

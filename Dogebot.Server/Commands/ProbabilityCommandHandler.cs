@@ -21,8 +21,7 @@ public class ProbabilityCommandHandler(ILogger<ProbabilityCommandHandler> logger
             var message = $"확률: {probability}%";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[PROBABILITY] Generated {Probability}% for {Sender} in room {RoomId}", 
-                    probability, data.SenderName, data.RoomId);
+                logger.LogInformation("[PROBABILITY] Generated {Probability}% for {Sender} in room {RoomId}", probability, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {

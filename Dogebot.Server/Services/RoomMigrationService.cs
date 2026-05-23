@@ -53,10 +53,7 @@ public class RoomMigrationService : IRoomMigrationService
     public async Task<RoomMigrationResult> MigrateRoomDataAsync(string code, string targetRoomId, string targetRoomName)
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var filter = Builders<RoomMigrationCode>.Filter.And(
-            Builders<RoomMigrationCode>.Filter.Eq(x => x.Code, code),
-            Builders<RoomMigrationCode>.Filter.Gt(x => x.ExpiresAt, now)
-        );
+        var filter = Builders<RoomMigrationCode>.Filter.And(Builders<RoomMigrationCode>.Filter.Eq(x => x.Code, code), Builders<RoomMigrationCode>.Filter.Gt(x => x.ExpiresAt, now));
 
         var migrationCode = await _migrationCodes.Find(filter).FirstOrDefaultAsync();
         if (migrationCode is null)
@@ -98,8 +95,7 @@ public class RoomMigrationService : IRoomMigrationService
         // Delete the used migration code
         await _migrationCodes.DeleteOneAsync(Builders<RoomMigrationCode>.Filter.Eq(x => x.Id, migrationCode.Id));
 
-        _logger.LogWarning("[ROOM_MIGRATION] Migrated {Count} documents from room {SourceRoom} to room {TargetRoom}",
-            totalMigrated, migrationCode.SourceRoomName, targetRoomName);
+        _logger.LogWarning("[ROOM_MIGRATION] Migrated {Count} documents from room {SourceRoom} to room {TargetRoom}", totalMigrated, migrationCode.SourceRoomName, targetRoomName);
 
         return new RoomMigrationResult(true, SourceRoomName: migrationCode.SourceRoomName, TotalDocumentsMigrated: totalMigrated);
     }
@@ -138,8 +134,7 @@ public class RoomMigrationService : IRoomMigrationService
 
             await _migrationMappings.InsertManyAsync(mappings);
 
-            _logger.LogInformation("[ROOM_MIGRATION] Recorded {Count} senderHash mappings for room {RoomId}",
-                mappings.Count, targetRoomId);
+            _logger.LogInformation("[ROOM_MIGRATION] Recorded {Count} senderHash mappings for room {RoomId}", mappings.Count, targetRoomId);
         }
         catch (Exception exception)
         {
@@ -149,10 +144,7 @@ public class RoomMigrationService : IRoomMigrationService
 
     public async Task<bool> TryMigrateUserHashAsync(string targetRoomId, string senderName, string newSenderHash)
     {
-        var filter = Builders<RoomMigrationMapping>.Filter.And(
-            Builders<RoomMigrationMapping>.Filter.Eq(x => x.TargetRoomId, targetRoomId),
-            Builders<RoomMigrationMapping>.Filter.Eq(x => x.SenderName, senderName)
-        );
+        var filter = Builders<RoomMigrationMapping>.Filter.And(Builders<RoomMigrationMapping>.Filter.Eq(x => x.TargetRoomId, targetRoomId), Builders<RoomMigrationMapping>.Filter.Eq(x => x.SenderName, senderName));
 
         var mapping = await _migrationMappings.Find(filter).FirstOrDefaultAsync();
         if (mapping is null || mapping.OldSenderHash == newSenderHash)
@@ -164,9 +156,7 @@ public class RoomMigrationService : IRoomMigrationService
         // Delete the mapping (this user's migration is complete)
         await _migrationMappings.DeleteManyAsync(filter);
 
-        _logger.LogInformation(
-            "[ROOM_MIGRATION] Merged senderHash for {SenderName} in room {RoomId}",
-            senderName, targetRoomId);
+        _logger.LogInformation("[ROOM_MIGRATION] Merged senderHash for {SenderName} in room {RoomId}", senderName, targetRoomId);
 
         return true;
     }
@@ -178,47 +168,25 @@ public class RoomMigrationService : IRoomMigrationService
     private async Task MergeUserHashAsync(string roomId, string oldSenderHash, string newSenderHash)
     {
         // chatStatistics: merge messageCount, lastMessageTime, senderName
-        await MergeHashInCollectionAsync("chatStatistics", roomId, oldSenderHash, newSenderHash,
-            additionalKeyFields: [],
-            incrementFields: ["messageCount"],
-            maxFields: ["lastMessageTime"],
-            setFields: ["senderName"]);
+        await MergeHashInCollectionAsync("chatStatistics", roomId, oldSenderHash, newSenderHash, additionalKeyFields: [], incrementFields: ["messageCount"], maxFields: ["lastMessageTime"], setFields: ["senderName"]);
 
         // hourlyChatStatistics: merge by dateTime
-        await MergeHashInCollectionAsync("hourlyChatStatistics", roomId, oldSenderHash, newSenderHash,
-            additionalKeyFields: ["dateTime"],
-            incrementFields: ["messageCount"]);
+        await MergeHashInCollectionAsync("hourlyChatStatistics", roomId, oldSenderHash, newSenderHash, additionalKeyFields: ["dateTime"], incrementFields: ["messageCount"]);
 
         // dailyChatStatistics: merge by dayOfWeek
-        await MergeHashInCollectionAsync("dailyChatStatistics", roomId, oldSenderHash, newSenderHash,
-            additionalKeyFields: ["dayOfWeek"],
-            incrementFields: ["messageCount"]);
+        await MergeHashInCollectionAsync("dailyChatStatistics", roomId, oldSenderHash, newSenderHash, additionalKeyFields: ["dayOfWeek"], incrementFields: ["messageCount"]);
 
         // monthlyChatStatistics: merge by month
-        await MergeHashInCollectionAsync("monthlyChatStatistics", roomId, oldSenderHash, newSenderHash,
-            additionalKeyFields: ["month"],
-            incrementFields: ["messageCount"]);
+        await MergeHashInCollectionAsync("monthlyChatStatistics", roomId, oldSenderHash, newSenderHash, additionalKeyFields: ["month"], incrementFields: ["messageCount"]);
 
         // roomMentionUsages: keep the latest cooldown when a sender hash changes
-        await MergeHashInCollectionAsync("roomMentionUsages", roomId, oldSenderHash, newSenderHash,
-            additionalKeyFields: [],
-            incrementFields: [],
-            maxFields: ["lastUsedAt", "nextAvailableAt"],
-            setFields: ["roomName", "senderName"]);
+        await MergeHashInCollectionAsync("roomMentionUsages", roomId, oldSenderHash, newSenderHash, additionalKeyFields: [], incrementFields: [], maxFields: ["lastUsedAt", "nextAvailableAt"], setFields: ["roomName", "senderName"]);
     }
 
     /// <summary>
     /// Merges documents from oldSenderHash into newSenderHash within a single collection.
     /// </summary>
-    private async Task MergeHashInCollectionAsync(
-        string collectionName,
-        string roomId,
-        string oldSenderHash,
-        string newSenderHash,
-        string[] additionalKeyFields,
-        string[] incrementFields,
-        string[]? maxFields = null,
-        string[]? setFields = null)
+    private async Task MergeHashInCollectionAsync(string collectionName, string roomId, string oldSenderHash, string newSenderHash, string[] additionalKeyFields, string[] incrementFields, string[]? maxFields = null, string[]? setFields = null)
     {
         try
         {
@@ -328,8 +296,7 @@ public class RoomMigrationService : IRoomMigrationService
     private string GenerateCode()
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        return new string(Enumerable.Repeat(chars, 8)
-            .Select(s => s[_random.Next(s.Length)]).ToArray());
+        return new string(Enumerable.Repeat(chars, 8).Select(s => s[_random.Next(s.Length)]).ToArray());
     }
 }
 

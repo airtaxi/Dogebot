@@ -3,17 +3,14 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class CgvMovieListCommandHandler(
-    IImaxNotificationService imaxNotificationService,
-    ILogger<CgvMovieListCommandHandler> logger) : ICommandHandler
+public class CgvMovieListCommandHandler(IImaxNotificationService imaxNotificationService, ILogger<CgvMovieListCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!영화목록";
 
     public bool CanHandle(string content)
     {
         var trimmed = content.Trim();
-        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) ||
-               trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
+        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
     }
 
     public Task<ServerResponse> HandleAsync(KakaoMessageData data)
@@ -23,25 +20,12 @@ public class CgvMovieListCommandHandler(
             var parts = data.Content.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
             var movieSearchQuery = parts.Length > 1 ? parts[1].Trim() : null;
 
-            imaxNotificationService.StartSession(
-                data.RoomId, data.SenderHash, data.SenderName, data.RoomName,
-                ImaxSessionType.MovieList, movieSearchQuery);
+            imaxNotificationService.StartSession(data.RoomId, data.SenderHash, data.SenderName, data.RoomName, ImaxSessionType.MovieList, movieSearchQuery);
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[CGV_MOVIES] Session started by {Sender} in room {RoomName}",
-                    data.SenderName, data.RoomName);
+                logger.LogInformation("[CGV_MOVIES] Session started by {Sender} in room {RoomName}", data.SenderName, data.RoomName);
 
-            var regionList = string.Join("\n", [
-                "  1. 서울",
-                "  2. 경기",
-                "  3. 인천",
-                "  4. 강원",
-                "  5. 대전/충청",
-                "  6. 대구",
-                "  7. 부산/울산",
-                "  8. 경상",
-                "  9. 광주/전라"
-            ]);
+            var regionList = string.Join("\n", ["  1. 서울", "  2. 경기", "  3. 인천", "  4. 강원", "  5. 대전/충청", "  6. 대구", "  7. 부산/울산", "  8. 경상", "  9. 광주/전라"]);
 
             return Task.FromResult(new ServerResponse
             {

@@ -80,8 +80,7 @@ public class CourseMealCommandHandler(ILogger<CourseMealCommandHandler> logger) 
                          $"🍰 디저트: {dishes[2]}";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[COURSE_MEAL] Generated course meal for {Sender} in room {RoomId}: [{Appetizer}], [{Main}], [{Dessert}]",
-                    data.SenderName, data.RoomId, dishes[0], dishes[1], dishes[2]);
+                logger.LogInformation("[COURSE_MEAL] Generated course meal for {Sender} in room {RoomId}: [{Appetizer}], [{Main}], [{Dessert}]", data.SenderName, data.RoomId, dishes[0], dishes[1], dishes[2]);
 
             return Task.FromResult(new ServerResponse
             {

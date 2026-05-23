@@ -2,9 +2,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.BackgroundServices;
 
-public class ApprovalCodeCleanupService(
-    IServiceProvider serviceProvider,
-    ILogger<ApprovalCodeCleanupService> logger) : BackgroundService
+public class ApprovalCodeCleanupService(IServiceProvider serviceProvider, ILogger<ApprovalCodeCleanupService> logger) : BackgroundService
 {
     private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(10);
 
@@ -29,8 +27,7 @@ public class ApprovalCodeCleanupService(
 
                 if (deletedAdminCodes > 0 || deletedLimitCodes > 0 || deletedMigrationCodes > 0)
                 {
-                    logger.LogInformation("[CLEANUP_SERVICE] Deleted {AdminCodes} admin codes, {LimitCodes} limit codes, and {MigrationCodes} migration codes",
-                        deletedAdminCodes, deletedLimitCodes, deletedMigrationCodes);
+                    logger.LogInformation("[CLEANUP_SERVICE] Deleted {AdminCodes} admin codes, {LimitCodes} limit codes, and {MigrationCodes} migration codes", deletedAdminCodes, deletedLimitCodes, deletedMigrationCodes);
                 }
             }
             catch (OperationCanceledException)

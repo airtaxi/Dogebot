@@ -3,17 +3,14 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class RankCommandHandler(
-    IChatStatisticsService statisticsService,
-    ILogger<RankCommandHandler> logger) : ICommandHandler
+public class RankCommandHandler(IChatStatisticsService statisticsService, ILogger<RankCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!랭크";
 
     public bool CanHandle(string content)
     {
         var trimmed = content.Trim();
-        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) ||
-               trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
+        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<ServerResponse> HandleAsync(KakaoMessageData data)

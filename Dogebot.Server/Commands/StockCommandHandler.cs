@@ -3,9 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class StockCommandHandler(
-    IStockService stockService,
-    ILogger<StockCommandHandler> logger) : ICommandHandler
+public class StockCommandHandler(IStockService stockService, ILogger<StockCommandHandler> logger) : ICommandHandler
 {
     private const string SummaryCommand = "!주식";
     private const string DetailCommand = "!주식상세";
@@ -41,8 +39,7 @@ public class StockCommandHandler(
                 _ => await stockService.CreateSummaryMessageAsync(commandContext.QueryText)
             };
 
-            logger.LogInformation("[STOCK] Stock command {Command} requested by {Sender} in room {RoomId}",
-                commandContext.Command, data.SenderName, data.RoomId);
+            logger.LogInformation("[STOCK] Stock command {Command} requested by {Sender} in room {RoomId}", commandContext.Command, data.SenderName, data.RoomId);
 
             return new ServerResponse
             {

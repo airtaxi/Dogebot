@@ -5,11 +5,7 @@ namespace Dogebot.Server.Services;
 
 public interface IBaseballGameSubscriptionService
 {
-    Task<BaseballGameSubscriptionRegisterResult> RegisterAsync(
-        KakaoMessageData data,
-        DateOnly gameDate,
-        BaseballGameDetail gameDetail,
-        string subscribedTeamName);
+    Task<BaseballGameSubscriptionRegisterResult> RegisterAsync(KakaoMessageData data, DateOnly gameDate, BaseballGameDetail gameDetail, string subscribedTeamName);
 
     Task<BaseballGameSubscriptionRemoveResult> RemoveAsync(string roomId, string teamSearchText);
 
@@ -26,22 +22,8 @@ public interface IBaseballGameSubscriptionService
     Task<List<ServerResponseItem>> CheckAndDeliverManyForRoomsAsync(IEnumerable<string> roomIds);
 }
 
-public sealed record BaseballGameSubscriptionRegisterResult(
-    bool Success,
-    bool AlreadySubscribed,
-    string Message,
-    BaseballGameSubscription? Subscription);
+public sealed record BaseballGameSubscriptionRegisterResult(bool Success, bool AlreadySubscribed, string Message, BaseballGameSubscription? Subscription);
 
-public sealed record BaseballGameSubscriptionRemoveResult(
-    int RemovedCount,
-    string Message);
+public sealed record BaseballGameSubscriptionRemoveResult(int RemovedCount, string Message);
 
-public sealed record BaseballGameSubscriptionCheckResult(
-    string LastDeliveredLiveEventKey,
-    int LastDeliveredLiveEventIndex,
-    int? LastHomeScore,
-    int? LastAwayScore,
-    bool LineupNotified,
-    BaseballGameSubscriptionStatus Status,
-    long? CompletedAt,
-    IReadOnlyList<string> PendingMessages);
+public sealed record BaseballGameSubscriptionCheckResult(string LastDeliveredLiveEventKey, int LastDeliveredLiveEventIndex, int? LastHomeScore, int? LastAwayScore, bool LineupNotified, BaseballGameSubscriptionStatus Status, long? CompletedAt, IReadOnlyList<string> PendingMessages);

@@ -3,9 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class MyRankingCommandHandler(
-    IChatStatisticsService statisticsService,
-    ILogger<MyRankingCommandHandler> logger) : ICommandHandler
+public class MyRankingCommandHandler(IChatStatisticsService statisticsService, ILogger<MyRankingCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!내랭킹";
 
@@ -42,8 +40,7 @@ public class MyRankingCommandHandler(
             var message = $"{rankEmoji} {data.SenderName}님의 랭킹\n순위: {rank}위\n채팅 수: {messageCount:N0}회";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[MY_RANKING] User {SenderName} is rank {Rank} with {Count} messages in room {RoomId}", 
-                    data.SenderName, rank, messageCount, data.RoomId);
+                logger.LogInformation("[MY_RANKING] User {SenderName} is rank {Rank} with {Count} messages in room {RoomId}", data.SenderName, rank, messageCount, data.RoomId);
 
             return new ServerResponse
             {

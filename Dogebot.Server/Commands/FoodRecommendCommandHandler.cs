@@ -37,8 +37,7 @@ public class FoodRecommendCommandHandler(ILogger<FoodRecommendCommandHandler> lo
             var message = $"🍴 오늘의 추천 메뉴: {recommendedFood}";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[FOOD] Recommended '{Food}' to {Sender} in room {RoomId}", 
-                    recommendedFood, data.SenderName, data.RoomId);
+                logger.LogInformation("[FOOD] Recommended '{Food}' to {Sender} in room {RoomId}", recommendedFood, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {

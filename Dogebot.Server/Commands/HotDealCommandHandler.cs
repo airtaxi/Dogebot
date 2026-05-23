@@ -6,9 +6,7 @@ namespace Dogebot.Server.Commands;
 /// <summary>
 /// Handles the !핫딜 command to show a random hot deal from arca.live/b/hotdeal.
 /// </summary>
-public class HotDealCommandHandler(
-    IHotDealService hotDealService,
-    ILogger<HotDealCommandHandler> logger) : ICommandHandler
+public class HotDealCommandHandler(IHotDealService hotDealService, ILogger<HotDealCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!핫딜";
 
@@ -38,9 +36,7 @@ public class HotDealCommandHandler(
             var mallInfo = string.IsNullOrEmpty(deal.Mall) ? "" : $"🏪 판매처: {deal.Mall}\n";
 
             var lastCacheTime = hotDealService.GetLastCacheTime();
-            var cacheInfo = lastCacheTime.HasValue
-                ? $"마지막 갱신: {TimeZoneInfo.ConvertTimeFromUtc(lastCacheTime.Value, TimeZoneInfo.FindSystemTimeZoneById("Korea Standard Time")):yyyy-MM-dd HH:mm:ss}"
-                : "첫 조회";
+            var cacheInfo = lastCacheTime.HasValue ? $"마지막 갱신: {TimeZoneInfo.ConvertTimeFromUtc(lastCacheTime.Value, TimeZoneInfo.FindSystemTimeZoneById("Korea Standard Time")):yyyy-MM-dd HH:mm:ss}" : "첫 조회";
 
             var message = $"🔥 오늘의 핫딜!\n\n" +
                          $"📦 {deal.Title}\n\n" +
@@ -52,8 +48,7 @@ public class HotDealCommandHandler(
                          $"📅 {cacheInfo}";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[HOTDEAL] Recommended deal '{Title}' to {Sender} in room {RoomId}",
-                    deal.Title, data.SenderName, data.RoomId);
+                logger.LogInformation("[HOTDEAL] Recommended deal '{Title}' to {Sender} in room {RoomId}", deal.Title, data.SenderName, data.RoomId);
 
             return new ServerResponse
             {

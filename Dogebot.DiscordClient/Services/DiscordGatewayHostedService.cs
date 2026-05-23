@@ -2,9 +2,7 @@ using Dogebot.DiscordClient.Adapters;
 
 namespace Dogebot.DiscordClient.Services;
 
-public class DiscordGatewayHostedService(
-    IDiscordGatewayClient gatewayClient,
-    ILogger<DiscordGatewayHostedService> logger) : IHostedService
+public class DiscordGatewayHostedService(IDiscordGatewayClient gatewayClient, ILogger<DiscordGatewayHostedService> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {

@@ -3,10 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class ScheduledMessageSetCommandHandler(
-    IScheduledMessageService scheduledMessageService,
-    IAdminService adminService,
-    ILogger<ScheduledMessageSetCommandHandler> logger) : ICommandHandler
+public class ScheduledMessageSetCommandHandler(IScheduledMessageService scheduledMessageService, IAdminService adminService, ILogger<ScheduledMessageSetCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!반복설정";
 
@@ -32,8 +29,7 @@ public class ScheduledMessageSetCommandHandler(
             scheduledMessageService.StartSession(data.RoomId, data.SenderHash, data.SenderName, data.RoomName);
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[SCHEDULED_SET] Session started by {Sender} in room {RoomName}",
-                    data.SenderName, data.RoomName);
+                logger.LogInformation("[SCHEDULED_SET] Session started by {Sender} in room {RoomName}", data.SenderName, data.RoomName);
 
             return new ServerResponse
             {

@@ -26,9 +26,5 @@ public interface IRoomMigrationService
     Task<bool> TryMigrateUserHashAsync(string targetRoomId, string senderName, string newSenderHash);
 }
 
-public record RoomMigrationResult(
-    bool Success,
-    string? ErrorMessage = null,
-    string? SourceRoomName = null,
-    int TotalDocumentsMigrated = 0);
+public record RoomMigrationResult(bool Success, string? ErrorMessage = null, string? SourceRoomName = null, int TotalDocumentsMigrated = 0);
 

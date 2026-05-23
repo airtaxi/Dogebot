@@ -33,10 +33,7 @@ public class ImaxNotificationService : IImaxNotificationService
         ("09", "광주/전라"),
     ];
 
-    public ImaxNotificationService(
-        IMongoDbService mongoDbService,
-        IHttpClientFactory httpClientFactory,
-        ILogger<ImaxNotificationService> logger)
+    public ImaxNotificationService(IMongoDbService mongoDbService, IHttpClientFactory httpClientFactory, ILogger<ImaxNotificationService> logger)
     {
         _imaxNotifications = mongoDbService.Database.GetCollection<ImaxNotification>("imaxNotifications");
         _httpClientFactory = httpClientFactory;
@@ -46,24 +43,18 @@ public class ImaxNotificationService : IImaxNotificationService
 
     private void CreateIndexes()
     {
-        var roomIdIndex = new CreateIndexModel<ImaxNotification>(
-            Builders<ImaxNotification>.IndexKeys.Ascending(x => x.RoomId),
-            new CreateIndexOptions { Unique = true });
+        var roomIdIndex = new CreateIndexModel<ImaxNotification>(Builders<ImaxNotification>.IndexKeys.Ascending(x => x.RoomId), new CreateIndexOptions { Unique = true });
         _imaxNotifications.Indexes.CreateOne(roomIdIndex);
 
-        var dateIndex = new CreateIndexModel<ImaxNotification>(
-            Builders<ImaxNotification>.IndexKeys.Ascending(x => x.ScreeningDate));
+        var dateIndex = new CreateIndexModel<ImaxNotification>(Builders<ImaxNotification>.IndexKeys.Ascending(x => x.ScreeningDate));
         _imaxNotifications.Indexes.CreateOne(dateIndex);
     }
 
     #region Session Management
 
-    public void StartSession(string roomId, string senderHash, string senderName, string roomName,
-        ImaxSessionType type = ImaxSessionType.Setup, string? movieSearchQuery = null)
+    public void StartSession(string roomId, string senderHash, string senderName, string roomName, ImaxSessionType type = ImaxSessionType.Setup, string? movieSearchQuery = null)
     {
-        var initialStage = type == ImaxSessionType.Setup
-            ? SetupStage.AwaitingSetupMovieQuery
-            : SetupStage.AwaitingRegion;
+        var initialStage = type == ImaxSessionType.Setup ? SetupStage.AwaitingSetupMovieQuery : SetupStage.AwaitingRegion;
 
         var session = new SetupSession
         {
@@ -177,9 +168,7 @@ public class ImaxNotificationService : IImaxNotificationService
             }
 
             var theaterList = theaters.EnumerateArray()
-                .Select(theater => (
-                    SiteNumber: theater.GetProperty("siteNumber").GetString()!,
-                    SiteName: theater.GetProperty("siteName").GetString()!))
+                .Select(theater => (SiteNumber: theater.GetProperty("siteNumber").GetString()!, SiteName: theater.GetProperty("siteName").GetString()!))
                 .ToList();
 
             session.AvailableTheaters = theaterList;
@@ -328,8 +317,7 @@ public class ImaxNotificationService : IImaxNotificationService
 
             if (movies.GetArrayLength() > 1)
             {
-                var movieList = string.Join("\n",
-                    movies.EnumerateArray().Select(m => $"  • {m.GetProperty("movieName").GetString()}"));
+                var movieList = string.Join("\n", movies.EnumerateArray().Select(m => $"  • {m.GetProperty("movieName").GetString()}"));
                 return new ServerResponse
                 {
                     Action = "send_text",
@@ -382,9 +370,7 @@ public class ImaxNotificationService : IImaxNotificationService
             {
                 var regionName = region.GetProperty("regionName").GetString()!;
                 var theaters = region.GetProperty("theaters").EnumerateArray()
-                    .Select(t => (
-                        SiteNumber: t.GetProperty("siteNumber").GetString()!,
-                        SiteName: t.GetProperty("siteName").GetString()!))
+                    .Select(t => (SiteNumber: t.GetProperty("siteNumber").GetString()!, SiteName: t.GetProperty("siteName").GetString()!))
                     .ToList();
                 if (theaters.Count > 0)
                     flatTheaters.Add((regionName, theaters));
@@ -509,17 +495,12 @@ public class ImaxNotificationService : IImaxNotificationService
             };
         }
 
-        var (success, message) = await RegisterAsync(
-            session.RoomId, dateString, session.SelectedMovieName!, session.SelectedMovieNumber!,
-            session.SelectedSiteNumber!, session.SelectedSiteName!, keyword,
-            session.SenderHash, session.SenderName, session.RoomName);
+        var (success, message) = await RegisterAsync(session.RoomId, dateString, session.SelectedMovieName!, session.SelectedMovieNumber!, session.SelectedSiteNumber!, session.SelectedSiteName!, keyword, session.SenderHash, session.SenderName, session.RoomName);
 
         _sessions.TryRemove(key, out _);
 
         if (_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("[IMAX_SET] {Result} by {Sender} in room {RoomName} for {Movie} on {Date} at {Site}",
-                success ? "Registered" : "Failed", session.SenderName, session.RoomName,
-                session.SelectedMovieName, dateString, session.SelectedSiteName);
+            _logger.LogInformation("[IMAX_SET] {Result} by {Sender} in room {RoomName} for {Movie} on {Date} at {Site}", success ? "Registered" : "Failed", session.SenderName, session.RoomName, session.SelectedMovieName, dateString, session.SelectedSiteName);
 
         // In personal chat, skip reply on success to preserve reply capability for the actual notification
         if (success && !data.IsGroupChat)
@@ -540,9 +521,7 @@ public class ImaxNotificationService : IImaxNotificationService
 
         try
         {
-            var url = string.IsNullOrEmpty(session.MovieSearchQuery)
-                ? $"{ImaxApiBaseUrl}/movies?siteNo={session.SelectedSiteNumber}"
-                : $"{ImaxApiBaseUrl}/movies?siteNo={session.SelectedSiteNumber}&query={Uri.EscapeDataString(session.MovieSearchQuery)}";
+            var url = string.IsNullOrEmpty(session.MovieSearchQuery) ? $"{ImaxApiBaseUrl}/movies?siteNo={session.SelectedSiteNumber}" : $"{ImaxApiBaseUrl}/movies?siteNo={session.SelectedSiteNumber}&query={Uri.EscapeDataString(session.MovieSearchQuery)}";
 
             var response = await httpClient.GetAsync(url);
             _sessions.TryRemove(key, out _);
@@ -563,9 +542,7 @@ public class ImaxNotificationService : IImaxNotificationService
 
             if (movies.GetArrayLength() == 0)
             {
-                var noResultMessage = string.IsNullOrEmpty(session.MovieSearchQuery)
-                    ? $"ℹ️ CGV {session.SelectedSiteName}에서 현재 상영 중인 영화가 없습니다."
-                    : $"ℹ️ \"{session.MovieSearchQuery}\"에 해당하는 영화를 찾을 수 없습니다.";
+                var noResultMessage = string.IsNullOrEmpty(session.MovieSearchQuery) ? $"ℹ️ CGV {session.SelectedSiteName}에서 현재 상영 중인 영화가 없습니다." : $"ℹ️ \"{session.MovieSearchQuery}\"에 해당하는 영화를 찾을 수 없습니다.";
 
                 return new ServerResponse
                 {
@@ -575,16 +552,12 @@ public class ImaxNotificationService : IImaxNotificationService
                 };
             }
 
-            var header = string.IsNullOrEmpty(session.MovieSearchQuery)
-                ? $"🎬 CGV {session.SelectedSiteName} 상영 영화 목록"
-                : $"🎬 CGV {session.SelectedSiteName} \"{session.MovieSearchQuery}\" 검색 결과";
+            var header = string.IsNullOrEmpty(session.MovieSearchQuery) ? $"🎬 CGV {session.SelectedSiteName} 상영 영화 목록" : $"🎬 CGV {session.SelectedSiteName} \"{session.MovieSearchQuery}\" 검색 결과";
 
-            var movieList = string.Join("\n",
-                movies.EnumerateArray().Select(m => $"  • {m.GetProperty("movieName").GetString()}"));
+            var movieList = string.Join("\n", movies.EnumerateArray().Select(m => $"  • {m.GetProperty("movieName").GetString()}"));
 
             if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[MOVIE_LIST] Showing {Count} movies at CGV {Site} for {Sender} in room {RoomName}",
-                    movies.GetArrayLength(), session.SelectedSiteName, session.SenderName, session.RoomName);
+                _logger.LogInformation("[MOVIE_LIST] Showing {Count} movies at CGV {Site} for {Sender} in room {RoomName}", movies.GetArrayLength(), session.SelectedSiteName, session.SenderName, session.RoomName);
 
             return new ServerResponse
             {
@@ -648,8 +621,7 @@ public class ImaxNotificationService : IImaxNotificationService
             if (movies.GetArrayLength() > 1)
             {
                 session.Stage = SetupStage.AwaitingMovieQuery;
-                var movieList = string.Join("\n",
-                    movies.EnumerateArray().Select(m => $"  • {m.GetProperty("movieName").GetString()}"));
+                var movieList = string.Join("\n", movies.EnumerateArray().Select(m => $"  • {m.GetProperty("movieName").GetString()}"));
                 return new ServerResponse
                 {
                     Action = "send_text",
@@ -756,8 +728,7 @@ public class ImaxNotificationService : IImaxNotificationService
             }
 
             if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[IMAX_QUERY] {Sender} queried {Movie} at CGV {Site} in room {RoomName}: IMAX={HasImax}",
-                    session.SenderName, movieName, session.SelectedSiteName, session.RoomName, hasImax);
+                _logger.LogInformation("[IMAX_QUERY] {Sender} queried {Movie} at CGV {Site} in room {RoomName}: IMAX={HasImax}", session.SenderName, movieName, session.SelectedSiteName, session.RoomName, hasImax);
 
             return new ServerResponse
             {
@@ -830,10 +801,7 @@ public class ImaxNotificationService : IImaxNotificationService
 
     #region Notification CRUD
 
-    public async Task<(bool Success, string Message)> RegisterAsync(
-        string roomId, string screeningDate, string movieName, string movieNumber,
-        string siteNumber, string siteName, string? keyword,
-        string senderHash, string senderName, string roomName)
+    public async Task<(bool Success, string Message)> RegisterAsync(string roomId, string screeningDate, string movieName, string movieNumber, string siteNumber, string siteName, string? keyword, string senderHash, string senderName, string roomName)
     {
         var existing = await GetNotificationAsync(roomId);
         if (existing is not null)
@@ -908,9 +876,7 @@ public class ImaxNotificationService : IImaxNotificationService
 
     public async Task<ServerResponse?> CheckAndDeliverAsync(KakaoMessageData data)
     {
-        var filter = Builders<ImaxNotification>.Filter.And(
-            Builders<ImaxNotification>.Filter.Eq(notification => notification.RoomId, data.RoomId),
-            Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
+        var filter = Builders<ImaxNotification>.Filter.And(Builders<ImaxNotification>.Filter.Eq(notification => notification.RoomId, data.RoomId), Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
 
         // Atomically find and delete: prevents duplicate delivery
         var notification = await _imaxNotifications.FindOneAndDeleteAsync(filter);
@@ -927,9 +893,7 @@ public class ImaxNotificationService : IImaxNotificationService
 
     public async Task<List<ServerResponseItem>> CheckAndDeliverManyAsync(KakaoMessageData data)
     {
-        var filter = Builders<ImaxNotification>.Filter.And(
-            Builders<ImaxNotification>.Filter.Eq(notification => notification.RoomId, data.RoomId),
-            Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
+        var filter = Builders<ImaxNotification>.Filter.And(Builders<ImaxNotification>.Filter.Eq(notification => notification.RoomId, data.RoomId), Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
 
         return await FindAndDeletePendingMessagesAsync(filter);
     }
@@ -939,9 +903,7 @@ public class ImaxNotificationService : IImaxNotificationService
         var roomIdList = roomIds.ToList();
         if (roomIdList.Count == 0) return null;
 
-        var filter = Builders<ImaxNotification>.Filter.And(
-            Builders<ImaxNotification>.Filter.In(notification => notification.RoomId, roomIdList),
-            Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
+        var filter = Builders<ImaxNotification>.Filter.And(Builders<ImaxNotification>.Filter.In(notification => notification.RoomId, roomIdList), Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
 
         // Atomically find and delete: prevents duplicate delivery
         var notification = await _imaxNotifications.FindOneAndDeleteAsync(filter);
@@ -961,9 +923,7 @@ public class ImaxNotificationService : IImaxNotificationService
         var roomIdList = roomIds.ToList();
         if (roomIdList.Count == 0) return [];
 
-        var filter = Builders<ImaxNotification>.Filter.And(
-            Builders<ImaxNotification>.Filter.In(notification => notification.RoomId, roomIdList),
-            Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
+        var filter = Builders<ImaxNotification>.Filter.And(Builders<ImaxNotification>.Filter.In(notification => notification.RoomId, roomIdList), Builders<ImaxNotification>.Filter.Ne(notification => notification.PendingMessage, null));
 
         return await FindAndDeletePendingMessagesAsync(filter);
     }

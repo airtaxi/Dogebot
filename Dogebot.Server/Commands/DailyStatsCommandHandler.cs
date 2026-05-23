@@ -3,9 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class DailyStatsCommandHandler(
-    IChatStatisticsService statisticsService,
-    ILogger<DailyStatsCommandHandler> logger) : ICommandHandler
+public class DailyStatsCommandHandler(IChatStatisticsService statisticsService, ILogger<DailyStatsCommandHandler> logger) : ICommandHandler
 {
     private static readonly string[] DayNames = ["일", "월", "화", "수", "목", "금", "토"];
 

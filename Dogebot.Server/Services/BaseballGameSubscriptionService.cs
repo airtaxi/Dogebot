@@ -22,62 +22,34 @@ public class BaseballGameSubscriptionService : IBaseballGameSubscriptionService
     {
         var subscriptionIndexes = new[]
         {
-            new CreateIndexModel<BaseballGameSubscription>(
-                Builders<BaseballGameSubscription>.IndexKeys
-                    .Ascending(subscription => subscription.RoomId)
-                    .Ascending(subscription => subscription.GameDate)
-                    .Ascending(subscription => subscription.GameId)
-                    .Ascending(subscription => subscription.Status)),
-            new CreateIndexModel<BaseballGameSubscription>(
-                Builders<BaseballGameSubscription>.IndexKeys
-                    .Ascending(subscription => subscription.Status)
-                    .Ascending(subscription => subscription.GameDate)
-                    .Ascending(subscription => subscription.GameId))
+            new CreateIndexModel<BaseballGameSubscription>(Builders<BaseballGameSubscription>.IndexKeys.Ascending(subscription => subscription.RoomId).Ascending(subscription => subscription.GameDate).Ascending(subscription => subscription.GameId).Ascending(subscription => subscription.Status)),
+            new CreateIndexModel<BaseballGameSubscription>(Builders<BaseballGameSubscription>.IndexKeys.Ascending(subscription => subscription.Status).Ascending(subscription => subscription.GameDate).Ascending(subscription => subscription.GameId))
         };
         _subscriptions.Indexes.CreateMany(subscriptionIndexes);
 
         var messageIndexes = new[]
         {
-            new CreateIndexModel<BaseballGameSubscriptionMessage>(
-                Builders<BaseballGameSubscriptionMessage>.IndexKeys
-                    .Ascending(message => message.RoomId)
-                    .Ascending(message => message.CreatedAt)),
-            new CreateIndexModel<BaseballGameSubscriptionMessage>(
-                Builders<BaseballGameSubscriptionMessage>.IndexKeys
-                    .Ascending(message => message.SubscriptionId))
+            new CreateIndexModel<BaseballGameSubscriptionMessage>(Builders<BaseballGameSubscriptionMessage>.IndexKeys.Ascending(message => message.RoomId).Ascending(message => message.CreatedAt)),
+            new CreateIndexModel<BaseballGameSubscriptionMessage>(Builders<BaseballGameSubscriptionMessage>.IndexKeys.Ascending(message => message.SubscriptionId))
         };
         _messages.Indexes.CreateMany(messageIndexes);
     }
 
-    public async Task<BaseballGameSubscriptionRegisterResult> RegisterAsync(
-        KakaoMessageData data,
-        DateOnly gameDate,
-        BaseballGameDetail gameDetail,
-        string subscribedTeamName)
+    public async Task<BaseballGameSubscriptionRegisterResult> RegisterAsync(KakaoMessageData data, DateOnly gameDate, BaseballGameDetail gameDetail, string subscribedTeamName)
     {
         var gameSummary = gameDetail.GameSummary;
         var gameDateText = gameDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-        var activeSubscriptionFilter = Builders<BaseballGameSubscription>.Filter.And(
-            Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.RoomId, data.RoomId),
-            Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.GameDate, gameDateText),
-            Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.GameId, gameSummary.GameId),
-            Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.Status, BaseballGameSubscriptionStatus.Active));
+        var activeSubscriptionFilter = Builders<BaseballGameSubscription>.Filter.And(Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.RoomId, data.RoomId), Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.GameDate, gameDateText), Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.GameId, gameSummary.GameId), Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.Status, BaseballGameSubscriptionStatus.Active));
 
         var existingSubscription = await _subscriptions.Find(activeSubscriptionFilter).FirstOrDefaultAsync();
         if (existingSubscription is not null)
         {
-            return new BaseballGameSubscriptionRegisterResult(
-                false,
-                true,
-                "이미 경기를 구독중입니다.",
-                existingSubscription);
+            return new BaseballGameSubscriptionRegisterResult(false, true, "이미 경기를 구독중입니다.", existingSubscription);
         }
 
         var liveEvents = BaseballGameFormatter.GetLiveGameEvents(gameDetail);
         var lastLiveEventIndex = liveEvents.Count - 1;
-        var lastLiveEventKey = lastLiveEventIndex >= 0
-            ? BaseballGameFormatter.BuildLiveEventKey(liveEvents[lastLiveEventIndex])
-            : string.Empty;
+        var lastLiveEventKey = lastLiveEventIndex >= 0 ? BaseballGameFormatter.BuildLiveEventKey(liveEvents[lastLiveEventIndex]) : string.Empty;
         var currentUnixTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         var subscription = new BaseballGameSubscription
@@ -120,9 +92,7 @@ public class BaseballGameSubscriptionService : IBaseballGameSubscriptionService
     public async Task<BaseballGameSubscriptionRemoveResult> RemoveAsync(string roomId, string teamSearchText)
     {
         var activeSubscriptions = await _subscriptions
-            .Find(Builders<BaseballGameSubscription>.Filter.And(
-                Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.RoomId, roomId),
-                Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.Status, BaseballGameSubscriptionStatus.Active)))
+            .Find(Builders<BaseballGameSubscription>.Filter.And(Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.RoomId, roomId), Builders<BaseballGameSubscription>.Filter.Eq(subscription => subscription.Status, BaseballGameSubscriptionStatus.Active)))
             .ToListAsync();
 
         var matchingSubscriptions = activeSubscriptions
@@ -156,9 +126,7 @@ public class BaseballGameSubscriptionService : IBaseballGameSubscriptionService
     public async Task ApplyCheckResultAsync(BaseballGameSubscription subscription, BaseballGameSubscriptionCheckResult checkResult)
     {
         var currentUnixTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var subscriptionFilter = Builders<BaseballGameSubscription>.Filter.And(
-            Builders<BaseballGameSubscription>.Filter.Eq(existingSubscription => existingSubscription.Id, subscription.Id),
-            Builders<BaseballGameSubscription>.Filter.Eq(existingSubscription => existingSubscription.Status, BaseballGameSubscriptionStatus.Active));
+        var subscriptionFilter = Builders<BaseballGameSubscription>.Filter.And(Builders<BaseballGameSubscription>.Filter.Eq(existingSubscription => existingSubscription.Id, subscription.Id), Builders<BaseballGameSubscription>.Filter.Eq(existingSubscription => existingSubscription.Status, BaseballGameSubscriptionStatus.Active));
         var subscriptionUpdate = Builders<BaseballGameSubscription>.Update
             .Set(existingSubscription => existingSubscription.LastDeliveredLiveEventKey, checkResult.LastDeliveredLiveEventKey)
             .Set(existingSubscription => existingSubscription.LastDeliveredLiveEventIndex, checkResult.LastDeliveredLiveEventIndex)
@@ -261,16 +229,9 @@ public class BaseballGameSubscriptionService : IBaseballGameSubscriptionService
 
     private static bool MatchesSubscriptionTeam(BaseballGameSubscription subscription, string teamSearchText)
     {
-        var homeTeam = new BaseballGameTeam(
-            subscription.HomeTeamProviderId,
-            subscription.HomeTeamName,
-            subscription.HomeTeamShortName);
-        var awayTeam = new BaseballGameTeam(
-            subscription.AwayTeamProviderId,
-            subscription.AwayTeamName,
-            subscription.AwayTeamShortName);
+        var homeTeam = new BaseballGameTeam(subscription.HomeTeamProviderId, subscription.HomeTeamName, subscription.HomeTeamShortName);
+        var awayTeam = new BaseballGameTeam(subscription.AwayTeamProviderId, subscription.AwayTeamName, subscription.AwayTeamShortName);
 
-        return BaseballGameFormatter.DoesTeamMatch(homeTeam, teamSearchText) ||
-               BaseballGameFormatter.DoesTeamMatch(awayTeam, teamSearchText);
+        return BaseballGameFormatter.DoesTeamMatch(homeTeam, teamSearchText) || BaseballGameFormatter.DoesTeamMatch(awayTeam, teamSearchText);
     }
 }

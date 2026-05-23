@@ -7,9 +7,7 @@ using System.Collections.Concurrent;
 
 namespace Dogebot.DiscordClient.Adapters;
 
-public class DiscordNetGatewayClient(
-    ILogger<DiscordNetGatewayClient> logger,
-    IOptions<DiscordClientOptions> options) : IDiscordGatewayClient
+public class DiscordNetGatewayClient(ILogger<DiscordNetGatewayClient> logger, IOptions<DiscordClientOptions> options) : IDiscordGatewayClient
 {
     private readonly DiscordSocketClient _client = new(new DiscordSocketConfig
     {

@@ -11,9 +11,7 @@ public class DiscordMessageMapper : IDiscordMessageMapper
         Data = new KakaoMessageData
         {
             Source = KakaoMessageData.DiscordSource,
-            RoomName = string.IsNullOrWhiteSpace(message.GuildName)
-                ? message.ChannelName
-                : $"{message.GuildName}/{message.ChannelName}",
+            RoomName = string.IsNullOrWhiteSpace(message.GuildName) ? message.ChannelName : $"{message.GuildName}/{message.ChannelName}",
             RoomId = message.ChannelId,
             SenderHash = message.AuthorId,
             SenderName = message.AuthorName,

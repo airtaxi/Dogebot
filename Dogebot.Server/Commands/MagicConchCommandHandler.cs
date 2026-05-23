@@ -37,8 +37,7 @@ public class MagicConchCommandHandler(ILogger<MagicConchCommandHandler> logger) 
             var message = $"🐚 소라고동님: {answer}";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[MAGIC_CONCH] Answer '{Answer}' for {Sender} in room {RoomId}", 
-                    answer, data.SenderName, data.RoomId);
+                logger.LogInformation("[MAGIC_CONCH] Answer '{Answer}' for {Sender} in room {RoomId}", answer, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {

@@ -4,10 +4,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class SingleMessageCommandHandler(
-    IBotSettingService botSettingService,
-    IAdminService adminService,
-    ILogger<SingleMessageCommandHandler> logger) : ICommandHandler
+public class SingleMessageCommandHandler(IBotSettingService botSettingService, IAdminService adminService, ILogger<SingleMessageCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!싱글메시지";
 

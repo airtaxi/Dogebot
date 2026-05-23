@@ -99,9 +99,7 @@ public class ScheduledMessageService : IScheduledMessageService
         session.Message = data.Content;
         session.Stage = SetupStage.AwaitingDays;
 
-        var preview = session.Message.Length > 50
-            ? session.Message[..47] + "..."
-            : session.Message;
+        var preview = session.Message.Length > 50 ? session.Message[..47] + "..." : session.Message;
 
         return new ServerResponse
         {
@@ -258,8 +256,7 @@ public class ScheduledMessageService : IScheduledMessageService
         }
 
         // Check room limit
-        var existingCount = await _scheduledMessages.CountDocumentsAsync(
-            Builders<ScheduledMessage>.Filter.Eq(x => x.RoomId, session.RoomId));
+        var existingCount = await _scheduledMessages.CountDocumentsAsync(Builders<ScheduledMessage>.Filter.Eq(x => x.RoomId, session.RoomId));
 
         if (existingCount >= MaxScheduledMessagesPerRoom)
         {
@@ -292,9 +289,7 @@ public class ScheduledMessageService : IScheduledMessageService
 
         var daysDisplay = FormatDays(session.Days!);
         var hoursDisplay = string.Join(", ", hours.Select(h => $"{h}시"));
-        var messagePreview = session.Message!.Length > 50
-            ? session.Message[..47] + "..."
-            : session.Message;
+        var messagePreview = session.Message!.Length > 50 ? session.Message[..47] + "..." : session.Message;
 
         return new ServerResponse
         {
@@ -319,11 +314,7 @@ public class ScheduledMessageService : IScheduledMessageService
         // Already sent for this room/date/hour
         if (_sentTracking.ContainsKey(trackingKey)) return null;
 
-        var filter = Builders<ScheduledMessage>.Filter.And(
-            Builders<ScheduledMessage>.Filter.Eq(message => message.RoomId, data.RoomId),
-            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour),
-            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay)
-        );
+        var filter = Builders<ScheduledMessage>.Filter.And(Builders<ScheduledMessage>.Filter.Eq(message => message.RoomId, data.RoomId), Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour), Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay));
 
         var messages = await _scheduledMessages.Find(filter).ToListAsync();
         if (messages.Count == 0) return null;
@@ -331,8 +322,7 @@ public class ScheduledMessageService : IScheduledMessageService
         // Mark as sent
         _sentTracking.TryAdd(trackingKey, 0);
 
-        var combined = string.Join("\n\n━━━━━━━━━━━━━━━━━━\n\n",
-            messages.Select(message => message.Message));
+        var combined = string.Join("\n\n━━━━━━━━━━━━━━━━━━\n\n", messages.Select(message => message.Message));
 
         return new ServerResponse
         {
@@ -352,11 +342,7 @@ public class ScheduledMessageService : IScheduledMessageService
 
         if (_sentTracking.ContainsKey(trackingKey)) return [];
 
-        var filter = Builders<ScheduledMessage>.Filter.And(
-            Builders<ScheduledMessage>.Filter.Eq(message => message.RoomId, data.RoomId),
-            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour),
-            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay)
-        );
+        var filter = Builders<ScheduledMessage>.Filter.And(Builders<ScheduledMessage>.Filter.Eq(message => message.RoomId, data.RoomId), Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour), Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay));
 
         var messages = await _scheduledMessages.Find(filter).ToListAsync();
         if (messages.Count == 0) return [];
@@ -379,11 +365,7 @@ public class ScheduledMessageService : IScheduledMessageService
 
         if (candidateRoomIds.Count == 0) return null;
 
-        var filter = Builders<ScheduledMessage>.Filter.And(
-            Builders<ScheduledMessage>.Filter.In(message => message.RoomId, candidateRoomIds),
-            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour),
-            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay)
-        );
+        var filter = Builders<ScheduledMessage>.Filter.And(Builders<ScheduledMessage>.Filter.In(message => message.RoomId, candidateRoomIds), Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour), Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay));
 
         var messages = await _scheduledMessages.Find(filter).ToListAsync();
         if (messages.Count == 0) return null;
@@ -395,8 +377,7 @@ public class ScheduledMessageService : IScheduledMessageService
 
         _sentTracking.TryAdd(trackingKey, 0);
 
-        var combined = string.Join("\n\n━━━━━━━━━━━━━━━━━━\n\n",
-            firstRoomGroup.Select(message => message.Message));
+        var combined = string.Join("\n\n━━━━━━━━━━━━━━━━━━\n\n", firstRoomGroup.Select(message => message.Message));
 
         return new ServerResponse
         {
@@ -419,11 +400,7 @@ public class ScheduledMessageService : IScheduledMessageService
 
         if (candidateRoomIds.Count == 0) return [];
 
-        var filter = Builders<ScheduledMessage>.Filter.And(
-            Builders<ScheduledMessage>.Filter.In(message => message.RoomId, candidateRoomIds),
-            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour),
-            Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay)
-        );
+        var filter = Builders<ScheduledMessage>.Filter.And(Builders<ScheduledMessage>.Filter.In(message => message.RoomId, candidateRoomIds), Builders<ScheduledMessage>.Filter.AnyEq(message => message.Hours, currentHour), Builders<ScheduledMessage>.Filter.AnyEq(message => message.Days, currentDay));
 
         var messages = await _scheduledMessages.Find(filter).ToListAsync();
         if (messages.Count == 0) return [];
@@ -440,12 +417,9 @@ public class ScheduledMessageService : IScheduledMessageService
         return responseItems;
     }
 
-    private static ServerResponseItem CreateScheduledMessageResponseItem(
-        string roomId,
-        IEnumerable<ScheduledMessage> messages)
+    private static ServerResponseItem CreateScheduledMessageResponseItem(string roomId, IEnumerable<ScheduledMessage> messages)
     {
-        var combined = string.Join("\n\n━━━━━━━━━━━━━━━━━━\n\n",
-            messages.Select(message => message.Message));
+        var combined = string.Join("\n\n━━━━━━━━━━━━━━━━━━\n\n", messages.Select(message => message.Message));
 
         return new ServerResponseItem
         {

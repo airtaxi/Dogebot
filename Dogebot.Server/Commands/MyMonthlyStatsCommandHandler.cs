@@ -3,9 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class MyMonthlyStatsCommandHandler(
-    IChatStatisticsService statisticsService,
-    ILogger<MyMonthlyStatsCommandHandler> logger) : ICommandHandler
+public class MyMonthlyStatsCommandHandler(IChatStatisticsService statisticsService, ILogger<MyMonthlyStatsCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!내월별통계";
 
@@ -34,8 +32,7 @@ public class MyMonthlyStatsCommandHandler(
                           MonthlyStatsCommandHandler.FormatMonthlyStats(monthlyStats);
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[MY_MONTHLY_STATS] Showing personal monthly stats for {SenderName} in room {RoomId}",
-                    data.SenderName, data.RoomId);
+                logger.LogInformation("[MY_MONTHLY_STATS] Showing personal monthly stats for {SenderName} in room {RoomId}", data.SenderName, data.RoomId);
 
             return new ServerResponse
             {

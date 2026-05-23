@@ -43,8 +43,7 @@ public class DiceCommandHandler(ILogger<DiceCommandHandler> logger) : ICommandHa
             var message = $"🎲 주사위 (1~{range:N0})\n결과: {result:N0}";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[DICE] Rolled 1~{Range} for {Sender} in room {RoomId}: {Result}", 
-                    range, data.SenderName, data.RoomId, result);
+                logger.LogInformation("[DICE] Rolled 1~{Range} for {Sender} in room {RoomId}: {Result}", range, data.SenderName, data.RoomId, result);
 
             return Task.FromResult(new ServerResponse
             {

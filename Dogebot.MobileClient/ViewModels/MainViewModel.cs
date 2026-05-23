@@ -48,13 +48,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void UpdateStatuses()
     {
-        NotificationStatus = _kakaoBotService.IsNotificationServiceEnabled()
-            ? "✅ Notification Listener Enabled"
-            : "🚫 Notification Listener Disabled";
+        NotificationStatus = _kakaoBotService.IsNotificationServiceEnabled() ? "✅ Notification Listener Enabled" : "🚫 Notification Listener Disabled";
 
-        BatteryOptStatus = _kakaoBotService.IsIgnoringBatteryOptimizations()
-            ? "👍 Battery Optimization Exempted"
-            : "⚡ Battery Optimization Enabled";
+        BatteryOptStatus = _kakaoBotService.IsIgnoringBatteryOptimizations() ? "👍 Battery Optimization Exempted" : "⚡ Battery Optimization Enabled";
 
         if (IsBotRunning) _kakaoBotService.AcquirePartialWakeLock();
         else _kakaoBotService.ReleasePartialWakeLock();
@@ -150,9 +146,7 @@ public partial class MainViewModel : ObservableObject
             try
             {
                 var availableRooms = KakaoNotificationListener.GetAvailableRoomIds();
-                var roomsParam = availableRooms.Count > 0
-                    ? $"?availableRooms={Uri.EscapeDataString(string.Join(",", availableRooms))}"
-                    : "";
+                var roomsParam = availableRooms.Count > 0 ? $"?availableRooms={Uri.EscapeDataString(string.Join(",", availableRooms))}" : "";
 
                 var response = await _httpClient.GetAsync($"{ServerAddress}/command{roomsParam}", cancellationToken);
 
@@ -185,9 +179,7 @@ public partial class MainViewModel : ObservableObject
 
     private async Task ExecuteServerResponseAsync(ServerResponse serverResponse, string logPrefix, string defaultTargetName)
     {
-        var responseItems = serverResponse.Items.Count > 0
-            ? serverResponse.Items
-            : CreateSingleResponseItemList(serverResponse);
+        var responseItems = serverResponse.Items.Count > 0 ? serverResponse.Items : CreateSingleResponseItemList(serverResponse);
 
         foreach (var responseItem in responseItems)
         {

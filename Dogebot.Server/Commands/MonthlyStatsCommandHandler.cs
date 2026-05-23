@@ -3,9 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class MonthlyStatsCommandHandler(
-    IChatStatisticsService statisticsService,
-    ILogger<MonthlyStatsCommandHandler> logger) : ICommandHandler
+public class MonthlyStatsCommandHandler(IChatStatisticsService statisticsService, ILogger<MonthlyStatsCommandHandler> logger) : ICommandHandler
 {
     private static readonly string[] MonthNames = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
 

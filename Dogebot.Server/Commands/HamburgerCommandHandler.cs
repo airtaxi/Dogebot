@@ -25,8 +25,7 @@ public class HamburgerCommandHandler(ILogger<HamburgerCommandHandler> logger) : 
             var message = $"🍔 {data.SenderName}이(가) 한번에 먹을 수 있는 햄버거의 갯수는 {count}개다 꿀꿀!";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[HAMBURGER] {Sender} can eat {Count} hamburgers at once in room {RoomId}",
-                    data.SenderName, count, data.RoomId);
+                logger.LogInformation("[HAMBURGER] {Sender} can eat {Count} hamburgers at once in room {RoomId}", data.SenderName, count, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {

@@ -216,8 +216,7 @@ using (var scope = app.Services.CreateScope())
         logger.LogInformation("[STARTUP] Starting cleanup of expired approval codes...");
         var deletedAdminCodes = await adminService.DeleteExpiredApprovalCodesAsync();
         var deletedLimitCodes = await requestLimitService.DeleteExpiredApprovalCodesAsync();
-        logger.LogInformation("[STARTUP] Cleanup completed. Deleted {AdminCodes} admin approval codes and {LimitCodes} limit approval codes.", 
-            deletedAdminCodes, deletedLimitCodes);
+        logger.LogInformation("[STARTUP] Cleanup completed. Deleted {AdminCodes} admin approval codes and {LimitCodes} limit approval codes.", deletedAdminCodes, deletedLimitCodes);
     }
     catch (Exception exception)
     {

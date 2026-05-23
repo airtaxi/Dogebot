@@ -3,9 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class HourlyStatsCommandHandler(
-    IChatStatisticsService statisticsService,
-    ILogger<HourlyStatsCommandHandler> logger) : ICommandHandler
+public class HourlyStatsCommandHandler(IChatStatisticsService statisticsService, ILogger<HourlyStatsCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!시간통계";
 
