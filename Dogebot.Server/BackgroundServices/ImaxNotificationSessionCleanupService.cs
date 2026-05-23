@@ -2,9 +2,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.BackgroundServices;
 
-public class ImaxNotificationSessionCleanupService(
-    IServiceProvider serviceProvider,
-    ILogger<ImaxNotificationSessionCleanupService> logger) : BackgroundService
+public class ImaxNotificationSessionCleanupService(IServiceProvider serviceProvider, ILogger<ImaxNotificationSessionCleanupService> logger) : BackgroundService
 {
     private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(5);
 
@@ -25,8 +23,7 @@ public class ImaxNotificationSessionCleanupService(
 
                 if (expiredSessions > 0)
                 {
-                    logger.LogInformation("[IMAX_SESSION_CLEANUP] Cleaned up {Sessions} expired IMAX setup sessions",
-                        expiredSessions);
+                    logger.LogInformation("[IMAX_SESSION_CLEANUP] Cleaned up {Sessions} expired IMAX setup sessions", expiredSessions);
                 }
             }
             catch (OperationCanceledException)

@@ -3,18 +3,14 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class RoomRestoreCommandHandler(
-    IRoomMigrationService roomMigrationService,
-    IAdminService adminService,
-    ILogger<RoomRestoreCommandHandler> logger) : ICommandHandler
+public class RoomRestoreCommandHandler(IRoomMigrationService roomMigrationService, IAdminService adminService, ILogger<RoomRestoreCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!방복원";
 
     public bool CanHandle(string content)
     {
         var trimmed = content.Trim();
-        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) ||
-               trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
+        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith($"{Command} ", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<ServerResponse> HandleAsync(KakaoMessageData data)
@@ -59,8 +55,7 @@ public class RoomRestoreCommandHandler(
             }
 
             if (logger.IsEnabled(LogLevel.Warning))
-                logger.LogWarning("[ROOM_RESTORE] Room data restored from {SourceRoom} to {TargetRoom} ({Count} documents) by {Sender}",
-                    result.SourceRoomName, data.RoomName, result.TotalDocumentsMigrated, data.SenderName);
+                logger.LogWarning("[ROOM_RESTORE] Room data restored from {SourceRoom} to {TargetRoom} ({Count} documents) by {Sender}", result.SourceRoomName, data.RoomName, result.TotalDocumentsMigrated, data.SenderName);
 
             return new ServerResponse
             {

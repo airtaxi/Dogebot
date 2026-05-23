@@ -80,11 +80,7 @@ public class RequestLimitService : IRequestLimitService
             return true;
 
         var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd");
-        var userFilter = Builders<UserDailyRequest>.Filter.And(
-            Builders<UserDailyRequest>.Filter.Eq(x => x.RoomId, roomId),
-            Builders<UserDailyRequest>.Filter.Eq(x => x.SenderHash, senderHash),
-            Builders<UserDailyRequest>.Filter.Eq(x => x.Date, today)
-        );
+        var userFilter = Builders<UserDailyRequest>.Filter.And(Builders<UserDailyRequest>.Filter.Eq(x => x.RoomId, roomId), Builders<UserDailyRequest>.Filter.Eq(x => x.SenderHash, senderHash), Builders<UserDailyRequest>.Filter.Eq(x => x.Date, today));
 
         var userRequest = await _userDailyRequests.Find(userFilter).FirstOrDefaultAsync();
 
@@ -103,11 +99,7 @@ public class RequestLimitService : IRequestLimitService
         var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd");
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-        var filter = Builders<UserDailyRequest>.Filter.And(
-            Builders<UserDailyRequest>.Filter.Eq(x => x.RoomId, roomId),
-            Builders<UserDailyRequest>.Filter.Eq(x => x.SenderHash, senderHash),
-            Builders<UserDailyRequest>.Filter.Eq(x => x.Date, today)
-        );
+        var filter = Builders<UserDailyRequest>.Filter.And(Builders<UserDailyRequest>.Filter.Eq(x => x.RoomId, roomId), Builders<UserDailyRequest>.Filter.Eq(x => x.SenderHash, senderHash), Builders<UserDailyRequest>.Filter.Eq(x => x.Date, today));
 
         var update = Builders<UserDailyRequest>.Update
             .Inc(x => x.RequestCount, 1)
@@ -128,11 +120,7 @@ public class RequestLimitService : IRequestLimitService
             return (false, null, null);
 
         var today = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd");
-        var userFilter = Builders<UserDailyRequest>.Filter.And(
-            Builders<UserDailyRequest>.Filter.Eq(x => x.RoomId, roomId),
-            Builders<UserDailyRequest>.Filter.Eq(x => x.SenderHash, senderHash),
-            Builders<UserDailyRequest>.Filter.Eq(x => x.Date, today)
-        );
+        var userFilter = Builders<UserDailyRequest>.Filter.And(Builders<UserDailyRequest>.Filter.Eq(x => x.RoomId, roomId), Builders<UserDailyRequest>.Filter.Eq(x => x.SenderHash, senderHash), Builders<UserDailyRequest>.Filter.Eq(x => x.Date, today));
 
         var userRequest = await _userDailyRequests.Find(userFilter).FirstOrDefaultAsync();
         var usedToday = userRequest?.RequestCount ?? 0;

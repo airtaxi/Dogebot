@@ -7,16 +7,7 @@ namespace Dogebot.Server.Services;
 /// <summary>
 /// Service implementation that handles bot logic.
 /// </summary>
-public class KakaoService(
-    ILogger<KakaoService> logger,
-    CommandHandlerFactory commandHandlerFactory,
-    IChatStatisticsService chatStatisticsService,
-    IRequestLimitService requestLimitService,
-    IScheduledMessageService scheduledMessageService,
-    IImaxNotificationService imaxNotificationService,
-    IBaseballGameSubscriptionService baseballGameSubscriptionService,
-    IBotSettingService botSettingService,
-    DebugLogService debugLogService) : IKakaoService
+public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory commandHandlerFactory, IChatStatisticsService chatStatisticsService, IRequestLimitService requestLimitService, IScheduledMessageService scheduledMessageService, IImaxNotificationService imaxNotificationService, IBaseballGameSubscriptionService baseballGameSubscriptionService, IBotSettingService botSettingService, DebugLogService debugLogService) : IKakaoService
 {
 
     /// <summary>
@@ -27,8 +18,7 @@ public class KakaoService(
         var data = notification.Data;
 
         if (logger.IsEnabled(LogLevel.Information))
-            logger.LogInformation("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", 
-                data.RoomName, data.SenderName, data.Content);
+            logger.LogInformation("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", data.RoomName, data.SenderName, data.Content);
 
         // Record message statistics
         await chatStatisticsService.RecordMessageAsync(data);
@@ -49,27 +39,7 @@ public class KakaoService(
         {
             // Check if the command should use the room request limit.
             // Exclude admin commands and commands that handle their own limits.
-            var isRequestLimitExcludedCommand = handler.Command == "!제한설정" ||
-                handler.Command == "!제한해제" ||
-                handler.Command == "!관리추가" ||
-                handler.Command == "!관리제거" ||
-                handler.Command == "!관리목록" ||
-                handler.Command == "!랭크활성화" ||
-                handler.Command == "!랭크비활성화" ||
-                handler.Command == "!심삭제" ||
-                handler.Command == "!반복설정" ||
-                handler.Command == "!반복해제" ||
-                handler.Command == "!반복목록" ||
-                handler.Command == "!방백업" ||
-                handler.Command == "!방복원" ||
-                handler.Command == "!아이맥스설정" ||
-                handler.Command == "!아이맥스해제" ||
-                handler.Command == "!아이맥스목록" ||
-                handler.Command == "!멀티메시지" ||
-                handler.Command == "!싱글메시지" ||
-                handler.Command == "@Here" ||
-                data.Content.Trim().StartsWith("!야구구독해제", StringComparison.OrdinalIgnoreCase) ||
-                handler.Command == "!디버그";
+            var isRequestLimitExcludedCommand = handler.Command == "!제한설정" || handler.Command == "!제한해제" || handler.Command == "!관리추가" || handler.Command == "!관리제거" || handler.Command == "!관리목록" || handler.Command == "!랭크활성화" || handler.Command == "!랭크비활성화" || handler.Command == "!심삭제" || handler.Command == "!반복설정" || handler.Command == "!반복해제" || handler.Command == "!반복목록" || handler.Command == "!방백업" || handler.Command == "!방복원" || handler.Command == "!아이맥스설정" || handler.Command == "!아이맥스해제" || handler.Command == "!아이맥스목록" || handler.Command == "!멀티메시지" || handler.Command == "!싱글메시지" || handler.Command == "@Here" || data.Content.Trim().StartsWith("!야구구독해제", StringComparison.OrdinalIgnoreCase) || handler.Command == "!디버그";
 
             if (!isRequestLimitExcludedCommand)
             {
@@ -81,8 +51,7 @@ public class KakaoService(
                     var limitInfo = await requestLimitService.GetLimitInfoAsync(data.RoomId, data.SenderHash);
 
                     if (logger.IsEnabled(LogLevel.Warning))
-                        logger.LogWarning("[REQUEST_LIMIT] User {Sender} exceeded daily limit in room {RoomName}",
-                            data.SenderName, data.RoomName);
+                        logger.LogWarning("[REQUEST_LIMIT] User {Sender} exceeded daily limit in room {RoomName}", data.SenderName, data.RoomName);
 
                     return new ServerResponse
                     {

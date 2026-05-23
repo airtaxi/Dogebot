@@ -44,8 +44,7 @@ public class PlanetGachaCommandHandler : ICommandHandler
             var message = GeneratePlanet();
 
             if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("[PLANET_GACHA] {Sender} generated planet in room {RoomId}", 
-                    data.SenderName, data.RoomId);
+                _logger.LogInformation("[PLANET_GACHA] {Sender} generated planet in room {RoomId}", data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {
@@ -107,9 +106,7 @@ public class PlanetGachaCommandHandler : ICommandHandler
         {
             // 10% chance for special biomes (randomly select one)
             var availableSpecialBiomes = specialBiomes.Where(b => biomeKeys.Contains(b)).ToList();
-            selectedBiomeKey = availableSpecialBiomes.Count > 0 
-                ? availableSpecialBiomes[_random.Next(availableSpecialBiomes.Count)]
-                : normalBiomes[_random.Next(normalBiomes.Count)];
+            selectedBiomeKey = availableSpecialBiomes.Count > 0 ? availableSpecialBiomes[_random.Next(availableSpecialBiomes.Count)] : normalBiomes[_random.Next(normalBiomes.Count)];
         }
         else
         {

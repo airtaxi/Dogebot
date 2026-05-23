@@ -97,9 +97,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         var searchNode = await FetchJsonNodeAsync(requestAddress, $"{MobileStockBaseAddress}/search");
         if (searchNode == null)
         {
-            return TryCreateDirectStock(trimmedQueryText, out var fallbackDirectStock)
-                ? new StockResolutionResult(fallbackDirectStock, null)
-                : new StockResolutionResult(null, StockInformationUnavailableMessage);
+            return TryCreateDirectStock(trimmedQueryText, out var fallbackDirectStock) ? new StockResolutionResult(fallbackDirectStock, null) : new StockResolutionResult(null, StockInformationUnavailableMessage);
         }
 
         var searchStocks = EnumerateItems(GetPropertyNode(searchNode, "items"))
@@ -211,8 +209,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
             var responseContent = await responseMessage.Content.ReadAsStringAsync();
             if (!responseMessage.IsSuccessStatusCode)
             {
-                logger.LogError("[STOCK] Request failed with status code {StatusCode}. Address: {RequestAddress}",
-                    responseMessage.StatusCode, requestAddress);
+                logger.LogError("[STOCK] Request failed with status code {StatusCode}. Address: {RequestAddress}", responseMessage.StatusCode, requestAddress);
                 return null;
             }
 
@@ -221,8 +218,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
 
             if (IsFrontServiceFailure(rootNode, out var failureMessage))
             {
-                logger.LogError("[STOCK] Front service failed. Address: {RequestAddress}, Message: {FailureMessage}",
-                    requestAddress, failureMessage);
+                logger.LogError("[STOCK] Front service failed. Address: {RequestAddress}, Message: {FailureMessage}", requestAddress, failureMessage);
                 return null;
             }
 
@@ -351,11 +347,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         return stringBuilder.ToString().TrimEnd();
     }
 
-    private static string FormatDetailMessage(
-        ResolvedStock resolvedStock,
-        JsonNode basicStockNode,
-        JsonNode? integrationStockNode,
-        JsonNode? trendNode)
+    private static string FormatDetailMessage(ResolvedStock resolvedStock, JsonNode basicStockNode, JsonNode? integrationStockNode, JsonNode? trendNode)
     {
         var informationSourceNode = integrationStockNode ?? basicStockNode;
         var stockName = GetStockName(resolvedStock, basicStockNode, informationSourceNode);
@@ -388,8 +380,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
             foreach (var consensusLine in consensusLines) stringBuilder.AppendLine(consensusLine);
         }
 
-        var latestTrendNode = EnumerateItems(trendNode).FirstOrDefault() ??
-                              EnumerateItems(GetPropertyNode(integrationStockNode, "dealTrendInfos")).FirstOrDefault();
+        var latestTrendNode = EnumerateItems(trendNode).FirstOrDefault() ?? EnumerateItems(GetPropertyNode(integrationStockNode, "dealTrendInfos")).FirstOrDefault();
         var trendLines = CreateTrendLines(latestTrendNode);
         if (trendLines.Count > 0)
         {
@@ -430,10 +421,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
             var closePrice = FormatNumberText(GetText(priceInformationNode, "closePrice"));
             if (!resolvedStock.IsDomestic) closePrice = AppendSuffix(closePrice, FormatCurrencySuffix(GetCurrencyText(priceInformationNode, resolvedStock.IsDomestic)));
 
-            stringBuilder.AppendLine(
-                $"{index + 1}. {FormatDateTimeText(GetText(priceInformationNode, "localDate"))} | " +
-                $"종가 {closePrice} | " +
-                $"거래량 {FormatNumberText(GetText(priceInformationNode, "accumulatedTradingVolume"))}");
+            stringBuilder.AppendLine($"{index + 1}. {FormatDateTimeText(GetText(priceInformationNode, "localDate"))} | " + $"종가 {closePrice} | " + $"거래량 {FormatNumberText(GetText(priceInformationNode, "accumulatedTradingVolume"))}");
         }
 
         return stringBuilder.ToString().TrimEnd();
@@ -478,15 +466,8 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
 
     private static string FormatIndexLine(JsonNode indexNode)
     {
-        var nameAndCode = FormatNameAndCode(
-            GetText(indexNode, "stockName", "name"),
-            GetText(indexNode, "itemCode", "symbolCode", "reutersCode"));
-        return JoinNonEmpty(
-            " | ",
-            nameAndCode,
-            FormatNumberText(GetText(indexNode, "closePrice", "currentPrice")),
-            FormatChangeText(indexNode),
-            FormatMarketStatusText(GetText(indexNode, "marketStatus")));
+        var nameAndCode = FormatNameAndCode(GetText(indexNode, "stockName", "name"), GetText(indexNode, "itemCode", "symbolCode", "reutersCode"));
+        return JoinNonEmpty(" | ", nameAndCode, FormatNumberText(GetText(indexNode, "closePrice", "currentPrice")), FormatChangeText(indexNode), FormatMarketStatusText(GetText(indexNode, "marketStatus")));
     }
 
     private static string FormatMarketStockListMessage(string title, IReadOnlyList<JsonNode> stockNodes, bool isDomestic, bool shouldIncludeMarketValue)
@@ -509,11 +490,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
 
     private static string FormatMarketStockLine(JsonNode stockNode, bool isDomestic, bool shouldIncludeMarketValue)
     {
-        var nameAndCode = FormatNameAndCode(
-            GetText(stockNode, "stockName", "name", "stockNameEng"),
-            isDomestic
-                ? GetText(stockNode, "itemCode", "symbolCode", "code", "reutersCode")
-                : GetText(stockNode, "reutersCode", "id", "code", "symbolCode"));
+        var nameAndCode = FormatNameAndCode(GetText(stockNode, "stockName", "name", "stockNameEng"), isDomestic ? GetText(stockNode, "itemCode", "symbolCode", "code", "reutersCode") : GetText(stockNode, "reutersCode", "id", "code", "symbolCode"));
         var values = new List<string>
         {
             nameAndCode,
@@ -596,8 +573,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
     }
 
     private static bool IsStockSearchItem(JsonNode searchItem) =>
-        string.Equals(GetText(searchItem, "category"), "stock", StringComparison.OrdinalIgnoreCase) ||
-        !string.IsNullOrWhiteSpace(GetText(searchItem, "reutersCode", "code"));
+        string.Equals(GetText(searchItem, "category"), "stock", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrWhiteSpace(GetText(searchItem, "reutersCode", "code"));
 
     private static ResolvedStock MapSearchStock(string searchText, JsonNode searchItem)
     {
@@ -606,16 +582,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         var nationCode = GetText(searchItem, "nationCode");
         var isDomestic = string.Equals(nationCode, "KOR", StringComparison.OrdinalIgnoreCase) || IsDomesticStockCode(code);
 
-        return new ResolvedStock(
-            searchText,
-            GetText(searchItem, "name"),
-            code,
-            reutersCode,
-            FirstNonEmpty(GetText(searchItem, "symbolCode"), code),
-            nationCode,
-            GetText(searchItem, "typeCode"),
-            GetText(searchItem, "typeName"),
-            isDomestic);
+        return new ResolvedStock(searchText, GetText(searchItem, "name"), code, reutersCode, FirstNonEmpty(GetText(searchItem, "symbolCode"), code), nationCode, GetText(searchItem, "typeCode"), GetText(searchItem, "typeName"), isDomestic);
     }
 
     private static bool TryCreateDirectStock(string queryText, out ResolvedStock resolvedStock)
@@ -639,10 +606,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
     }
 
     private static bool IsExactStockMatch(ResolvedStock resolvedStock, string normalizedQueryText) =>
-        NormalizeSearchText(resolvedStock.Name).Equals(normalizedQueryText, StringComparison.OrdinalIgnoreCase) ||
-        NormalizeSearchText(resolvedStock.Code).Equals(normalizedQueryText, StringComparison.OrdinalIgnoreCase) ||
-        NormalizeSearchText(resolvedStock.ReutersCode).Equals(normalizedQueryText, StringComparison.OrdinalIgnoreCase) ||
-        NormalizeSearchText(resolvedStock.SymbolCode).Equals(normalizedQueryText, StringComparison.OrdinalIgnoreCase);
+        NormalizeSearchText(resolvedStock.Name).Equals(normalizedQueryText, StringComparison.OrdinalIgnoreCase) || NormalizeSearchText(resolvedStock.Code).Equals(normalizedQueryText, StringComparison.OrdinalIgnoreCase) || NormalizeSearchText(resolvedStock.ReutersCode).Equals(normalizedQueryText, StringComparison.OrdinalIgnoreCase) || NormalizeSearchText(resolvedStock.SymbolCode).Equals(normalizedQueryText, StringComparison.OrdinalIgnoreCase);
 
     private static string CreateStockUsageMessage(string command) =>
         $"사용법: {command} [종목명/코드/티커]\n예시: {command} 삼성전자, {command} AAPL, {command} 005930";
@@ -768,9 +732,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
 
     private static string FormatChangeText(JsonNode? stockNode)
     {
-        var direction = FirstNonEmpty(
-            GetText(GetPropertyNode(stockNode, "compareToPreviousPrice"), "text"),
-            ConvertFluctuationType(GetText(stockNode, "fluctuationsType", "fluctuationType")));
+        var direction = FirstNonEmpty(GetText(GetPropertyNode(stockNode, "compareToPreviousPrice"), "text"), ConvertFluctuationType(GetText(stockNode, "fluctuationsType", "fluctuationType")));
         var amount = FormatNumberText(GetText(stockNode, "compareToPreviousClosePrice", "fluctuations", "fluctuation"));
         var ratio = FormatRatioText(GetText(stockNode, "fluctuationsRatio", "fluctuationsRatioRaw"));
         var changeValue = JoinNonEmpty(" ", amount, FormatParenthesized(ratio));
@@ -781,9 +743,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
 
     private static string FormatMarketValue(JsonNode? stockNode)
     {
-        var marketValue = FirstNonEmpty(
-            GetText(stockNode, "marketValueHangeul"),
-            FormatNumberText(GetText(stockNode, "marketValue", "marketValueFull")));
+        var marketValue = FirstNonEmpty(GetText(stockNode, "marketValueHangeul"), FormatNumberText(GetText(stockNode, "marketValue", "marketValueFull")));
         var marketValueKoreanWon = GetText(stockNode, "marketValueKrwHangeul");
         return JoinNonEmpty(" / ", marketValue, marketValueKoreanWon);
     }
@@ -806,9 +766,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
     {
         foreach (var keyOrCode in keysOrCodes)
         {
-            var informationItem = informationItems.FirstOrDefault(item =>
-                string.Equals(GetText(item, "code"), keyOrCode, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(GetText(item, "key", "name"), keyOrCode, StringComparison.OrdinalIgnoreCase));
+            var informationItem = informationItems.FirstOrDefault(item => string.Equals(GetText(item, "code"), keyOrCode, StringComparison.OrdinalIgnoreCase) || string.Equals(GetText(item, "key", "name"), keyOrCode, StringComparison.OrdinalIgnoreCase));
             var informationValue = GetText(informationItem, "value", "text");
             if (!string.IsNullOrWhiteSpace(informationValue)) return informationValue;
         }
@@ -962,16 +920,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
 
     private sealed record StockResolutionResult(ResolvedStock? Stock, string? Message);
 
-    private sealed record ResolvedStock(
-        string SearchText,
-        string Name,
-        string Code,
-        string ReutersCode,
-        string SymbolCode,
-        string NationCode,
-        string MarketCode,
-        string MarketName,
-        bool IsDomestic);
+    private sealed record ResolvedStock(string SearchText, string Name, string Code, string ReutersCode, string SymbolCode, string NationCode, string MarketCode, string MarketName, bool IsDomestic);
 
     private sealed record StockMarketContext(StockMarketType MarketType, string? StockExchangeType);
 

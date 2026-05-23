@@ -3,9 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class MyDailyStatsCommandHandler(
-    IChatStatisticsService statisticsService,
-    ILogger<MyDailyStatsCommandHandler> logger) : ICommandHandler
+public class MyDailyStatsCommandHandler(IChatStatisticsService statisticsService, ILogger<MyDailyStatsCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!내요일통계";
 
@@ -34,8 +32,7 @@ public class MyDailyStatsCommandHandler(
                           DailyStatsCommandHandler.FormatDailyStats(dailyStats);
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[MY_DAILY_STATS] Showing personal daily stats for {SenderName} in room {RoomId}",
-                    data.SenderName, data.RoomId);
+                logger.LogInformation("[MY_DAILY_STATS] Showing personal daily stats for {SenderName} in room {RoomId}", data.SenderName, data.RoomId);
 
             return new ServerResponse
             {

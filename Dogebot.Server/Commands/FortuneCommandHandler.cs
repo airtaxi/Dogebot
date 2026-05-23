@@ -48,9 +48,7 @@ public class FortuneCommandHandler(ILogger<FortuneCommandHandler> logger, IFortu
 
             LoadFortuneData();
 
-            if (s_wealthFortunes is not { Count: > 0 } ||
-                s_successFortunes is not { Count: > 0 } ||
-                s_loveFortunes is not { Count: > 0 })
+            if (s_wealthFortunes is not { Count: > 0 } || s_successFortunes is not { Count: > 0 } || s_loveFortunes is not { Count: > 0 })
             {
                 return new ServerResponse
                 {
@@ -142,10 +140,7 @@ public class FortuneCommandHandler(ILogger<FortuneCommandHandler> logger, IFortu
                 s_successFortunes = LoadFortuneFile(Path.Combine(assetsPath, "FortuneSuccess.json"), options);
                 s_loveFortunes = LoadFortuneFile(Path.Combine(assetsPath, "FortuneLove.json"), options);
 
-                logger.LogInformation("[FORTUNE] Loaded fortunes: Wealth={Wealth}, Success={Success}, Love={Love}",
-                    s_wealthFortunes.Values.Sum(list => list.Count),
-                    s_successFortunes.Values.Sum(list => list.Count),
-                    s_loveFortunes.Values.Sum(list => list.Count));
+                logger.LogInformation("[FORTUNE] Loaded fortunes: Wealth={Wealth}, Success={Success}, Love={Love}", s_wealthFortunes.Values.Sum(list => list.Count), s_successFortunes.Values.Sum(list => list.Count), s_loveFortunes.Values.Sum(list => list.Count));
             }
             catch (Exception exception)
             {

@@ -32,13 +32,10 @@ public class LottoCommandHandler(ILogger<LottoCommandHandler> logger) : ICommand
                 lines[i] = $"{i + 1}회: {string.Join(", ", numbers)}";
             }
 
-            var message = count == 1
-                ? $"🎱 로또 번호\n{lines[0][4..]}"
-                : $"🎱 로또 번호 ({count}회)\n\n{string.Join('\n', lines)}";
+            var message = count == 1 ? $"🎱 로또 번호\n{lines[0][4..]}" : $"🎱 로또 번호 ({count}회)\n\n{string.Join('\n', lines)}";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[LOTTO] Generated {Count} set(s) for {Sender} in room {RoomId}",
-                    count, data.SenderName, data.RoomId);
+                logger.LogInformation("[LOTTO] Generated {Count} set(s) for {Sender} in room {RoomId}", count, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {

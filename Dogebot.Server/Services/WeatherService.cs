@@ -64,8 +64,7 @@ public class WeatherService(IHttpClientFactory httpClientFactory, IConfiguration
         foreach (var suffix in administrativeSuffixes)
         {
             var cityNameWithSuffix = cityName + suffix;
-            var exactMatchWithSuffix = geocodingData.FirstOrDefault(g => 
-                g.LocalNames?.GetValueOrDefault("ko")?.Equals(cityNameWithSuffix, StringComparison.OrdinalIgnoreCase) == true);
+            var exactMatchWithSuffix = geocodingData.FirstOrDefault(g => g.LocalNames?.GetValueOrDefault("ko")?.Equals(cityNameWithSuffix, StringComparison.OrdinalIgnoreCase) == true);
             
             if (exactMatchWithSuffix != null)
             {
@@ -75,8 +74,7 @@ public class WeatherService(IHttpClientFactory httpClientFactory, IConfiguration
         }
 
         // Priority 2: Check for exact match in Korean name
-        var exactMatch = geocodingData.FirstOrDefault(g => 
-            g.LocalNames?.GetValueOrDefault("ko")?.Equals(cityName, StringComparison.OrdinalIgnoreCase) == true);
+        var exactMatch = geocodingData.FirstOrDefault(g => g.LocalNames?.GetValueOrDefault("ko")?.Equals(cityName, StringComparison.OrdinalIgnoreCase) == true);
         
         if (exactMatch != null)
         {

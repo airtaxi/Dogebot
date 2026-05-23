@@ -4,10 +4,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.BackgroundServices;
 
-public class ImaxNotificationCheckService(
-    IServiceProvider serviceProvider,
-    IHttpClientFactory httpClientFactory,
-    ILogger<ImaxNotificationCheckService> logger) : BackgroundService
+public class ImaxNotificationCheckService(IServiceProvider serviceProvider, IHttpClientFactory httpClientFactory, ILogger<ImaxNotificationCheckService> logger) : BackgroundService
 {
     private const string ImaxApiBaseUrl = "https://imax.kagamine-rin.com";
     private static readonly Random CheckIntervalRandom = new();
@@ -85,8 +82,7 @@ public class ImaxNotificationCheckService(
                     var message = FormatImaxMessage(notification, apiResult.Value);
                     await imaxNotificationService.SetPendingMessageAsync(notification.Id, message);
 
-                    logger.LogInformation("[IMAX_CHECK] IMAX detected for room {RoomName}, movie {Movie}, date {Date}, site {Site}",
-                        notification.RoomName, notification.MovieName, notification.ScreeningDate, notification.SiteName);
+                    logger.LogInformation("[IMAX_CHECK] IMAX detected for room {RoomName}, movie {Movie}, date {Date}, site {Site}", notification.RoomName, notification.MovieName, notification.ScreeningDate, notification.SiteName);
                 }
             }
             catch (Exception ex)
@@ -103,8 +99,7 @@ public class ImaxNotificationCheckService(
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning("[IMAX_CHECK] IMAX API returned HTTP {StatusCode} for date {Date}",
-                (int)response.StatusCode, date);
+            logger.LogWarning("[IMAX_CHECK] IMAX API returned HTTP {StatusCode} for date {Date}", (int)response.StatusCode, date);
             return null;
         }
 

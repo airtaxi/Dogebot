@@ -15,9 +15,7 @@ public class MongoDbService : IMongoDbService
         var dbHost = Environment.GetEnvironmentVariable("DB_HOST") ?? configuration["MongoDB:Host"] ?? "localhost";
         var databaseName = configuration["MongoDB:Database"] ?? "Dogebot";
 
-        var connectionString = string.IsNullOrEmpty(dbPassword)
-            ? $"mongodb://{dbHost}:{dbPort}"
-            : $"mongodb://{dbId}:{dbPassword}@{dbHost}:{dbPort}";
+        var connectionString = string.IsNullOrEmpty(dbPassword) ? $"mongodb://{dbHost}:{dbPort}" : $"mongodb://{dbId}:{dbPassword}@{dbHost}:{dbPort}";
 
         Client = new MongoClient(connectionString);
         Database = Client.GetDatabase(databaseName);

@@ -6,9 +6,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class BaseballTeamRankingCommandHandler(
-    IBaseballTeamRankingService baseballTeamRankingService,
-    ILogger<BaseballTeamRankingCommandHandler> logger) : ICommandHandler
+public class BaseballTeamRankingCommandHandler(IBaseballTeamRankingService baseballTeamRankingService, ILogger<BaseballTeamRankingCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!야구팀순위";
 
@@ -81,8 +79,7 @@ public class BaseballTeamRankingCommandHandler(
             var matchedTeamStanding = matchedTeamStandings[0];
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[BASEBALL_RANKING] Baseball team ranking requested by {Sender} in room {RoomId} for {TeamName}",
-                    data.SenderName, data.RoomId, matchedTeamStanding.TeamName);
+                logger.LogInformation("[BASEBALL_RANKING] Baseball team ranking requested by {Sender} in room {RoomId} for {TeamName}", data.SenderName, data.RoomId, matchedTeamStanding.TeamName);
 
             return new ServerResponse
             {
@@ -117,11 +114,8 @@ public class BaseballTeamRankingCommandHandler(
                 return new
                 {
                     TeamStanding = teamStanding,
-                    HasExactMatch = normalizedSearchAliases.Any(searchAlias =>
-                        searchAlias.Equals(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase)),
-                    HasPartialMatch = normalizedSearchAliases.Any(searchAlias =>
-                        searchAlias.Contains(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase) ||
-                        normalizedTeamSearchText.Contains(searchAlias, StringComparison.OrdinalIgnoreCase))
+                    HasExactMatch = normalizedSearchAliases.Any(searchAlias => searchAlias.Equals(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase)),
+                    HasPartialMatch = normalizedSearchAliases.Any(searchAlias => searchAlias.Contains(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase) || normalizedTeamSearchText.Contains(searchAlias, StringComparison.OrdinalIgnoreCase))
                 };
             })
             .Where(teamStandingMatch => teamStandingMatch.HasPartialMatch)

@@ -4,12 +4,7 @@ using Dogebot.DiscordClient.Models;
 
 namespace Dogebot.DiscordClient.Services;
 
-public class DiscordNotificationService(
-    IDiscordGatewayClient gatewayClient,
-    IDiscordMessageMapper mapper,
-    IServerApiClient serverApiClient,
-    IDiscordResponseExecutor responseExecutor,
-    ILogger<DiscordNotificationService> logger) : IHostedService
+public class DiscordNotificationService(IDiscordGatewayClient gatewayClient, IDiscordMessageMapper mapper, IServerApiClient serverApiClient, IDiscordResponseExecutor responseExecutor, ILogger<DiscordNotificationService> logger) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {

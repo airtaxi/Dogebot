@@ -24,8 +24,7 @@ public class DengCommandHandler(ILogger<DengCommandHandler> logger) : ICommandHa
         };
 
         if (logger.IsEnabled(LogLevel.Information))
-            logger.LogInformation("[PING] Responding to {Command} command from {SenderName}: {Message}", 
-                Command, data.SenderName, response.Message);
+            logger.LogInformation("[PING] Responding to {Command} command from {SenderName}: {Message}", Command, data.SenderName, response.Message);
 
         return Task.FromResult(response);
     }

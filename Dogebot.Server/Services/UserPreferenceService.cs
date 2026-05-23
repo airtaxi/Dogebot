@@ -46,8 +46,7 @@ public class UserPreferenceService : IUserPreferenceService
             var options = new UpdateOptions { IsUpsert = true };
             await _preferences.UpdateOneAsync(filter, update, options);
 
-            _logger.LogInformation("[USER_PREFERENCE] Updated preferred city for user {SenderHash} to {CityName}", 
-                senderHash, cityName);
+            _logger.LogInformation("[USER_PREFERENCE] Updated preferred city for user {SenderHash} to {CityName}", senderHash, cityName);
         }
         catch (Exception ex)
         {

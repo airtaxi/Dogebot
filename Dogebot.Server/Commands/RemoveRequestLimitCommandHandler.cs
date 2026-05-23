@@ -3,10 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class RemoveRequestLimitCommandHandler(
-    IRequestLimitService requestLimitService,
-    IAdminService adminService,
-    ILogger<RemoveRequestLimitCommandHandler> logger) : ICommandHandler
+public class RemoveRequestLimitCommandHandler(IRequestLimitService requestLimitService, IAdminService adminService, ILogger<RemoveRequestLimitCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!제한해제";
 
@@ -34,8 +31,7 @@ public class RemoveRequestLimitCommandHandler(
             if (!removed)
             {
                 if (logger.IsEnabled(LogLevel.Information))
-                    logger.LogInformation("[REQUEST_LIMIT_REMOVE] No limit found in room {RoomName} by {Sender}",
-                        data.RoomName, data.SenderName);
+                    logger.LogInformation("[REQUEST_LIMIT_REMOVE] No limit found in room {RoomName} by {Sender}", data.RoomName, data.SenderName);
 
                 return new ServerResponse
                 {
@@ -46,8 +42,7 @@ public class RemoveRequestLimitCommandHandler(
             }
 
             if (logger.IsEnabled(LogLevel.Warning))
-                logger.LogWarning("[REQUEST_LIMIT_REMOVE] Limit removed from room {RoomName} by {Sender}",
-                    data.RoomName, data.SenderName);
+                logger.LogWarning("[REQUEST_LIMIT_REMOVE] Limit removed from room {RoomName} by {Sender}", data.RoomName, data.SenderName);
 
             return new ServerResponse
             {

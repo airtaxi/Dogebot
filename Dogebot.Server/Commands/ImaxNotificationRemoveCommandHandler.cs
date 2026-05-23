@@ -3,18 +3,14 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class ImaxNotificationRemoveCommandHandler(
-    IImaxNotificationService imaxNotificationService,
-    IAdminService adminService,
-    ILogger<ImaxNotificationRemoveCommandHandler> logger) : ICommandHandler
+public class ImaxNotificationRemoveCommandHandler(IImaxNotificationService imaxNotificationService, IAdminService adminService, ILogger<ImaxNotificationRemoveCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!아이맥스해제";
 
     public bool CanHandle(string content)
     {
         var trimmed = content.Trim();
-        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) ||
-               trimmed.Equals("!용아맥해제", StringComparison.OrdinalIgnoreCase);
+        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) || trimmed.Equals("!용아맥해제", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<ServerResponse> HandleAsync(KakaoMessageData data)
@@ -47,8 +43,7 @@ public class ImaxNotificationRemoveCommandHandler(
             var siteDisplay = string.IsNullOrEmpty(notification.SiteName) ? "" : $"\n🏢 CGV {notification.SiteName}";
 
             if (logger.IsEnabled(LogLevel.Warning))
-                logger.LogWarning("[IMAX_REMOVE] IMAX notification removed from room {RoomName} by {Sender}",
-                    data.RoomName, data.SenderName);
+                logger.LogWarning("[IMAX_REMOVE] IMAX notification removed from room {RoomName} by {Sender}", data.RoomName, data.SenderName);
 
             return new ServerResponse
             {

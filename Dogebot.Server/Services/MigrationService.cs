@@ -93,10 +93,7 @@ public class MigrationService : IMigrationService
 
         var bulkOps = wordAggregation.Select(kvp =>
         {
-            var filter = Builders<WordContent>.Filter.And(
-                Builders<WordContent>.Filter.Eq(x => x.RoomId, kvp.Key.RoomId),
-                Builders<WordContent>.Filter.Eq(x => x.Word, kvp.Key.Word)
-            );
+            var filter = Builders<WordContent>.Filter.And(Builders<WordContent>.Filter.Eq(x => x.RoomId, kvp.Key.RoomId), Builders<WordContent>.Filter.Eq(x => x.Word, kvp.Key.Word));
             var update = Builders<WordContent>.Update
                 .Inc(x => x.Count, kvp.Value.Count)
                 .Max(x => x.LastTime, kvp.Value.LastTime);
@@ -151,10 +148,7 @@ public class MigrationService : IMigrationService
             var totalCount = group.Sum(w => w.Count);
             var maxLastTime = group.Max(w => w.LastTime);
 
-            var upsertFilter = Builders<WordContent>.Filter.And(
-                Builders<WordContent>.Filter.Eq(x => x.RoomId, group.Key.RoomId),
-                Builders<WordContent>.Filter.Eq(x => x.Word, group.Key.NormalizedWord)
-            );
+            var upsertFilter = Builders<WordContent>.Filter.And(Builders<WordContent>.Filter.Eq(x => x.RoomId, group.Key.RoomId), Builders<WordContent>.Filter.Eq(x => x.Word, group.Key.NormalizedWord));
             var upsertUpdate = Builders<WordContent>.Update
                 .Inc(x => x.Count, totalCount)
                 .Max(x => x.LastTime, maxLastTime);
@@ -218,10 +212,7 @@ public class MigrationService : IMigrationService
 
         foreach (var mapping in mappings)
         {
-            var existingFilter = Builders<RoomMigrationMapping>.Filter.And(
-                Builders<RoomMigrationMapping>.Filter.Eq(x => x.TargetRoomId, mapping.TargetRoomId),
-                Builders<RoomMigrationMapping>.Filter.Eq(x => x.SenderName, mapping.SenderName)
-            );
+            var existingFilter = Builders<RoomMigrationMapping>.Filter.And(Builders<RoomMigrationMapping>.Filter.Eq(x => x.TargetRoomId, mapping.TargetRoomId), Builders<RoomMigrationMapping>.Filter.Eq(x => x.SenderName, mapping.SenderName));
             var existing = await migrationMappings.Find(existingFilter).FirstOrDefaultAsync();
             if (existing is not null)
             {
@@ -232,8 +223,7 @@ public class MigrationService : IMigrationService
             await migrationMappings.InsertOneAsync(mapping);
         }
 
-        _logger.LogInformation("[MIGRATION] Inserted {Count} manual senderHash mappings for room {RoomId}.",
-            mappings.Count, targetRoomId);
+        _logger.LogInformation("[MIGRATION] Inserted {Count} manual senderHash mappings for room {RoomId}.", mappings.Count, targetRoomId);
     }
 
     internal static string[] SplitIntoWords(string content)
@@ -254,9 +244,7 @@ public class MigrationService : IMigrationService
     {
         var imaxNotifications = _database.GetCollection<ImaxNotification>("imaxNotifications");
 
-        var filter = Builders<ImaxNotification>.Filter.Or(
-            Builders<ImaxNotification>.Filter.Exists(x => x.MovieName, false),
-            Builders<ImaxNotification>.Filter.Eq(x => x.MovieName, string.Empty));
+        var filter = Builders<ImaxNotification>.Filter.Or(Builders<ImaxNotification>.Filter.Exists(x => x.MovieName, false), Builders<ImaxNotification>.Filter.Eq(x => x.MovieName, string.Empty));
 
         var update = Builders<ImaxNotification>.Update
             .Set(x => x.MovieName, "프로젝트 헤일메리")
@@ -264,8 +252,7 @@ public class MigrationService : IMigrationService
 
         var result = await imaxNotifications.UpdateManyAsync(filter, update);
 
-        _logger.LogInformation("[MIGRATION] Updated {Count} IMAX notifications with movie info (프로젝트 헤일메리).",
-            result.ModifiedCount);
+        _logger.LogInformation("[MIGRATION] Updated {Count} IMAX notifications with movie info (프로젝트 헤일메리).", result.ModifiedCount);
     }
 
     /// <summary>
@@ -276,10 +263,7 @@ public class MigrationService : IMigrationService
     {
         var imaxNotifications = _database.GetCollection<ImaxNotification>("imaxNotifications");
 
-        var filter = Builders<ImaxNotification>.Filter.Or(
-            Builders<ImaxNotification>.Filter.Exists(x => x.SiteNumber, false),
-            Builders<ImaxNotification>.Filter.Eq(x => x.SiteNumber, null),
-            Builders<ImaxNotification>.Filter.Eq(x => x.SiteNumber, string.Empty));
+        var filter = Builders<ImaxNotification>.Filter.Or(Builders<ImaxNotification>.Filter.Exists(x => x.SiteNumber, false), Builders<ImaxNotification>.Filter.Eq(x => x.SiteNumber, null), Builders<ImaxNotification>.Filter.Eq(x => x.SiteNumber, string.Empty));
 
         var update = Builders<ImaxNotification>.Update
             .Set(x => x.SiteNumber, "0013")
@@ -287,8 +271,7 @@ public class MigrationService : IMigrationService
 
         var result = await imaxNotifications.UpdateManyAsync(filter, update);
 
-        _logger.LogInformation("[MIGRATION] Updated {Count} IMAX notifications with site info (용산아이파크몰).",
-            result.ModifiedCount);
+        _logger.LogInformation("[MIGRATION] Updated {Count} IMAX notifications with site info (용산아이파크몰).", result.ModifiedCount);
     }
 }
 

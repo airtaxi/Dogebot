@@ -3,10 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class SetRequestLimitCommandHandler(
-    IRequestLimitService requestLimitService,
-    IAdminService adminService,
-    ILogger<SetRequestLimitCommandHandler> logger) : ICommandHandler
+public class SetRequestLimitCommandHandler(IRequestLimitService requestLimitService, IAdminService adminService, ILogger<SetRequestLimitCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!제한설정";
 
@@ -69,17 +66,12 @@ public class SetRequestLimitCommandHandler(
                     };
                 }
 
-                var success = await requestLimitService.SetLimitAsync(
-                    data.RoomId,
-                    data.RoomName,
-                    dailyLimit,
-                    data.SenderHash);
+                var success = await requestLimitService.SetLimitAsync(data.RoomId, data.RoomName, dailyLimit, data.SenderHash);
 
                 if (!success)
                 {
                     if (logger.IsEnabled(LogLevel.Error))
-                        logger.LogError("[REQUEST_LIMIT_SET] Failed to set limit {Limit} for room {RoomName} by {Sender}",
-                            dailyLimit, data.RoomName, data.SenderName);
+                        logger.LogError("[REQUEST_LIMIT_SET] Failed to set limit {Limit} for room {RoomName} by {Sender}", dailyLimit, data.RoomName, data.SenderName);
 
                     return new ServerResponse
                     {
@@ -90,8 +82,7 @@ public class SetRequestLimitCommandHandler(
                 }
 
                 if (logger.IsEnabled(LogLevel.Warning))
-                    logger.LogWarning("[REQUEST_LIMIT_SET] Limit set to {Limit} for room {RoomName} by {Sender}",
-                        dailyLimit, data.RoomName, data.SenderName);
+                    logger.LogWarning("[REQUEST_LIMIT_SET] Limit set to {Limit} for room {RoomName} by {Sender}", dailyLimit, data.RoomName, data.SenderName);
 
                 return new ServerResponse
                 {

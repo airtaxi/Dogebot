@@ -7,9 +7,7 @@ namespace Dogebot.Server.Commands;
 /// Handles the !정보 command to display room information.
 /// Shows room name, room ID, message count, user count, and sender hash.
 /// </summary>
-public class RoomInfoCommandHandler(
-    IChatStatisticsService statisticsService,
-    ILogger<RoomInfoCommandHandler> logger) : ICommandHandler
+public class RoomInfoCommandHandler(IChatStatisticsService statisticsService, ILogger<RoomInfoCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!정보";
 
@@ -35,8 +33,7 @@ public class RoomInfoCommandHandler(
                          $"• 해시: {data.SenderHash}";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[ROOM_INFO] Room info requested by {Sender} in room {RoomId}", 
-                    data.SenderName, data.RoomId);
+                logger.LogInformation("[ROOM_INFO] Room info requested by {Sender} in room {RoomId}", data.SenderName, data.RoomId);
 
             return new ServerResponse
             {

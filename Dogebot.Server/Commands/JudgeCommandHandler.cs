@@ -31,8 +31,7 @@ public class JudgeCommandHandler(ILogger<JudgeCommandHandler> logger) : ICommand
             var message = $"⚖️ 판결: {verdict}";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[JUDGE] Verdict '{Verdict}' for {Sender} in room {RoomId}", 
-                    verdict, data.SenderName, data.RoomId);
+                logger.LogInformation("[JUDGE] Verdict '{Verdict}' for {Sender} in room {RoomId}", verdict, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {

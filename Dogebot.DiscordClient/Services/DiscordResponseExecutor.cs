@@ -3,9 +3,7 @@ using Dogebot.DiscordClient.Adapters;
 
 namespace Dogebot.DiscordClient.Services;
 
-public class DiscordResponseExecutor(
-    IDiscordGatewayClient gatewayClient,
-    ILogger<DiscordResponseExecutor> logger) : IDiscordResponseExecutor
+public class DiscordResponseExecutor(IDiscordGatewayClient gatewayClient, ILogger<DiscordResponseExecutor> logger) : IDiscordResponseExecutor
 {
     public async Task ExecuteAsync(ServerResponse response, CancellationToken cancellationToken)
     {

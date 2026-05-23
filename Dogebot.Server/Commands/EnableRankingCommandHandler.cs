@@ -3,10 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class EnableRankingCommandHandler(
-    IChatStatisticsService chatStatisticsService,
-    IAdminService adminService,
-    ILogger<EnableRankingCommandHandler> logger) : ICommandHandler
+public class EnableRankingCommandHandler(IChatStatisticsService chatStatisticsService, IAdminService adminService, ILogger<EnableRankingCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!랭크활성화";
 
@@ -44,8 +41,7 @@ public class EnableRankingCommandHandler(
             await chatStatisticsService.EnableMessageContentAsync(data.RoomId, data.RoomName, data.SenderHash);
 
             if (logger.IsEnabled(LogLevel.Warning))
-                logger.LogWarning("[RANKING_ENABLE] Ranking enabled for room {RoomName} by {Sender}",
-                    data.RoomName, data.SenderName);
+                logger.LogWarning("[RANKING_ENABLE] Ranking enabled for room {RoomName} by {Sender}", data.RoomName, data.SenderName);
 
             return new ServerResponse
             {

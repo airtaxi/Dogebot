@@ -7,10 +7,7 @@ namespace Dogebot.Server.Commands;
 /// Handles the !내일날씨 [지역명] command to show tomorrow's weather forecast.
 /// Uses OpenWeatherMap API. If no city is specified, uses the user's preferred city or defaults to Seoul.
 /// </summary>
-public class TomorrowWeatherCommandHandler(
-    IWeatherService weatherService,
-    IUserPreferenceService userPreferenceService,
-    ILogger<TomorrowWeatherCommandHandler> logger) : ICommandHandler
+public class TomorrowWeatherCommandHandler(IWeatherService weatherService, IUserPreferenceService userPreferenceService, ILogger<TomorrowWeatherCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!내일날씨";
 
@@ -123,8 +120,7 @@ public class TomorrowWeatherCommandHandler(
                          $"🔽 기압: {noonForecast.Main.Pressure}hPa";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[WEATHER] Tomorrow's weather info requested by {Sender} in room {RoomId} for {City}: {MinTemp}°C~{MaxTemp}°C, {Description}",
-                    data.SenderName, data.RoomId, displayCityName, minTemp, maxTemp, description);
+                logger.LogInformation("[WEATHER] Tomorrow's weather info requested by {Sender} in room {RoomId} for {City}: {MinTemp}°C~{MaxTemp}°C, {Description}", data.SenderName, data.RoomId, displayCityName, minTemp, maxTemp, description);
 
             return new ServerResponse
             {

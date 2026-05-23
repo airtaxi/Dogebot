@@ -6,9 +6,7 @@ namespace Dogebot.Server.Commands;
 /// <summary>
 /// Handles the !심몇개 command to show how many responses exist for a message.
 /// </summary>
-public class SimSimCountCommandHandler(
-    ISimSimService simSimService,
-    ILogger<SimSimCountCommandHandler> logger) : ICommandHandler
+public class SimSimCountCommandHandler(ISimSimService simSimService, ILogger<SimSimCountCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!심몇개";
 
@@ -37,8 +35,7 @@ public class SimSimCountCommandHandler(
             var count = await simSimService.GetResponseCountAsync(message);
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[SIMSIM_COUNT] Message '{Message}' has {Count} responses, queried by {Sender}",
-                    message, count, data.SenderName);
+                logger.LogInformation("[SIMSIM_COUNT] Message '{Message}' has {Count} responses, queried by {Sender}", message, count, data.SenderName);
 
             return new ServerResponse
             {

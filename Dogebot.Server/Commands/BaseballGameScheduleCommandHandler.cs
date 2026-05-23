@@ -5,9 +5,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class BaseballGameScheduleCommandHandler(
-    IBaseballGameScheduleService baseballGameScheduleService,
-    ILogger<BaseballGameScheduleCommandHandler> logger) : ICommandHandler
+public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService baseballGameScheduleService, ILogger<BaseballGameScheduleCommandHandler> logger) : ICommandHandler
 {
     private const string TodayCommand = "!오늘야구";
     private const string TomorrowCommand = "!내일야구";
@@ -49,10 +47,7 @@ public class BaseballGameScheduleCommandHandler(
                 {
                     Action = "send_text",
                     RoomId = data.RoomId,
-                    Message = BaseballGameFormatter.FormatGameSummaryMessage(
-                        gameSnapshot,
-                        commandContext.DayLabel,
-                        gameDetailsByGameId)
+                    Message = BaseballGameFormatter.FormatGameSummaryMessage(gameSnapshot, commandContext.DayLabel, gameDetailsByGameId)
                 };
             }
 
@@ -91,8 +86,7 @@ public class BaseballGameScheduleCommandHandler(
             }
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[BASEBALL_SCHEDULE] Baseball {DayLabel} game requested by {Sender} in room {RoomId} for {TeamSearchText}",
-                    commandContext.DayLabel, data.SenderName, data.RoomId, commandContext.TeamSearchText);
+                logger.LogInformation("[BASEBALL_SCHEDULE] Baseball {DayLabel} game requested by {Sender} in room {RoomId} for {TeamSearchText}", commandContext.DayLabel, data.SenderName, data.RoomId, commandContext.TeamSearchText);
 
             return new ServerResponse
             {
@@ -114,18 +108,12 @@ public class BaseballGameScheduleCommandHandler(
     }
 
     private Task<BaseballGameScheduleSnapshot?> GetGameSnapshotAsync(BaseballGameCommandContext commandContext) =>
-        commandContext.Command.Equals(TomorrowCommand, StringComparison.OrdinalIgnoreCase)
-            ? baseballGameScheduleService.GetTomorrowGameSnapshotAsync()
-            : baseballGameScheduleService.GetTodayGameSnapshotAsync();
+        commandContext.Command.Equals(TomorrowCommand, StringComparison.OrdinalIgnoreCase) ? baseballGameScheduleService.GetTomorrowGameSnapshotAsync() : baseballGameScheduleService.GetTodayGameSnapshotAsync();
 
     private Task<BaseballGameDetail?> GetGameDetailAsync(BaseballGameCommandContext commandContext, long gameId) =>
-        commandContext.Command.Equals(TomorrowCommand, StringComparison.OrdinalIgnoreCase)
-            ? baseballGameScheduleService.GetTomorrowGameDetailAsync(gameId)
-            : baseballGameScheduleService.GetTodayGameDetailAsync(gameId);
+        commandContext.Command.Equals(TomorrowCommand, StringComparison.OrdinalIgnoreCase) ? baseballGameScheduleService.GetTomorrowGameDetailAsync(gameId) : baseballGameScheduleService.GetTodayGameDetailAsync(gameId);
 
-    private async Task<IReadOnlyDictionary<long, BaseballGameDetail>> GetGameDetailsByGameIdAsync(
-        BaseballGameCommandContext commandContext,
-        IReadOnlyList<BaseballGameScheduleSummary> gameSummaries)
+    private async Task<IReadOnlyDictionary<long, BaseballGameDetail>> GetGameDetailsByGameIdAsync(BaseballGameCommandContext commandContext, IReadOnlyList<BaseballGameScheduleSummary> gameSummaries)
     {
         var gameSummariesRequiringDetails = gameSummaries
             .Where(ShouldFetchGameDetailForLeftOnBase)
@@ -141,18 +129,14 @@ public class BaseballGameScheduleCommandHandler(
         var gameDetailResults = await Task.WhenAll(gameDetailTasks);
         return gameDetailResults
             .Where(gameDetailResult => gameDetailResult.GameDetail != null)
-            .ToDictionary(
-                gameDetailResult => gameDetailResult.GameId,
-                gameDetailResult => gameDetailResult.GameDetail!);
+            .ToDictionary(gameDetailResult => gameDetailResult.GameId, gameDetailResult => gameDetailResult.GameDetail!);
     }
 
     private static bool ShouldFetchGameDetailForLeftOnBase(BaseballGameScheduleSummary gameSummary)
     {
-        var hasLeftOnBase = gameSummary.HomeTeamStatistics?.BattingLeftOnBase != null ||
-                            gameSummary.AwayTeamStatistics?.BattingLeftOnBase != null;
+        var hasLeftOnBase = gameSummary.HomeTeamStatistics?.BattingLeftOnBase != null || gameSummary.AwayTeamStatistics?.BattingLeftOnBase != null;
         if (hasLeftOnBase) return false;
-        return !BaseballGameFormatter.IsBeforeGame(gameSummary) &&
-               !BaseballGameFormatter.IsCanceledGame(gameSummary);
+        return !BaseballGameFormatter.IsBeforeGame(gameSummary) && !BaseballGameFormatter.IsCanceledGame(gameSummary);
     }
 
     private static BaseballGameCommandContext? TryCreateCommandContext(string content)

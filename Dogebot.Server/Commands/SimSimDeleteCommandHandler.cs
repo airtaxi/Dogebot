@@ -8,10 +8,7 @@ namespace Dogebot.Server.Commands;
 /// Admin only command.
 /// Can delete specific message/response pair or all responses for a message.
 /// </summary>
-public class SimSimDeleteCommandHandler(
-    ISimSimService simSimService,
-    IAdminService adminService,
-    ILogger<SimSimDeleteCommandHandler> logger) : ICommandHandler
+public class SimSimDeleteCommandHandler(ISimSimService simSimService, IAdminService adminService, ILogger<SimSimDeleteCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!심삭제";
 
@@ -83,8 +80,7 @@ public class SimSimDeleteCommandHandler(
                 }
 
                 if (logger.IsEnabled(LogLevel.Warning))
-                    logger.LogWarning("[SIMSIM_DELETE] Admin {Sender} deleted ALL {Count} responses for message '{Message}'",
-                        data.SenderName, deletedCount, message);
+                    logger.LogWarning("[SIMSIM_DELETE] Admin {Sender} deleted ALL {Count} responses for message '{Message}'", data.SenderName, deletedCount, message);
 
                 return new ServerResponse
                 {
@@ -121,8 +117,7 @@ public class SimSimDeleteCommandHandler(
             }
 
             if (logger.IsEnabled(LogLevel.Warning))
-                logger.LogWarning("[SIMSIM_DELETE] Admin {Sender} deleted '{Message}' / '{Response}'",
-                    data.SenderName, msg, response);
+                logger.LogWarning("[SIMSIM_DELETE] Admin {Sender} deleted '{Message}' / '{Response}'", data.SenderName, msg, response);
 
             return new ServerResponse
             {

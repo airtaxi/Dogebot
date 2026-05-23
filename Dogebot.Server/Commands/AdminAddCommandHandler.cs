@@ -3,9 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class AdminAddCommandHandler(
-    IAdminService adminService,
-    ILogger<AdminAddCommandHandler> logger) : ICommandHandler
+public class AdminAddCommandHandler(IAdminService adminService, ILogger<AdminAddCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!관리추가";
 
@@ -22,15 +20,10 @@ public class AdminAddCommandHandler(
 
             if (parts.Length == 1)
             {
-                var approvalCode = await adminService.CreateApprovalCodeAsync(
-                    data.SenderHash,
-                    data.SenderName,
-                    data.RoomId,
-                    data.RoomName);
+                var approvalCode = await adminService.CreateApprovalCodeAsync(data.SenderHash, data.SenderName, data.RoomId, data.RoomName);
 
                 if (logger.IsEnabled(LogLevel.Information))
-                    logger.LogInformation("[ADMIN_ADD] {Sender} requested admin approval code: {Code}",
-                        data.SenderName, approvalCode);
+                    logger.LogInformation("[ADMIN_ADD] {Sender} requested admin approval code: {Code}", data.SenderName, approvalCode);
 
                 return new ServerResponse
                 {
@@ -64,8 +57,7 @@ public class AdminAddCommandHandler(
                 if (!approved)
                 {
                     if (logger.IsEnabled(LogLevel.Warning))
-                        logger.LogWarning("[ADMIN_ADD] Failed to approve code {Code} by {Sender}",
-                            code, data.SenderName);
+                        logger.LogWarning("[ADMIN_ADD] Failed to approve code {Code} by {Sender}", code, data.SenderName);
 
                     return new ServerResponse
                     {
@@ -79,8 +71,7 @@ public class AdminAddCommandHandler(
                 }
 
                 if (logger.IsEnabled(LogLevel.Warning))
-                    logger.LogWarning("[ADMIN_ADD] Code {Code} approved by {Sender}",
-                        code, data.SenderName);
+                    logger.LogWarning("[ADMIN_ADD] Code {Code} approved by {Sender}", code, data.SenderName);
 
                 return new ServerResponse
                 {

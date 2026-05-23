@@ -5,10 +5,7 @@ using System.Net.Http.Json;
 
 namespace Dogebot.DiscordClient.Services;
 
-public class ServerApiClient(
-    HttpClient httpClient,
-    IOptions<DiscordClientOptions> options,
-    ILogger<ServerApiClient> logger) : IServerApiClient
+public class ServerApiClient(HttpClient httpClient, IOptions<DiscordClientOptions> options, ILogger<ServerApiClient> logger) : IServerApiClient
 {
     public async Task<ServerResponse> NotifyAsync(ServerNotification notification, CancellationToken cancellationToken)
     {
@@ -21,8 +18,7 @@ public class ServerApiClient(
             return new ServerResponse { Action = "error", Message = $"Notify failed: {(int)response.StatusCode}" };
         }
 
-        return await response.Content.ReadFromJsonAsync<ServerResponse>(cancellationToken: cancellationToken)
-            ?? new ServerResponse();
+        return await response.Content.ReadFromJsonAsync<ServerResponse>(cancellationToken: cancellationToken) ?? new ServerResponse();
     }
 
     public async Task<ServerResponse> GetPendingCommandAsync(IEnumerable<string> availableRoomIds, CancellationToken cancellationToken)
@@ -37,8 +33,7 @@ public class ServerApiClient(
             return new ServerResponse { Action = "error", Message = $"Polling failed: {(int)response.StatusCode}" };
         }
 
-        return await response.Content.ReadFromJsonAsync<ServerResponse>(cancellationToken: cancellationToken)
-            ?? new ServerResponse();
+        return await response.Content.ReadFromJsonAsync<ServerResponse>(cancellationToken: cancellationToken) ?? new ServerResponse();
     }
 
     private string BuildUrl(string path)

@@ -4,10 +4,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class MultiMessageCommandHandler(
-    IBotSettingService botSettingService,
-    IAdminService adminService,
-    ILogger<MultiMessageCommandHandler> logger) : ICommandHandler
+public class MultiMessageCommandHandler(IBotSettingService botSettingService, IAdminService adminService, ILogger<MultiMessageCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!멀티메시지";
 

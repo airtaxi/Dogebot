@@ -3,10 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class RoomBackupCommandHandler(
-    IRoomMigrationService roomMigrationService,
-    IAdminService adminService,
-    ILogger<RoomBackupCommandHandler> logger) : ICommandHandler
+public class RoomBackupCommandHandler(IRoomMigrationService roomMigrationService, IAdminService adminService, ILogger<RoomBackupCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!방백업";
 
@@ -29,12 +26,10 @@ public class RoomBackupCommandHandler(
                 };
             }
 
-            var code = await roomMigrationService.CreateMigrationCodeAsync(
-                data.RoomId, data.RoomName, data.SenderHash, data.SenderName);
+            var code = await roomMigrationService.CreateMigrationCodeAsync(data.RoomId, data.RoomName, data.SenderHash, data.SenderName);
 
             if (logger.IsEnabled(LogLevel.Warning))
-                logger.LogWarning("[ROOM_BACKUP] Migration code {Code} created for room {RoomName} by {Sender}",
-                    code, data.RoomName, data.SenderName);
+                logger.LogWarning("[ROOM_BACKUP] Migration code {Code} created for room {RoomName} by {Sender}", code, data.RoomName, data.SenderName);
 
             return new ServerResponse
             {

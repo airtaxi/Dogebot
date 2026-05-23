@@ -42,8 +42,7 @@ public class ChoiceCommandHandler(ILogger<ChoiceCommandHandler> logger) : IComma
             var message = $"🎯 선택 결과: {selected}";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[CHOICE] Selected '{Selected}' from {ChoiceCount} options for {Sender} in room {RoomId}",
-                    selected, choices.Length, data.SenderName, data.RoomId);
+                logger.LogInformation("[CHOICE] Selected '{Selected}' from {ChoiceCount} options for {Sender} in room {RoomId}", selected, choices.Length, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {

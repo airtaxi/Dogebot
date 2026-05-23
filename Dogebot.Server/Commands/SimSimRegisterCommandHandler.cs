@@ -7,9 +7,7 @@ namespace Dogebot.Server.Commands;
 /// Handles the !심등록 command to register a new simsim response.
 /// Only works in private chats (not group chats).
 /// </summary>
-public class SimSimRegisterCommandHandler(
-    ISimSimService simSimService,
-    ILogger<SimSimRegisterCommandHandler> logger) : ICommandHandler
+public class SimSimRegisterCommandHandler(ISimSimService simSimService, ILogger<SimSimRegisterCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!심등록";
 
@@ -78,8 +76,7 @@ public class SimSimRegisterCommandHandler(
             await simSimService.AddResponseAsync(message, response, data.SenderHash);
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[SIMSIM_REGISTER] {Sender} registered '{Message}' / '{Response}'",
-                    data.SenderName, message, response);
+                logger.LogInformation("[SIMSIM_REGISTER] {Sender} registered '{Message}' / '{Response}'", data.SenderName, message, response);
 
             return new ServerResponse
             {

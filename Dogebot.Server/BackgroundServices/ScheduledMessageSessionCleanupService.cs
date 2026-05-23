@@ -2,9 +2,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.BackgroundServices;
 
-public class ScheduledMessageSessionCleanupService(
-    IServiceProvider serviceProvider,
-    ILogger<ScheduledMessageSessionCleanupService> logger) : BackgroundService
+public class ScheduledMessageSessionCleanupService(IServiceProvider serviceProvider, ILogger<ScheduledMessageSessionCleanupService> logger) : BackgroundService
 {
     private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(5);
 
@@ -26,8 +24,7 @@ public class ScheduledMessageSessionCleanupService(
 
                 if (expiredSessions > 0 || staleSentEntries > 0)
                 {
-                    logger.LogInformation("[SCHEDULED_CLEANUP] Cleaned up {Sessions} expired sessions and {SentEntries} stale sent-tracking entries",
-                        expiredSessions, staleSentEntries);
+                    logger.LogInformation("[SCHEDULED_CLEANUP] Cleaned up {Sessions} expired sessions and {SentEntries} stale sent-tracking entries", expiredSessions, staleSentEntries);
                 }
             }
             catch (OperationCanceledException)

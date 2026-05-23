@@ -5,9 +5,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.BackgroundServices;
 
-public class BaseballGameSubscriptionCheckService(
-    IServiceProvider serviceProvider,
-    ILogger<BaseballGameSubscriptionCheckService> logger) : BackgroundService
+public class BaseballGameSubscriptionCheckService(IServiceProvider serviceProvider, ILogger<BaseballGameSubscriptionCheckService> logger) : BackgroundService
 {
     private static readonly TimeSpan s_checkInterval = TimeSpan.FromSeconds(30);
     private const int MaximumEventsPerMessage = 30;
@@ -52,18 +50,12 @@ public class BaseballGameSubscriptionCheckService(
         var activeSubscriptions = await baseballGameSubscriptionService.GetActiveSubscriptionsAsync();
         if (activeSubscriptions.Count == 0) return;
 
-        var subscriptionGroups = activeSubscriptions.GroupBy(subscription =>
-            new BaseballGameSubscriptionCheckKey(subscription.GameDate, subscription.GameId));
+        var subscriptionGroups = activeSubscriptions.GroupBy(subscription => new BaseballGameSubscriptionCheckKey(subscription.GameDate, subscription.GameId));
 
         foreach (var subscriptionGroup in subscriptionGroups)
         {
             stoppingToken.ThrowIfCancellationRequested();
-            if (!DateOnly.TryParseExact(
-                    subscriptionGroup.Key.GameDate,
-                    "yyyyMMdd",
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var gameDate))
+            if (!DateOnly.TryParseExact(subscriptionGroup.Key.GameDate, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var gameDate))
             {
                 logger.LogWarning("[BASEBALL_SUBSCRIPTION_CHECK] Invalid game date {GameDate}", subscriptionGroup.Key.GameDate);
                 continue;
@@ -72,10 +64,7 @@ public class BaseballGameSubscriptionCheckService(
             var gameDetail = await baseballGameScheduleService.GetGameDetailAsync(gameDate, subscriptionGroup.Key.GameId);
             if (gameDetail == null)
             {
-                logger.LogWarning(
-                    "[BASEBALL_SUBSCRIPTION_CHECK] Failed to fetch subscribed baseball game detail {GameDate}/{GameId}",
-                    subscriptionGroup.Key.GameDate,
-                    subscriptionGroup.Key.GameId);
+                logger.LogWarning("[BASEBALL_SUBSCRIPTION_CHECK] Failed to fetch subscribed baseball game detail {GameDate}/{GameId}", subscriptionGroup.Key.GameDate, subscriptionGroup.Key.GameId);
                 continue;
             }
 
@@ -93,22 +82,12 @@ public class BaseballGameSubscriptionCheckService(
         if (BaseballGameFormatter.IsRainCanceledGame(gameDetail.GameSummary))
         {
             pendingMessages.Add(BaseballGameFormatter.FormatRainCanceledNotification(gameDetail));
-            return new BaseballGameSubscriptionCheckResult(
-                subscription.LastDeliveredLiveEventKey,
-                subscription.LastDeliveredLiveEventIndex,
-                gameDetail.GameSummary.HomeScore?.Run,
-                gameDetail.GameSummary.AwayScore?.Run,
-                subscription.LineupNotified,
-                BaseballGameSubscriptionStatus.Completed,
-                DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                pendingMessages);
+            return new BaseballGameSubscriptionCheckResult(subscription.LastDeliveredLiveEventKey, subscription.LastDeliveredLiveEventIndex, gameDetail.GameSummary.HomeScore?.Run, gameDetail.GameSummary.AwayScore?.Run, subscription.LineupNotified, BaseballGameSubscriptionStatus.Completed, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), pendingMessages);
         }
 
         var liveEvents = BaseballGameFormatter.GetLiveGameEvents(gameDetail).ToList();
         var previousLiveEventIndex = ResolveLastDeliveredLiveEventIndex(subscription, liveEvents);
-        var newLiveEvents = previousLiveEventIndex < liveEvents.Count - 1
-            ? liveEvents.Skip(previousLiveEventIndex + 1).ToList()
-            : [];
+        var newLiveEvents = previousLiveEventIndex < liveEvents.Count - 1 ? liveEvents.Skip(previousLiveEventIndex + 1).ToList() : [];
         var lastDeliveredLiveEventIndex = subscription.LastDeliveredLiveEventIndex;
         var lastDeliveredLiveEventKey = subscription.LastDeliveredLiveEventKey;
         var lineupNotified = subscription.LineupNotified;
@@ -123,9 +102,7 @@ public class BaseballGameSubscriptionCheckService(
         var currentAwayScore = gameDetail.GameSummary.AwayScore?.Run;
         var hasPreviousScore = subscription.LastHomeScore.HasValue || subscription.LastAwayScore.HasValue;
         var hasCurrentScore = currentHomeScore.HasValue || currentAwayScore.HasValue;
-        var scoreChanged = hasPreviousScore &&
-                           hasCurrentScore &&
-                           (subscription.LastHomeScore != currentHomeScore || subscription.LastAwayScore != currentAwayScore);
+        var scoreChanged = hasPreviousScore && hasCurrentScore && (subscription.LastHomeScore != currentHomeScore || subscription.LastAwayScore != currentAwayScore);
 
         if (scoreChanged)
         {
@@ -139,19 +116,11 @@ public class BaseballGameSubscriptionCheckService(
                     .TakeLast(MaximumEventsPerMessage)
                     .Reverse()
                     .ToList();
-                pendingMessages.Add(BaseballGameFormatter.FormatScoreChangedWithEventsNotification(
-                    gameDetail,
-                    subscription.LastHomeScore,
-                    subscription.LastAwayScore,
-                    displayedLiveEvents,
-                    omittedEventCount));
+                pendingMessages.Add(BaseballGameFormatter.FormatScoreChangedWithEventsNotification(gameDetail, subscription.LastHomeScore, subscription.LastAwayScore, displayedLiveEvents, omittedEventCount));
             }
             else
             {
-                pendingMessages.Add(BaseballGameFormatter.FormatScoreChangedNotification(
-                    gameDetail,
-                    subscription.LastHomeScore,
-                    subscription.LastAwayScore));
+                pendingMessages.Add(BaseballGameFormatter.FormatScoreChangedNotification(gameDetail, subscription.LastHomeScore, subscription.LastAwayScore));
             }
         }
 
@@ -163,26 +132,13 @@ public class BaseballGameSubscriptionCheckService(
             completedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         }
 
-        return new BaseballGameSubscriptionCheckResult(
-            lastDeliveredLiveEventKey,
-            lastDeliveredLiveEventIndex,
-            currentHomeScore,
-            currentAwayScore,
-            lineupNotified,
-            status,
-            completedAt,
-            pendingMessages);
+        return new BaseballGameSubscriptionCheckResult(lastDeliveredLiveEventKey, lastDeliveredLiveEventIndex, currentHomeScore, currentAwayScore, lineupNotified, status, completedAt, pendingMessages);
     }
 
-    private static int ResolveLastDeliveredLiveEventIndex(
-        BaseballGameSubscription subscription,
-        IReadOnlyList<BaseballGameLiveEvent> liveEvents)
+    private static int ResolveLastDeliveredLiveEventIndex(BaseballGameSubscription subscription, IReadOnlyList<BaseballGameLiveEvent> liveEvents)
     {
         if (liveEvents.Count == 0) return -1;
-        var cachedLiveEventIndexMatches = subscription.LastDeliveredLiveEventIndex >= 0 &&
-                                          subscription.LastDeliveredLiveEventIndex < liveEvents.Count &&
-                                          BaseballGameFormatter.BuildLiveEventKey(liveEvents[subscription.LastDeliveredLiveEventIndex])
-                                              .Equals(subscription.LastDeliveredLiveEventKey, StringComparison.Ordinal);
+        var cachedLiveEventIndexMatches = subscription.LastDeliveredLiveEventIndex >= 0 && subscription.LastDeliveredLiveEventIndex < liveEvents.Count && BaseballGameFormatter.BuildLiveEventKey(liveEvents[subscription.LastDeliveredLiveEventIndex]).Equals(subscription.LastDeliveredLiveEventKey, StringComparison.Ordinal);
         if (cachedLiveEventIndexMatches) return subscription.LastDeliveredLiveEventIndex;
 
         if (!string.IsNullOrWhiteSpace(subscription.LastDeliveredLiveEventKey))

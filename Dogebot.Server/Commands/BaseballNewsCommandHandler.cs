@@ -6,9 +6,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class BaseballNewsCommandHandler(
-    IBaseballTeamRankingService baseballTeamRankingService,
-    ILogger<BaseballNewsCommandHandler> logger) : ICommandHandler
+public class BaseballNewsCommandHandler(IBaseballTeamRankingService baseballTeamRankingService, ILogger<BaseballNewsCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!야구뉴스";
 
@@ -30,8 +28,7 @@ public class BaseballNewsCommandHandler(
             }
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[BASEBALL_NEWS] Baseball news requested by {Sender} in room {RoomId}",
-                    data.SenderName, data.RoomId);
+                logger.LogInformation("[BASEBALL_NEWS] Baseball news requested by {Sender} in room {RoomId}", data.SenderName, data.RoomId);
 
             return new ServerResponse
             {

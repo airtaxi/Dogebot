@@ -4,12 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Dogebot.DiscordClient.Services;
 
-public class PollingService(
-    IDiscordGatewayClient gatewayClient,
-    IServerApiClient serverApiClient,
-    IDiscordResponseExecutor responseExecutor,
-    IOptions<DiscordClientOptions> options,
-    ILogger<PollingService> logger) : BackgroundService
+public class PollingService(IDiscordGatewayClient gatewayClient, IServerApiClient serverApiClient, IDiscordResponseExecutor responseExecutor, IOptions<DiscordClientOptions> options, ILogger<PollingService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

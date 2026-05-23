@@ -3,18 +3,14 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class ImaxNotificationSetCommandHandler(
-    IImaxNotificationService imaxNotificationService,
-    IAdminService adminService,
-    ILogger<ImaxNotificationSetCommandHandler> logger) : ICommandHandler
+public class ImaxNotificationSetCommandHandler(IImaxNotificationService imaxNotificationService, IAdminService adminService, ILogger<ImaxNotificationSetCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!아이맥스설정";
 
     public bool CanHandle(string content)
     {
         var trimmed = content.Trim();
-        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) ||
-               trimmed.Equals("!용아맥설정", StringComparison.OrdinalIgnoreCase);
+        return trimmed.Equals(Command, StringComparison.OrdinalIgnoreCase) || trimmed.Equals("!용아맥설정", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<ServerResponse> HandleAsync(KakaoMessageData data)
@@ -51,8 +47,7 @@ public class ImaxNotificationSetCommandHandler(
             imaxNotificationService.StartSession(data.RoomId, data.SenderHash, data.SenderName, data.RoomName);
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[IMAX_SET] Session started by {Sender} in room {RoomName}",
-                    data.SenderName, data.RoomName);
+                logger.LogInformation("[IMAX_SET] Session started by {Sender} in room {RoomName}", data.SenderName, data.RoomName);
 
             return new ServerResponse
             {

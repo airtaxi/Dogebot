@@ -5,10 +5,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class BaseballGameSubscriptionCommandHandler(
-    IBaseballGameScheduleService baseballGameScheduleService,
-    IBaseballGameSubscriptionService baseballGameSubscriptionService,
-    ILogger<BaseballGameSubscriptionCommandHandler> logger) : ICommandHandler
+public class BaseballGameSubscriptionCommandHandler(IBaseballGameScheduleService baseballGameScheduleService, IBaseballGameSubscriptionService baseballGameSubscriptionService, ILogger<BaseballGameSubscriptionCommandHandler> logger) : ICommandHandler
 {
     private const string SubscribeCommand = "!야구구독";
     private const string UnsubscribeCommand = "!야구구독해제";
@@ -49,25 +46,14 @@ public class BaseballGameSubscriptionCommandHandler(
         var gameDetail = await baseballGameScheduleService.GetGameDetailAsync(selectedGame.GameDate, selectedGame.GameSummary!.GameId);
         if (gameDetail == null)
         {
-            return CreateTextResponse(
-                data.RoomId,
-                baseballGameScheduleService.GetLastGameScheduleErrorDetails() ?? "야구 경기 상세 정보를 가져오지 못했습니다.");
+            return CreateTextResponse(data.RoomId, baseballGameScheduleService.GetLastGameScheduleErrorDetails() ?? "야구 경기 상세 정보를 가져오지 못했습니다.");
         }
 
         var subscribedTeamName = BaseballGameFormatter.GetMatchingTeamDisplayName(selectedGame.GameSummary, teamSearchText);
-        var registerResult = await baseballGameSubscriptionService.RegisterAsync(
-            data,
-            selectedGame.GameDate,
-            gameDetail,
-            subscribedTeamName);
+        var registerResult = await baseballGameSubscriptionService.RegisterAsync(data, selectedGame.GameDate, gameDetail, subscribedTeamName);
 
         if (logger.IsEnabled(LogLevel.Information))
-            logger.LogInformation(
-                "[BASEBALL_SUBSCRIPTION] Baseball game subscription requested by {Sender} in room {RoomId} for {TeamSearchText}: {Result}",
-                data.SenderName,
-                data.RoomId,
-                teamSearchText,
-                registerResult.Message);
+            logger.LogInformation("[BASEBALL_SUBSCRIPTION] Baseball game subscription requested by {Sender} in room {RoomId} for {TeamSearchText}: {Result}", data.SenderName, data.RoomId, teamSearchText, registerResult.Message);
 
         return CreateTextResponse(data.RoomId, registerResult.Message);
     }
@@ -77,12 +63,7 @@ public class BaseballGameSubscriptionCommandHandler(
         var removeResult = await baseballGameSubscriptionService.RemoveAsync(data.RoomId, teamSearchText);
 
         if (logger.IsEnabled(LogLevel.Information))
-            logger.LogInformation(
-                "[BASEBALL_SUBSCRIPTION] Baseball game subscription removal requested by {Sender} in room {RoomId} for {TeamSearchText}: {Count}",
-                data.SenderName,
-                data.RoomId,
-                teamSearchText,
-                removeResult.RemovedCount);
+            logger.LogInformation("[BASEBALL_SUBSCRIPTION] Baseball game subscription removal requested by {Sender} in room {RoomId} for {TeamSearchText}: {Count}", data.SenderName, data.RoomId, teamSearchText, removeResult.RemovedCount);
 
         return CreateTextResponse(data.RoomId, removeResult.Message);
     }
@@ -92,8 +73,7 @@ public class BaseballGameSubscriptionCommandHandler(
         var todaySnapshot = await baseballGameScheduleService.GetTodayGameSnapshotAsync();
         if (todaySnapshot == null)
         {
-            return BaseballGameSubscriptionSelectionResult.CreateFailure(
-                baseballGameScheduleService.GetLastGameScheduleErrorDetails() ?? "오늘 야구 경기 정보를 가져오지 못했습니다.");
+            return BaseballGameSubscriptionSelectionResult.CreateFailure(baseballGameScheduleService.GetLastGameScheduleErrorDetails() ?? "오늘 야구 경기 정보를 가져오지 못했습니다.");
         }
 
         var todayMatches = BaseballGameFormatter.FindMatchingGameSummaries(todaySnapshot.GameSummaries, teamSearchText);
@@ -107,8 +87,7 @@ public class BaseballGameSubscriptionCommandHandler(
         var tomorrowSnapshot = await baseballGameScheduleService.GetTomorrowGameSnapshotAsync();
         if (tomorrowSnapshot == null)
         {
-            return BaseballGameSubscriptionSelectionResult.CreateFailure(
-                baseballGameScheduleService.GetLastGameScheduleErrorDetails() ?? "내일 야구 경기 정보를 가져오지 못했습니다.");
+            return BaseballGameSubscriptionSelectionResult.CreateFailure(baseballGameScheduleService.GetLastGameScheduleErrorDetails() ?? "내일 야구 경기 정보를 가져오지 못했습니다.");
         }
 
         var tomorrowMatches = BaseballGameFormatter.FindMatchingGameSummaries(tomorrowSnapshot.GameSummaries, teamSearchText);
@@ -123,23 +102,18 @@ public class BaseballGameSubscriptionCommandHandler(
         return BaseballGameSubscriptionSelectionResult.CreateFailure($"오늘/내일 '{teamSearchText}' 팀 경기가 없습니다.");
     }
 
-    private static BaseballGameSubscriptionSelectionResult CreateMultipleMatchResult(
-        string teamSearchText,
-        IReadOnlyList<BaseballGameScheduleSummary> gameSummaries)
+    private static BaseballGameSubscriptionSelectionResult CreateMultipleMatchResult(string teamSearchText, IReadOnlyList<BaseballGameScheduleSummary> gameSummaries)
     {
         var matchedGameDescriptions = string.Join(", ", gameSummaries.Select(BaseballGameFormatter.FormatGameMatchDescription));
-        return BaseballGameSubscriptionSelectionResult.CreateFailure(
-            $"'{teamSearchText}' 검색 결과가 여러 경기와 일치합니다: {matchedGameDescriptions}\n더 구체적으로 입력해주세요.");
+        return BaseballGameSubscriptionSelectionResult.CreateFailure($"'{teamSearchText}' 검색 결과가 여러 경기와 일치합니다: {matchedGameDescriptions}\n더 구체적으로 입력해주세요.");
     }
 
     private static BaseballGameSubscriptionCommandContext? TryCreateCommandContext(string content)
     {
-        if (content.Equals(UnsubscribeCommand, StringComparison.OrdinalIgnoreCase) ||
-            content.StartsWith($"{UnsubscribeCommand} ", StringComparison.OrdinalIgnoreCase))
+        if (content.Equals(UnsubscribeCommand, StringComparison.OrdinalIgnoreCase) || content.StartsWith($"{UnsubscribeCommand} ", StringComparison.OrdinalIgnoreCase))
             return CreateCommandContext(content, UnsubscribeCommand, isUnsubscribe: true);
 
-        if (content.Equals(SubscribeCommand, StringComparison.OrdinalIgnoreCase) ||
-            content.StartsWith($"{SubscribeCommand} ", StringComparison.OrdinalIgnoreCase))
+        if (content.Equals(SubscribeCommand, StringComparison.OrdinalIgnoreCase) || content.StartsWith($"{SubscribeCommand} ", StringComparison.OrdinalIgnoreCase))
             return CreateCommandContext(content, SubscribeCommand, isUnsubscribe: false);
 
         return null;
@@ -161,11 +135,7 @@ public class BaseballGameSubscriptionCommandHandler(
 
     private sealed record BaseballGameSubscriptionCommandContext(string Command, string TeamSearchText, bool IsUnsubscribe);
 
-    private sealed record BaseballGameSubscriptionSelectionResult(
-        bool Success,
-        DateOnly GameDate,
-        BaseballGameScheduleSummary? GameSummary,
-        string Message)
+    private sealed record BaseballGameSubscriptionSelectionResult(bool Success, DateOnly GameDate, BaseballGameScheduleSummary? GameSummary, string Message)
     {
         public static BaseballGameSubscriptionSelectionResult CreateSuccess(DateOnly gameDate, BaseballGameScheduleSummary gameSummary) =>
             new(true, gameDate, gameSummary, string.Empty);

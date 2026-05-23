@@ -66,10 +66,7 @@ public class AdminService : IAdminService
             return false;
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var filter = Builders<AdminApprovalCode>.Filter.And(
-            Builders<AdminApprovalCode>.Filter.Eq(x => x.Code, code),
-            Builders<AdminApprovalCode>.Filter.Gt(x => x.ExpiresAt, now)
-        );
+        var filter = Builders<AdminApprovalCode>.Filter.And(Builders<AdminApprovalCode>.Filter.Eq(x => x.Code, code), Builders<AdminApprovalCode>.Filter.Gt(x => x.ExpiresAt, now));
 
         var approvalCode = await _approvalCodes.Find(filter).FirstOrDefaultAsync();
         if (approvalCode == null)
@@ -134,8 +131,7 @@ public class AdminService : IAdminService
     private string GenerateApprovalCode()
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        return new string(Enumerable.Repeat(chars, 6)
-            .Select(s => s[_random.Next(s.Length)]).ToArray());
+        return new string(Enumerable.Repeat(chars, 6).Select(s => s[_random.Next(s.Length)]).ToArray());
     }
 }
 

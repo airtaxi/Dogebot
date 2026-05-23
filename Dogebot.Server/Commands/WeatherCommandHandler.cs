@@ -7,10 +7,7 @@ namespace Dogebot.Server.Commands;
 /// Handles the !날씨 [지역명] command to show current weather.
 /// Uses OpenWeatherMap API. If no city is specified, uses the user's preferred city or defaults to Seoul.
 /// </summary>
-public class WeatherCommandHandler(
-    IWeatherService weatherService,
-    IUserPreferenceService userPreferenceService,
-    ILogger<WeatherCommandHandler> logger) : ICommandHandler
+public class WeatherCommandHandler(IWeatherService weatherService, IUserPreferenceService userPreferenceService, ILogger<WeatherCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!날씨";
 
@@ -97,8 +94,7 @@ public class WeatherCommandHandler(
                          $"🔽 기압: {weather.Main.Pressure}hPa";
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[WEATHER] Weather info requested by {Sender} in room {RoomId} for {City}: {Temp}°C, {Description}",
-                    data.SenderName, data.RoomId, displayCityName, weather.Main.Temp, description);
+                logger.LogInformation("[WEATHER] Weather info requested by {Sender} in room {RoomId} for {City}: {Temp}°C, {Description}", data.SenderName, data.RoomId, displayCityName, weather.Main.Temp, description);
 
             return new ServerResponse
             {

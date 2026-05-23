@@ -29,10 +29,7 @@ public class SimSimService : ISimSimService
         var normalizedResponse = response.Trim();
 
         // Check if this exact combination already exists
-        var filter = Builders<SimSimData>.Filter.And(
-            Builders<SimSimData>.Filter.Eq(x => x.Message, normalizedMessage),
-            Builders<SimSimData>.Filter.Eq(x => x.Response, normalizedResponse)
-        );
+        var filter = Builders<SimSimData>.Filter.And(Builders<SimSimData>.Filter.Eq(x => x.Message, normalizedMessage), Builders<SimSimData>.Filter.Eq(x => x.Response, normalizedResponse));
 
         var exists = await _simSimData.Find(filter).AnyAsync();
         if (exists)
@@ -51,10 +48,7 @@ public class SimSimService : ISimSimService
 
     public async Task<bool> DeleteResponseAsync(string message, string response)
     {
-        var filter = Builders<SimSimData>.Filter.And(
-            Builders<SimSimData>.Filter.Eq(x => x.Message, message.Trim()),
-            Builders<SimSimData>.Filter.Eq(x => x.Response, response.Trim())
-        );
+        var filter = Builders<SimSimData>.Filter.And(Builders<SimSimData>.Filter.Eq(x => x.Message, message.Trim()), Builders<SimSimData>.Filter.Eq(x => x.Response, response.Trim()));
 
         var result = await _simSimData.DeleteOneAsync(filter);
         return result.DeletedCount > 0;
@@ -95,9 +89,7 @@ public class SimSimService : ISimSimService
 
         var results = await _simSimData.Aggregate<BsonDocument>(pipeline).ToListAsync();
         
-        return results.Select(doc => 
-            (doc["_id"].AsString, doc["count"].AsInt32)
-        ).ToList();
+        return results.Select(doc => (doc["_id"].AsString, doc["count"].AsInt32)).ToList();
     }
 }
 

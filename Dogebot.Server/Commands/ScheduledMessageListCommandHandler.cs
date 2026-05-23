@@ -3,10 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class ScheduledMessageListCommandHandler(
-    IScheduledMessageService scheduledMessageService,
-    IAdminService adminService,
-    ILogger<ScheduledMessageListCommandHandler> logger) : ICommandHandler
+public class ScheduledMessageListCommandHandler(IScheduledMessageService scheduledMessageService, IAdminService adminService, ILogger<ScheduledMessageListCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!반복목록";
 
@@ -46,9 +43,7 @@ public class ScheduledMessageListCommandHandler(
             for (int i = 0; i < messages.Count; i++)
             {
                 var message = messages[i];
-                var preview = message.Message.Length > 30
-                    ? message.Message[..27] + "..."
-                    : message.Message;
+                var preview = message.Message.Length > 30 ? message.Message[..27] + "..." : message.Message;
                 preview = preview.Replace("\n", " ").Replace("\r", "");
                 var daysDisplay = FormatDays(message.Days);
                 var hoursDisplay = string.Join(", ", message.Hours.Select(h => $"{h}시"));
@@ -58,8 +53,7 @@ public class ScheduledMessageListCommandHandler(
             result = result.TrimEnd();
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[SCHEDULED_LIST] Showing {Count} scheduled messages for room {RoomName}",
-                    messages.Count, data.RoomName);
+                logger.LogInformation("[SCHEDULED_LIST] Showing {Count} scheduled messages for room {RoomName}", messages.Count, data.RoomName);
 
             return new ServerResponse
             {

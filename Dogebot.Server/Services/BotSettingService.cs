@@ -28,9 +28,7 @@ public class BotSettingService : IBotSettingService
         var setting = await _settings.Find(filter).FirstOrDefaultAsync();
         if (setting is null) return MessageDeliveryMode.Single;
 
-        return Enum.TryParse<MessageDeliveryMode>(setting.Value, true, out var messageDeliveryMode)
-            ? messageDeliveryMode
-            : MessageDeliveryMode.Single;
+        return Enum.TryParse<MessageDeliveryMode>(setting.Value, true, out var messageDeliveryMode) ? messageDeliveryMode : MessageDeliveryMode.Single;
     }
 
     public async Task SetMessageDeliveryModeAsync(MessageDeliveryMode messageDeliveryMode, string updatedBy)

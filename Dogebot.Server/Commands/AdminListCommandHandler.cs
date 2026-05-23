@@ -4,9 +4,7 @@ using System.Text;
 
 namespace Dogebot.Server.Commands;
 
-public class AdminListCommandHandler(
-    IAdminService adminService,
-    ILogger<AdminListCommandHandler> logger) : ICommandHandler
+public class AdminListCommandHandler(IAdminService adminService, ILogger<AdminListCommandHandler> logger) : ICommandHandler
 {
     public string Command => "!관리목록";
 
@@ -75,8 +73,7 @@ public class AdminListCommandHandler(
             messageBuilder.AppendLine("⚠️ 최고 관리자는 목록에 표시되지 않습니다.");
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[ADMIN_LIST] Admin {Sender} viewed admin list ({Count} admins)",
-                    data.SenderName, totalCount);
+                logger.LogInformation("[ADMIN_LIST] Admin {Sender} viewed admin list ({Count} admins)", data.SenderName, totalCount);
 
             return new ServerResponse
             {
