@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using KoreanNumberParser;
 
 namespace Dogebot.Server.Services;
 
@@ -39,7 +40,7 @@ public partial class ExchangeRateService(IHttpClientFactory httpClientFactory, I
         var targetCurrency = ResolveCurrency(request.TargetCurrencyQuery, currencies);
         if (targetCurrency == null) return CreateCurrencyNotFoundMessage(request.TargetCurrencyQuery);
 
-        var sourceAmount = request.Amount ?? sourceCurrency.CurrencyUnit;
+        var sourceAmount = request.Amount ?? checked((long)sourceCurrency.CurrencyUnit);
         var targetAmount = ConvertCurrency(sourceAmount, sourceCurrency, targetCurrency);
         return FormatExchangeRateMessage(sourceAmount, sourceCurrency, targetAmount, targetCurrency);
     }
@@ -99,22 +100,36 @@ public partial class ExchangeRateService(IHttpClientFactory httpClientFactory, I
         return new ExchangeRateParseResult(new ExchangeRateRequest(amount, sourceCurrencyQuery, targetCurrencyQuery), null);
     }
 
-    private static bool TryCreateSourceToken(string sourceToken, bool hasTargetCurrencyToken, out decimal? amount, out string sourceCurrencyQuery)
+    private static bool TryCreateSourceToken(string sourceToken, bool hasTargetCurrencyToken, out long? amount, out string sourceCurrencyQuery)
     {
         amount = null;
         sourceCurrencyQuery = sourceToken;
 
-        var amountMatch = SourceAmountRegex().Match(sourceToken);
-        if (!amountMatch.Success) return true;
-        if (!decimal.TryParse(amountMatch.Groups["amount"].Value.Replace(",", string.Empty), NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedAmount)) return false;
+        if (!TryParseSourceAmount(sourceToken, out var parsedAmount, out var currencyQuery)) return true;
         if (parsedAmount <= 0) return false;
 
-        var currencyQuery = amountMatch.Groups["currency"].Value.Trim();
         if (string.IsNullOrWhiteSpace(currencyQuery) && hasTargetCurrencyToken) return false;
 
         amount = parsedAmount;
         sourceCurrencyQuery = string.IsNullOrWhiteSpace(currencyQuery) ? DefaultSourceCurrencyQuery : currencyQuery;
         return true;
+    }
+
+    private static bool TryParseSourceAmount(string sourceToken, out long amount, out string currencyQuery)
+    {
+        for (var length = sourceToken.Length; length > 0; length--)
+        {
+            var amountText = sourceToken[..length];
+            if (!KoreanNumber.TryParseInt64(amountText, out var parsedAmount)) continue;
+
+            amount = parsedAmount;
+            currencyQuery = sourceToken[length..].Trim();
+            return true;
+        }
+
+        amount = default;
+        currencyQuery = string.Empty;
+        return false;
     }
 
     private static ExchangeCurrency? ResolveCurrency(string currencyQuery, IReadOnlyList<ExchangeCurrency> currencies)
@@ -143,10 +158,10 @@ public partial class ExchangeRateService(IHttpClientFactory httpClientFactory, I
     private static bool IsKoreanWonQuery(string normalizedCurrencyQuery) =>
         normalizedCurrencyQuery.Equals("원", StringComparison.OrdinalIgnoreCase) || normalizedCurrencyQuery.Equals("KRW", StringComparison.OrdinalIgnoreCase) || normalizedCurrencyQuery.Equals("한국", StringComparison.OrdinalIgnoreCase) || normalizedCurrencyQuery.Equals("대한민국", StringComparison.OrdinalIgnoreCase);
 
-    private static decimal ConvertCurrency(decimal sourceAmount, ExchangeCurrency sourceCurrency, ExchangeCurrency targetCurrency) =>
+    private static decimal ConvertCurrency(long sourceAmount, ExchangeCurrency sourceCurrency, ExchangeCurrency targetCurrency) =>
         sourceAmount * sourceCurrency.KoreanWonUnitPrice / targetCurrency.KoreanWonUnitPrice;
 
-    private static string FormatExchangeRateMessage(decimal sourceAmount, ExchangeCurrency sourceCurrency, decimal targetAmount, ExchangeCurrency targetCurrency)
+    private static string FormatExchangeRateMessage(long sourceAmount, ExchangeCurrency sourceCurrency, decimal targetAmount, ExchangeCurrency targetCurrency)
     {
         var stringBuilder = new StringBuilder();
         stringBuilder.AppendLine("💱 환율 계산");
@@ -207,7 +222,7 @@ public partial class ExchangeRateService(IHttpClientFactory httpClientFactory, I
         $"'{currencyQuery}' 통화를 찾지 못했습니다.\n{CreateUsageMessage()}";
 
     private static string CreateUsageMessage() =>
-        "사용법: !환율 [금액+출발통화] [도착통화]\n예시: !환율, !환율 100달러 엔, !환율 달러 엔, !환율 미국 일본, !환율 100엔 달러";
+        "사용법: !환율 [금액+출발통화] [도착통화]\n금액은 출발 통화에 붙여 쓰며 100달러, 1억4천만5백만달러처럼 입력할 수 있습니다.\n예시: !환율, !환율 달러 엔, !환율 미국 일본, !환율 100엔 달러";
 
     private static string BuildContentPreview(string content, int maximumLength) =>
         content.Length <= maximumLength ? content : $"{content[..maximumLength]}...";
@@ -215,10 +230,7 @@ public partial class ExchangeRateService(IHttpClientFactory httpClientFactory, I
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhitespaceRegex();
 
-    [GeneratedRegex(@"^(?<amount>(?:\d+(?:,\d{3})+|\d+)(?:\.\d+)?)(?<currency>.*)$")]
-    private static partial Regex SourceAmountRegex();
-
-    private sealed record ExchangeRateRequest(decimal? Amount, string SourceCurrencyQuery, string TargetCurrencyQuery);
+    private sealed record ExchangeRateRequest(long? Amount, string SourceCurrencyQuery, string TargetCurrencyQuery);
 
     private sealed record ExchangeRateParseResult(ExchangeRateRequest? Request, string? Message);
 
