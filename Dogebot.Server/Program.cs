@@ -43,6 +43,9 @@ builder.Services.AddSingleton<IHotDealService, HotDealService>();
 // Register Stock service
 builder.Services.AddSingleton<IStockService, StockService>();
 
+// Register Exchange Rate service
+builder.Services.AddSingleton<IExchangeRateService, ExchangeRateService>();
+
 // Register Baseball team ranking service
 builder.Services.AddSingleton<IBaseballTeamRankingService, BaseballTeamRankingService>();
 
@@ -146,6 +149,7 @@ builder.Services.AddSingleton<ICommandHandler, MonthlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MyMonthlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HotDealCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, StockCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, ExchangeRateCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballTeamRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballBattingRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballPitchingRankingCommandHandler>();
