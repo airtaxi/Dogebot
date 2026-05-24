@@ -200,7 +200,7 @@ public partial class ExchangeRateService(IHttpClientFactory httpClientFactory, I
         var integerAmount = decimal.Truncate(roundedAmount);
         if (integerAmount < long.MinValue || integerAmount > long.MaxValue) return FormatDecimal(roundedAmount);
 
-        var integerAmountText = KoreanNumber.ToKoreanString((long)integerAmount, KoreanNumberFormat.ArabicUnitDigit);
+        var integerAmountText = KoreanNumber.ToKoreanString((long)integerAmount, KoreanNumberFormat.ArabicChunk);
         var fractionalSuffix = FormatFractionalSuffix(decimal.Abs(roundedAmount - integerAmount));
         return $"{integerAmountText}{fractionalSuffix}";
     }
