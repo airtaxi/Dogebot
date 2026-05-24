@@ -16,6 +16,7 @@ public partial class ExchangeRateService(IHttpClientFactory httpClientFactory, I
     private const string DefaultSourceCurrencyQuery = "달러";
     private const string DefaultTargetCurrencyQuery = "원화";
     private const string ExchangeRateUnavailableMessage = "환율 정보를 가져오지 못했습니다.\n잠시 후 다시 시도해주세요.";
+    private const decimal KoreanNumberDisplayThreshold = 10_000_000m;
 
     private static readonly ExchangeCurrency s_koreanWonCurrency = new("KRW", "원", "한국", "한국 (KRW/KRW)", 1, 1, string.Empty, true);
     private static readonly JsonSerializerOptions s_jsonSerializerOptions = new(JsonSerializerDefaults.Web)
@@ -189,7 +190,23 @@ public partial class ExchangeRateService(IHttpClientFactory httpClientFactory, I
         $"{FormatCurrencyDisplayName(currency)} {FormatDecimal(currency.CurrencyUnit)} = {FormatDecimal(currency.BasePrice)}원";
 
     private static string FormatCurrencyAmount(decimal amount, ExchangeCurrency currency) =>
-        $"{FormatDecimal(amount)}{currency.CurrencyName}";
+        $"{FormatDisplayAmount(amount)}{currency.CurrencyName}";
+
+    private static string FormatDisplayAmount(decimal amount)
+    {
+        var roundedAmount = decimal.Round(amount, 4, MidpointRounding.AwayFromZero);
+        if (decimal.Abs(roundedAmount) <= KoreanNumberDisplayThreshold) return FormatDecimal(roundedAmount);
+
+        var integerAmount = decimal.Truncate(roundedAmount);
+        if (integerAmount < long.MinValue || integerAmount > long.MaxValue) return FormatDecimal(roundedAmount);
+
+        var integerAmountText = KoreanNumber.ToKoreanString((long)integerAmount, KoreanNumberFormat.ArabicUnitDigit);
+        var fractionalSuffix = FormatFractionalSuffix(decimal.Abs(roundedAmount - integerAmount));
+        return $"{integerAmountText}{fractionalSuffix}";
+    }
+
+    private static string FormatFractionalSuffix(decimal fractionalAmount) =>
+        fractionalAmount == 0 ? string.Empty : FormatDecimal(fractionalAmount)[1..];
 
     private static string FormatCurrencyDisplayName(ExchangeCurrency currency) =>
         currency.IsKoreanWon ? "한국 원화 (KRW)" : $"{currency.Country} {currency.CurrencyName} ({currency.CurrencyCode})";
