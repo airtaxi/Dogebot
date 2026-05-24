@@ -28,7 +28,8 @@ public static class BaseballGameFormatter
             var startTimeText = FormatStartTime(gameSummary.StartTime);
             var gameSummaryForStatistics = GetGameSummaryForStatistics(gameSummary, gameDetailsByGameId);
             var leftOnBaseText = FormatLeftOnBaseSummary(gameSummaryForStatistics);
-            stringBuilder.AppendLine($"{gameIndex + 1}. {awayTeamName} {awayScoreText} : {homeScoreText} {homeTeamName}" + $"{leftOnBaseText} / {gameStatusText} / {startTimeText}");
+            var offenseDefenseText = FormatCurrentOffenseDefenseSummaryText(gameSummaryForStatistics);
+            stringBuilder.AppendLine($"{gameIndex + 1}. 원정 {awayTeamName} {awayScoreText} : {homeScoreText} {homeTeamName} 홈" + $"{leftOnBaseText}{offenseDefenseText} / {gameStatusText} / {startTimeText}");
         }
 
         return stringBuilder.ToString().TrimEnd();
@@ -38,8 +39,9 @@ public static class BaseballGameFormatter
     {
         var gameSummary = gameDetail.GameSummary;
         var stringBuilder = new StringBuilder();
-        stringBuilder.AppendLine(FormatHomeAwayScoreLine(gameSummary));
+        stringBuilder.AppendLine(FormatAwayHomeScoreLine(gameSummary));
         stringBuilder.AppendLine($"경기장: {FormatFieldName(gameSummary.Field)}");
+        stringBuilder.AppendLine(FormatCurrentOffenseDefenseDetailText(gameSummary));
         AppendCountAndBaseState(stringBuilder, gameDetail);
         AppendTeamScoreStatistics(stringBuilder, gameSummary);
         stringBuilder.AppendLine($"경기 상태: {FormatGameStatus(gameSummary, gameDetail)}");
@@ -63,13 +65,13 @@ public static class BaseballGameFormatter
     public static string FormatScoreChangedNotification(BaseballGameDetail gameDetail, int? previousHomeScore, int? previousAwayScore)
     {
         var gameSummary = gameDetail.GameSummary;
-        var homeTeamName = GetTeamDisplayName(gameSummary.HomeParticipant.Team);
         var awayTeamName = GetTeamDisplayName(gameSummary.AwayParticipant.Team);
-        var previousScoreText = $"{homeTeamName} {FormatNullableNumber(previousHomeScore)} : {FormatNullableNumber(previousAwayScore)} {awayTeamName}";
+        var homeTeamName = GetTeamDisplayName(gameSummary.HomeParticipant.Team);
+        var previousScoreText = $"원정 {awayTeamName} {FormatNullableNumber(previousAwayScore)} : {FormatNullableNumber(previousHomeScore)} {homeTeamName} 홈";
 
         return $"⚾ {FormatGameMatchDescription(gameSummary)} 점수 변경\n\n" +
                $"이전: {previousScoreText}\n" +
-               $"현재: {FormatHomeAwayScoreLine(gameSummary)}";
+               $"현재: {FormatAwayHomeScoreLine(gameSummary)}";
     }
 
     public static string FormatScoreChangedWithEventsNotification(BaseballGameDetail gameDetail, int? previousHomeScore, int? previousAwayScore, IReadOnlyList<BaseballGameLiveEvent> liveEvents, int omittedEventCount)
@@ -154,13 +156,13 @@ public static class BaseballGameFormatter
     public static bool HasCompleteLineups(BaseballGameDetail gameDetail) =>
         HasCompleteLineup(gameDetail.HomePlayers) && HasCompleteLineup(gameDetail.AwayPlayers);
 
-    public static string FormatHomeAwayScoreLine(BaseballGameScheduleSummary gameSummary)
+    public static string FormatAwayHomeScoreLine(BaseballGameScheduleSummary gameSummary)
     {
         var homeTeamName = GetTeamDisplayName(gameSummary.HomeParticipant.Team);
         var awayTeamName = GetTeamDisplayName(gameSummary.AwayParticipant.Team);
         var homeScoreText = FormatParticipantScore(gameSummary.HomeParticipant, gameSummary.HomeScore);
         var awayScoreText = FormatParticipantScore(gameSummary.AwayParticipant, gameSummary.AwayScore);
-        return $"홈 {homeTeamName} {homeScoreText} : {awayScoreText} {awayTeamName} 원정";
+        return $"원정 {awayTeamName} {awayScoreText} : {homeScoreText} {homeTeamName} 홈";
     }
 
     public static string FormatGameMatchDescription(BaseballGameScheduleSummary gameSummary) =>
@@ -206,6 +208,38 @@ public static class BaseballGameFormatter
         return "팀 정보 없음";
     }
 
+    private static string FormatCurrentOffenseDefenseDetailText(BaseballGameScheduleSummary gameSummary)
+    {
+        var offenseDefenseState = GetCurrentOffenseDefenseState(gameSummary);
+        if (offenseDefenseState != null) return FormatCurrentOffenseDefenseText(offenseDefenseState);
+        return IsLiveGame(gameSummary) ? "공격/수비: 정보 없음" : "공격/수비: 경기 중 아님";
+    }
+
+    private static string FormatCurrentOffenseDefenseSummaryText(BaseballGameScheduleSummary gameSummary)
+    {
+        var offenseDefenseState = GetCurrentOffenseDefenseState(gameSummary);
+        return offenseDefenseState == null ? string.Empty : $" / {FormatCurrentOffenseDefenseText(offenseDefenseState)}";
+    }
+
+    private static BaseballOffenseDefenseState? GetCurrentOffenseDefenseState(BaseballGameScheduleSummary gameSummary)
+    {
+        if (!IsLiveGame(gameSummary)) return null;
+
+        var currentPeriod = GetFirstText(gameSummary.CurrentPeriod, gameSummary.PeriodType, gameSummary.GameStatus);
+        if (currentPeriod.Length < 2 || !int.TryParse(currentPeriod[1..], out _)) return null;
+
+        var currentPeriodHalf = char.ToUpperInvariant(currentPeriod[0]);
+        if (currentPeriodHalf == 'T') return new BaseballOffenseDefenseState("원정", gameSummary.AwayParticipant.Team, "홈", gameSummary.HomeParticipant.Team);
+        if (currentPeriodHalf == 'B') return new BaseballOffenseDefenseState("홈", gameSummary.HomeParticipant.Team, "원정", gameSummary.AwayParticipant.Team);
+        return null;
+    }
+
+    private static string FormatCurrentOffenseDefenseText(BaseballOffenseDefenseState offenseDefenseState) =>
+        $"공격: {offenseDefenseState.OffenseHomeAwayText} {GetTeamDisplayName(offenseDefenseState.OffenseTeam)} / 수비: {offenseDefenseState.DefenseHomeAwayText} {GetTeamDisplayName(offenseDefenseState.DefenseTeam)}";
+
+    private static bool IsLiveGame(BaseballGameScheduleSummary gameSummary) =>
+        !IsBeforeGame(gameSummary) && !IsEndedGame(gameSummary) && !IsCanceledGame(gameSummary);
+
     private static void AppendCountAndBaseState(StringBuilder stringBuilder, BaseballGameDetail gameDetail)
     {
         var ground = gameDetail.LiveData?.Ground;
@@ -225,8 +259,8 @@ public static class BaseballGameFormatter
     {
         var homeTeamName = GetTeamDisplayName(gameSummary.HomeParticipant.Team);
         var awayTeamName = GetTeamDisplayName(gameSummary.AwayParticipant.Team);
-        stringBuilder.AppendLine($"홈 {homeTeamName}: {FormatTeamScoreStatistics(gameSummary.HomeScore, gameSummary.HomeTeamStatistics)}");
         stringBuilder.AppendLine($"원정 {awayTeamName}: {FormatTeamScoreStatistics(gameSummary.AwayScore, gameSummary.AwayTeamStatistics)}");
+        stringBuilder.AppendLine($"홈 {homeTeamName}: {FormatTeamScoreStatistics(gameSummary.HomeScore, gameSummary.HomeTeamStatistics)}");
     }
 
     private static BaseballGameScheduleSummary GetGameSummaryForStatistics(BaseballGameScheduleSummary gameSummary, IReadOnlyDictionary<long, BaseballGameDetail>? gameDetailsByGameId)
@@ -249,12 +283,12 @@ public static class BaseballGameFormatter
 
     private static void AppendScoreChangedInformation(StringBuilder stringBuilder, BaseballGameScheduleSummary gameSummary, int? previousHomeScore, int? previousAwayScore)
     {
-        var homeTeamName = GetTeamDisplayName(gameSummary.HomeParticipant.Team);
         var awayTeamName = GetTeamDisplayName(gameSummary.AwayParticipant.Team);
-        var previousScoreText = $"홈 {homeTeamName} {FormatNullableNumber(previousHomeScore)} : {FormatNullableNumber(previousAwayScore)} {awayTeamName} 원정";
+        var homeTeamName = GetTeamDisplayName(gameSummary.HomeParticipant.Team);
+        var previousScoreText = $"원정 {awayTeamName} {FormatNullableNumber(previousAwayScore)} : {FormatNullableNumber(previousHomeScore)} {homeTeamName} 홈";
         stringBuilder.AppendLine();
         stringBuilder.AppendLine($"이전: {previousScoreText}");
-        stringBuilder.AppendLine($"현재: {FormatHomeAwayScoreLine(gameSummary)}");
+        stringBuilder.AppendLine($"현재: {FormatAwayHomeScoreLine(gameSummary)}");
     }
 
     private static void AppendBeforeGameInformation(StringBuilder stringBuilder, BaseballGameDetail gameDetail)
@@ -493,6 +527,8 @@ public static class BaseballGameFormatter
 
     private static string NormalizeTeamSearchText(string value) =>
         string.Concat(value.Where(character => !char.IsWhiteSpace(character))).ToUpperInvariant();
+
+    private sealed record BaseballOffenseDefenseState(string OffenseHomeAwayText, BaseballGameTeam OffenseTeam, string DefenseHomeAwayText, BaseballGameTeam DefenseTeam);
 
     private sealed record BaseballTeamMatchResult(bool HasExactMatch, bool HasPartialMatch);
 }
