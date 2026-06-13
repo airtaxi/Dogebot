@@ -109,6 +109,7 @@ public class MessageCleanupService(IMongoDbService mongoDbService)
             "^\\(음악\\)",
             "^판사님",
             "^소라고동님",
+            "^댕댕아",
             "^심심아",
             "^샵검색",
             "^#검색",

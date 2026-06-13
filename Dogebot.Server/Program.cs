@@ -70,6 +70,9 @@ builder.Services.AddSingleton<IImaxNotificationService, ImaxNotificationService>
 // Register Fortune service
 builder.Services.AddSingleton<IFortuneService, FortuneService>();
 
+// Register Deng AI service
+builder.Services.AddSingleton<IDengAiService, DengAiService>();
+
 // Register Debug Log service
 builder.Services.AddSingleton<DebugLogService>();
 
@@ -107,6 +110,7 @@ builder.Services.AddHostedService<BaseballGameSubscriptionCheckService>();
 //    "• !도움말 / !help - 이 메시지"
 //
 builder.Services.AddSingleton<ICommandHandler, DengCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DengAiCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MyRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankCommandHandler>();
