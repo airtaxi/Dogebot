@@ -255,7 +255,7 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
 
     IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
     [
-        new("get_random_hot_deal", "Get one random hot deal item from the cached or fetched hot deal list.", DengAiJsonSchema.Object())
+        new("get_random_hot_deal", "Get one random hot deal item from the cached or fetched hot deal list. Include the returned Link as plain URL text when introducing the item.", DengAiJsonSchema.Object())
     ];
 
     async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
