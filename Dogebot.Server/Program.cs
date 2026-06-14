@@ -93,6 +93,11 @@ builder.Services.AddSingleton<LottoService>();
 builder.Services.AddSingleton<ILottoService>(serviceProvider => serviceProvider.GetRequiredService<LottoService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<LottoService>());
 
+// Register Deng web search service
+builder.Services.AddSingleton<DengWebSearchService>();
+builder.Services.AddSingleton<IDengWebSearchService>(serviceProvider => serviceProvider.GetRequiredService<DengWebSearchService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<DengWebSearchService>());
+
 // Register Deng AI service
 builder.Services.AddSingleton<IDengAiService, DengAiService>();
 
