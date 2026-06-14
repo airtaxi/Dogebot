@@ -10,7 +10,7 @@ public enum ImaxSessionType
     MovieList
 }
 
-public interface IImaxNotificationService
+public interface IImaxNotificationService : IDengAiCallableService
 {
     /// <summary>
     /// Starts a multi-stage session for IMAX-related operations (setup, schedule query, or movie list).

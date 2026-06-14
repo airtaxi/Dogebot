@@ -971,5 +971,186 @@ public class ImaxNotificationService : IImaxNotificationService
             return $"{date.Year}년 {date.Month}월 {date.Day}일";
         return yyyyMMdd;
     }
+
+    #region Deng AI callable service
+
+    IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
+    [
+        new("search_cgv_movies", "Search CGV movies for a theater. Defaults to CGV Yongsan I'Park Mall when theater is omitted.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        {
+            ["movieQuery"] = DengAiJsonSchemaProperty.String("Optional movie search keyword."),
+            ["region"] = DengAiJsonSchemaProperty.String("Optional Korean CGV region name, such as 서울 or 경기."),
+            ["theater"] = DengAiJsonSchemaProperty.String("Optional CGV theater name. Defaults to 용산아이파크몰.")
+        })),
+        new("get_imax_schedule", "Get CGV schedule and IMAX screening information for one movie. Defaults to CGV Yongsan I'Park Mall and today.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        {
+            ["movieQuery"] = DengAiJsonSchemaProperty.String("Movie search keyword."),
+            ["date"] = DengAiJsonSchemaProperty.String("Optional date. Allowed values: today, tomorrow, yyyyMMdd, or yyyy-MM-dd. Defaults to today."),
+            ["region"] = DengAiJsonSchemaProperty.String("Optional Korean CGV region name, such as 서울 or 경기."),
+            ["theater"] = DengAiJsonSchemaProperty.String("Optional CGV theater name. Defaults to 용산아이파크몰.")
+        }, ["movieQuery"]))
+    ];
+
+    async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
+    {
+        return toolName switch
+        {
+            "search_cgv_movies" => await CreateMovieSearchToolResultAsync(arguments),
+            "get_imax_schedule" => await CreateImaxScheduleToolResultAsync(arguments),
+            _ => "Unknown IMAX tool."
+        };
+    }
+
+    private async Task<string> CreateMovieSearchToolResultAsync(string arguments)
+    {
+        var theaterResult = await ResolveToolTheaterAsync(DengAiToolJson.ReadString(arguments, "region"), DengAiToolJson.ReadString(arguments, "theater"));
+        if (!theaterResult.Success) return theaterResult.Message;
+
+        var movieQuery = DengAiToolJson.ReadString(arguments, "movieQuery");
+        var url = string.IsNullOrWhiteSpace(movieQuery) ? $"{ImaxApiBaseUrl}/movies?siteNo={theaterResult.SiteNumber}" : $"{ImaxApiBaseUrl}/movies?siteNo={theaterResult.SiteNumber}&query={Uri.EscapeDataString(movieQuery)}";
+        using var response = await _httpClientFactory.CreateClient().GetAsync(url);
+        if (!response.IsSuccessStatusCode) return $"영화 목록 조회 실패 (HTTP {(int)response.StatusCode})";
+
+        var json = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonElement>(json);
+        var movies = document.GetProperty("movies").EnumerateArray()
+            .Select(movie => new
+            {
+                MovieNumber = movie.GetProperty("movieNumber").GetString(),
+                MovieName = movie.GetProperty("movieName").GetString()
+            })
+            .ToList();
+
+        return DengAiToolJson.Serialize(new
+        {
+            Theater = theaterResult.SiteName,
+            Query = movieQuery,
+            Count = movies.Count,
+            Movies = movies
+        });
+    }
+
+    private async Task<string> CreateImaxScheduleToolResultAsync(string arguments)
+    {
+        var movieQuery = DengAiToolJson.ReadString(arguments, "movieQuery");
+        if (string.IsNullOrWhiteSpace(movieQuery)) return "movieQuery is required.";
+
+        var dateResult = TryParseToolDate(DengAiToolJson.ReadString(arguments, "date"));
+        if (!dateResult.Success) return dateResult.Message;
+
+        var theaterResult = await ResolveToolTheaterAsync(DengAiToolJson.ReadString(arguments, "region"), DengAiToolJson.ReadString(arguments, "theater"));
+        if (!theaterResult.Success) return theaterResult.Message;
+
+        var httpClient = _httpClientFactory.CreateClient();
+        var movieSearchUrl = $"{ImaxApiBaseUrl}/movies?siteNo={theaterResult.SiteNumber}&query={Uri.EscapeDataString(movieQuery)}";
+        using var movieResponse = await httpClient.GetAsync(movieSearchUrl);
+        if (!movieResponse.IsSuccessStatusCode) return $"영화 검색 실패 (HTTP {(int)movieResponse.StatusCode})";
+
+        var movieJson = await movieResponse.Content.ReadAsStringAsync();
+        var movieDocument = JsonSerializer.Deserialize<JsonElement>(movieJson);
+        var movies = movieDocument.GetProperty("movies");
+        if (movies.GetArrayLength() == 0) return $"'{movieQuery}'에 해당하는 영화를 찾을 수 없습니다.";
+        if (movies.GetArrayLength() > 1)
+        {
+            var movieCandidates = movies.EnumerateArray().Select(movie => movie.GetProperty("movieName").GetString()).ToList();
+            return DengAiToolJson.Serialize(new { Message = "검색 결과가 여러 개입니다.", Movies = movieCandidates });
+        }
+
+        var selectedMovie = movies[0];
+        var movieNumber = selectedMovie.GetProperty("movieNumber").GetString();
+        var movieName = selectedMovie.GetProperty("movieName").GetString();
+        var scheduleUrl = $"{ImaxApiBaseUrl}/schedule?siteNo={theaterResult.SiteNumber}&date={dateResult.DateText}&movNo={movieNumber}";
+        using var scheduleResponse = await httpClient.GetAsync(scheduleUrl);
+        if (!scheduleResponse.IsSuccessStatusCode) return $"시간표 조회 실패 (HTTP {(int)scheduleResponse.StatusCode})";
+
+        var scheduleJson = await scheduleResponse.Content.ReadAsStringAsync();
+        var scheduleDocument = JsonSerializer.Deserialize<JsonElement>(scheduleJson);
+        var screenings = scheduleDocument.GetProperty("screenings").EnumerateArray()
+            .Select(screening => new
+            {
+                StartTime = screening.GetProperty("startTime").GetString(),
+                EndTime = screening.GetProperty("endTime").GetString(),
+                Format = screening.GetProperty("format").GetString(),
+                ScreenName = screening.GetProperty("screenName").GetString(),
+                FreeSeats = screening.GetProperty("freeSeats").GetInt32(),
+                TotalSeats = screening.GetProperty("totalSeats").GetInt32(),
+                IsImax = screening.GetProperty("isImax").GetBoolean()
+            })
+            .ToList();
+
+        return DengAiToolJson.Serialize(new
+        {
+            Theater = theaterResult.SiteName,
+            Date = dateResult.DateText,
+            MovieName = movieName,
+            HasImax = scheduleDocument.GetProperty("hasImax").GetBoolean(),
+            ImaxCount = scheduleDocument.GetProperty("imaxCount").GetInt32(),
+            TotalCount = scheduleDocument.GetProperty("totalCount").GetInt32(),
+            Screenings = screenings
+        });
+    }
+
+    private async Task<ImaxToolTheaterResult> ResolveToolTheaterAsync(string? regionName, string? theaterName)
+    {
+        if (string.IsNullOrWhiteSpace(regionName) && string.IsNullOrWhiteSpace(theaterName)) return new ImaxToolTheaterResult(true, "0013", "용산아이파크몰", string.Empty);
+
+        var normalizedTheaterName = NormalizeToolSearchText(theaterName ?? string.Empty);
+        var regions = Regions.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(regionName))
+        {
+            var normalizedRegionName = NormalizeToolSearchText(regionName);
+            regions = regions.Where(region => NormalizeToolSearchText(region.Name).Contains(normalizedRegionName, StringComparison.OrdinalIgnoreCase) || normalizedRegionName.Contains(NormalizeToolSearchText(region.Name), StringComparison.OrdinalIgnoreCase));
+        }
+
+        foreach (var region in regions)
+        {
+            var theaterResult = await TryResolveToolTheaterInRegionAsync(region.Code, normalizedTheaterName);
+            if (theaterResult.Success) return theaterResult;
+        }
+
+        return new ImaxToolTheaterResult(false, string.Empty, string.Empty, "영화관을 찾을 수 없습니다.");
+    }
+
+    private async Task<ImaxToolTheaterResult> TryResolveToolTheaterInRegionAsync(string regionCode, string normalizedTheaterName)
+    {
+        var url = $"{ImaxApiBaseUrl}/theaters?regionCode={regionCode}";
+        using var response = await _httpClientFactory.CreateClient().GetAsync(url);
+        if (!response.IsSuccessStatusCode) return new ImaxToolTheaterResult(false, string.Empty, string.Empty, string.Empty);
+
+        var json = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonElement>(json);
+        var theaters = document.GetProperty("theaters").EnumerateArray()
+            .Select(theater => new
+            {
+                SiteNumber = theater.GetProperty("siteNumber").GetString() ?? string.Empty,
+                SiteName = theater.GetProperty("siteName").GetString() ?? string.Empty
+            })
+            .ToList();
+        if (theaters.Count == 0) return new ImaxToolTheaterResult(false, string.Empty, string.Empty, string.Empty);
+
+        var selectedTheater = string.IsNullOrWhiteSpace(normalizedTheaterName) ? theaters[0] : theaters.FirstOrDefault(theater => NormalizeToolSearchText(theater.SiteName).Contains(normalizedTheaterName, StringComparison.OrdinalIgnoreCase) || normalizedTheaterName.Contains(NormalizeToolSearchText(theater.SiteName), StringComparison.OrdinalIgnoreCase));
+
+        return selectedTheater == null ? new ImaxToolTheaterResult(false, string.Empty, string.Empty, string.Empty) : new ImaxToolTheaterResult(true, selectedTheater.SiteNumber, selectedTheater.SiteName, string.Empty);
+    }
+
+    private static ImaxToolDateResult TryParseToolDate(string? dateText)
+    {
+        var today = DateTimeOffset.UtcNow.ToOffset(KstOffset).Date;
+        if (string.IsNullOrWhiteSpace(dateText) || dateText.Equals("today", StringComparison.OrdinalIgnoreCase)) return new ImaxToolDateResult(true, today.ToString("yyyyMMdd", CultureInfo.InvariantCulture), string.Empty);
+        if (dateText.Equals("tomorrow", StringComparison.OrdinalIgnoreCase)) return new ImaxToolDateResult(true, today.AddDays(1).ToString("yyyyMMdd", CultureInfo.InvariantCulture), string.Empty);
+        if (DateTime.TryParseExact(dateText, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var compactDate)) return new ImaxToolDateResult(true, compactDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture), string.Empty);
+        if (DateTime.TryParseExact(dateText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dashedDate)) return new ImaxToolDateResult(true, dashedDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture), string.Empty);
+
+        return new ImaxToolDateResult(false, string.Empty, "date must be today, tomorrow, yyyyMMdd, or yyyy-MM-dd.");
+    }
+
+    private static string NormalizeToolSearchText(string value) =>
+        string.Concat(value.Trim().Where(character => !char.IsWhiteSpace(character))).ToUpperInvariant();
+
+    private sealed record ImaxToolTheaterResult(bool Success, string SiteNumber, string SiteName, string Message);
+
+    private sealed record ImaxToolDateResult(bool Success, string DateText, string Message);
+
+    #endregion
 }
 

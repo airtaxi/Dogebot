@@ -1,6 +1,6 @@
 namespace Dogebot.Server.Services;
 
-public interface IStockService
+public interface IStockService : IDengAiCallableService
 {
     Task<string> CreateSummaryMessageAsync(string queryText);
     Task<string> CreateDetailMessageAsync(string queryText);

@@ -285,4 +285,24 @@ public partial class ExchangeRateService(IHttpClientFactory httpClientFactory, I
         [JsonPropertyName("basePrice")]
         public decimal BasePrice { get; init; }
     }
+
+    #region Deng AI callable service
+
+    IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
+    [
+        new("convert_exchange_rate", "Convert an amount between currencies using the latest fetched exchange rates.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        {
+            ["query"] = DengAiJsonSchemaProperty.String("Exchange query in Korean command style, such as '100달러 원화', '달러 엔', or empty for default USD to KRW.")
+        }))
+    ];
+
+    async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
+    {
+        if (!toolName.Equals("convert_exchange_rate", StringComparison.Ordinal)) return "Unknown exchange rate tool.";
+
+        var queryText = DengAiToolJson.ReadString(arguments, "query") ?? string.Empty;
+        return await CreateExchangeRateMessageAsync(queryText);
+    }
+
+    #endregion
 }

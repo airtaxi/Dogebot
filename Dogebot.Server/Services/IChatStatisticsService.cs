@@ -2,7 +2,7 @@ using Dogebot.Commons;
 
 namespace Dogebot.Server.Services;
 
-public interface IChatStatisticsService
+public interface IChatStatisticsService : IDengAiCallableService
 {
     Task RecordMessageAsync(KakaoMessageData data);
     Task<List<string>> GetKnownSenderNamesAsync(string roomId, string excludedSenderHash, long? minimumLastMessageTimeMilliseconds = null);

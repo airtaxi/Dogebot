@@ -11,7 +11,9 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
 
 // Register statistics service
-builder.Services.AddSingleton<IChatStatisticsService, ChatStatisticsService>();
+builder.Services.AddSingleton<ChatStatisticsService>();
+builder.Services.AddSingleton<IChatStatisticsService>(serviceProvider => serviceProvider.GetRequiredService<ChatStatisticsService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<ChatStatisticsService>());
 
 // Register cleanup service
 builder.Services.AddSingleton<MessageCleanupService>();
@@ -20,7 +22,9 @@ builder.Services.AddSingleton<MessageCleanupService>();
 builder.Services.AddSingleton<ISimSimService, SimSimService>();
 
 // Register Weather service
-builder.Services.AddSingleton<IWeatherService, WeatherService>();
+builder.Services.AddSingleton<WeatherService>();
+builder.Services.AddSingleton<IWeatherService>(serviceProvider => serviceProvider.GetRequiredService<WeatherService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<WeatherService>());
 
 // Register Admin service
 builder.Services.AddSingleton<IAdminService, AdminService>();
@@ -38,19 +42,29 @@ builder.Services.AddSingleton<IUserPreferenceService, UserPreferenceService>();
 builder.Services.AddSingleton<IBotSettingService, BotSettingService>();
 
 // Register Hot Deal service
-builder.Services.AddSingleton<IHotDealService, HotDealService>();
+builder.Services.AddSingleton<HotDealService>();
+builder.Services.AddSingleton<IHotDealService>(serviceProvider => serviceProvider.GetRequiredService<HotDealService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<HotDealService>());
 
 // Register Stock service
-builder.Services.AddSingleton<IStockService, StockService>();
+builder.Services.AddSingleton<StockService>();
+builder.Services.AddSingleton<IStockService>(serviceProvider => serviceProvider.GetRequiredService<StockService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<StockService>());
 
 // Register Exchange Rate service
-builder.Services.AddSingleton<IExchangeRateService, ExchangeRateService>();
+builder.Services.AddSingleton<ExchangeRateService>();
+builder.Services.AddSingleton<IExchangeRateService>(serviceProvider => serviceProvider.GetRequiredService<ExchangeRateService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<ExchangeRateService>());
 
 // Register Baseball team ranking service
-builder.Services.AddSingleton<IBaseballTeamRankingService, BaseballTeamRankingService>();
+builder.Services.AddSingleton<BaseballTeamRankingService>();
+builder.Services.AddSingleton<IBaseballTeamRankingService>(serviceProvider => serviceProvider.GetRequiredService<BaseballTeamRankingService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<BaseballTeamRankingService>());
 
 // Register Baseball game schedule service
-builder.Services.AddSingleton<IBaseballGameScheduleService, BaseballGameScheduleService>();
+builder.Services.AddSingleton<BaseballGameScheduleService>();
+builder.Services.AddSingleton<IBaseballGameScheduleService>(serviceProvider => serviceProvider.GetRequiredService<BaseballGameScheduleService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<BaseballGameScheduleService>());
 
 // Register Baseball game subscription service
 builder.Services.AddSingleton<IBaseballGameSubscriptionService, BaseballGameSubscriptionService>();
@@ -65,10 +79,19 @@ builder.Services.AddSingleton<IScheduledMessageService, ScheduledMessageService>
 builder.Services.AddSingleton<IRoomMigrationService, RoomMigrationService>();
 
 // Register IMAX Notification service
-builder.Services.AddSingleton<IImaxNotificationService, ImaxNotificationService>();
+builder.Services.AddSingleton<ImaxNotificationService>();
+builder.Services.AddSingleton<IImaxNotificationService>(serviceProvider => serviceProvider.GetRequiredService<ImaxNotificationService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<ImaxNotificationService>());
 
 // Register Fortune service
-builder.Services.AddSingleton<IFortuneService, FortuneService>();
+builder.Services.AddSingleton<FortuneService>();
+builder.Services.AddSingleton<IFortuneService>(serviceProvider => serviceProvider.GetRequiredService<FortuneService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<FortuneService>());
+
+// Register Lotto service
+builder.Services.AddSingleton<LottoService>();
+builder.Services.AddSingleton<ILottoService>(serviceProvider => serviceProvider.GetRequiredService<LottoService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<LottoService>());
 
 // Register Deng AI service
 builder.Services.AddSingleton<IDengAiService, DengAiService>();

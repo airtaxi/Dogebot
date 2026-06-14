@@ -250,4 +250,31 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
 
     [GeneratedRegex(@"\[\d+\]")]
     private static partial Regex CommentCountRegex();
+
+    #region Deng AI callable service
+
+    IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
+    [
+        new("get_random_hot_deal", "Get one random hot deal item from the cached or fetched hot deal list.", DengAiJsonSchema.Object())
+    ];
+
+    async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
+    {
+        if (!toolName.Equals("get_random_hot_deal", StringComparison.Ordinal)) return "Unknown hot deal tool.";
+
+        var hotDealItem = await GetRandomHotDealAsync();
+        if (hotDealItem == null) return "핫딜 정보를 가져오지 못했습니다.";
+
+        return DengAiToolJson.Serialize(new
+        {
+            hotDealItem.Title,
+            hotDealItem.Price,
+            hotDealItem.ShippingCost,
+            hotDealItem.Mall,
+            hotDealItem.Link,
+            LastCacheTime = GetLastCacheTime()
+        });
+    }
+
+    #endregion
 }
