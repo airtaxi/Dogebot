@@ -34,7 +34,6 @@ public class DengWebSearchService(IHttpClientFactory httpClientFactory, ILogger<
             include_answer = false,
             include_raw_content = false,
             include_images = false,
-            safe_search = true,
             topic
         };
 
