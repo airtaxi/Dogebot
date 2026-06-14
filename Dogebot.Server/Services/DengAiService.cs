@@ -1,12 +1,13 @@
 using System.ClientModel;
 using System.Globalization;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using OpenAI;
 using OpenAI.Chat;
 
 namespace Dogebot.Server.Services;
 
-public class DengAiService : IDengAiService
+public partial class DengAiService : IDengAiService
 {
     private const string BaseUrlEnvironmentVariableName = "DOGEBOT_DENG_AI_BASE_URL";
     private const string ApiKeyEnvironmentVariableName = "DOGEBOT_DENG_AI_API_KEY";
@@ -153,6 +154,7 @@ public class DengAiService : IDengAiService
     private string? ExtractReply(ChatCompletion completion)
     {
         var reply = completion.Content.Count > 0 ? completion.Content[0].Text.Trim() : string.Empty;
+        reply = RemoveKnownMarkdownSyntax(reply).Trim();
 
         if (string.IsNullOrWhiteSpace(reply))
         {
@@ -162,6 +164,48 @@ public class DengAiService : IDengAiService
 
         return TrimToMaximumCharacters(reply);
     }
+
+    private static string RemoveKnownMarkdownSyntax(string message)
+    {
+        var plainText = MarkdownImageRegex().Replace(message, "$1");
+        plainText = MarkdownLinkRegex().Replace(plainText, "$1");
+        plainText = MarkdownCodeFenceRegex().Replace(plainText, string.Empty);
+        plainText = MarkdownHeadingRegex().Replace(plainText, string.Empty);
+        plainText = MarkdownBlockQuoteRegex().Replace(plainText, string.Empty);
+        plainText = MarkdownListMarkerRegex().Replace(plainText, string.Empty);
+        plainText = MarkdownTableSeparatorRegex().Replace(plainText, string.Empty);
+        plainText = MarkdownDelimitedTextRegex().Replace(plainText, "$2");
+        plainText = MarkdownItalicTextRegex().Replace(plainText, match => match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value);
+        plainText = plainText.Replace("|", string.Empty, StringComparison.Ordinal);
+        return plainText.ReplaceLineEndings("\n");
+    }
+
+    [GeneratedRegex(@"!\[([^\]]*)\]\([^)]+\)", RegexOptions.CultureInvariant)]
+    private static partial Regex MarkdownImageRegex();
+
+    [GeneratedRegex(@"\[([^\]]+)\]\([^)]+\)", RegexOptions.CultureInvariant)]
+    private static partial Regex MarkdownLinkRegex();
+
+    [GeneratedRegex(@"^\s*```.*$", RegexOptions.CultureInvariant | RegexOptions.Multiline)]
+    private static partial Regex MarkdownCodeFenceRegex();
+
+    [GeneratedRegex(@"^\s{0,3}#{1,6}\s+", RegexOptions.CultureInvariant | RegexOptions.Multiline)]
+    private static partial Regex MarkdownHeadingRegex();
+
+    [GeneratedRegex(@"^\s{0,3}>\s?", RegexOptions.CultureInvariant | RegexOptions.Multiline)]
+    private static partial Regex MarkdownBlockQuoteRegex();
+
+    [GeneratedRegex(@"^\s{0,3}(?:[-*+]\s+|\d+[.)]\s+)", RegexOptions.CultureInvariant | RegexOptions.Multiline)]
+    private static partial Regex MarkdownListMarkerRegex();
+
+    [GeneratedRegex(@"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$", RegexOptions.CultureInvariant | RegexOptions.Multiline)]
+    private static partial Regex MarkdownTableSeparatorRegex();
+
+    [GeneratedRegex(@"(\*\*|__|~~|`)(.+?)\1", RegexOptions.CultureInvariant | RegexOptions.Singleline)]
+    private static partial Regex MarkdownDelimitedTextRegex();
+
+    [GeneratedRegex(@"(?<!\*)\*(?!\s|\*)(.+?)(?<!\s|\*)\*(?!\*)|(?<!_)_(?!\s|_)(.+?)(?<!\s|_)_(?!_)", RegexOptions.CultureInvariant | RegexOptions.Singleline)]
+    private static partial Regex MarkdownItalicTextRegex();
 
     private void RegisterTools(IEnumerable<IDengAiCallableService> callableServices)
     {
