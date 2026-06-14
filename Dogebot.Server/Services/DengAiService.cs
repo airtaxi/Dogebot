@@ -12,6 +12,8 @@ public partial class DengAiService : IDengAiService
     private const string BaseUrlEnvironmentVariableName = "DOGEBOT_DENG_AI_BASE_URL";
     private const string ApiKeyEnvironmentVariableName = "DOGEBOT_DENG_AI_API_KEY";
     private const string ModelEnvironmentVariableName = "DOGEBOT_DENG_AI_MODEL";
+    private const string ProviderOrderEnvironmentVariableName = "DOGEBOT_DENG_AI_PROVIDER_ORDER";
+    private const string ProviderAllowFallbacksEnvironmentVariableName = "DOGEBOT_DENG_AI_PROVIDER_ALLOW_FALLBACKS";
     private const int MaximumResponseCharacterCount = 800;
     private const int MaximumOutputTokenCount = 1000;
     private const int MaximumToolCallLoopCount = 2;
@@ -34,6 +36,8 @@ public partial class DengAiService : IDengAiService
     private readonly Dictionary<string, IDengAiCallableService> _callableServiceMap = new(StringComparer.Ordinal);
     private readonly List<ChatTool> _chatTools = [];
     private readonly ILogger<DengAiService> _logger;
+    private readonly bool? _providerAllowFallbacks;
+    private readonly IReadOnlyList<string> _providerOrder;
 
     public DengAiService(IEnumerable<IDengAiCallableService> callableServices, ILogger<DengAiService> logger)
     {
@@ -43,6 +47,8 @@ public partial class DengAiService : IDengAiService
         var baseUrl = Environment.GetEnvironmentVariable(BaseUrlEnvironmentVariableName);
         var apiKey = Environment.GetEnvironmentVariable(ApiKeyEnvironmentVariableName);
         var model = Environment.GetEnvironmentVariable(ModelEnvironmentVariableName);
+        _providerOrder = ParseProviderOrder(Environment.GetEnvironmentVariable(ProviderOrderEnvironmentVariableName));
+        _providerAllowFallbacks = ParseProviderAllowFallbacks(Environment.GetEnvironmentVariable(ProviderAllowFallbacksEnvironmentVariableName));
 
         if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(model))
         {
@@ -80,10 +86,7 @@ public partial class DengAiService : IDengAiService
             new UserChatMessage(userMessage)
         };
 
-        var options = new ChatCompletionOptions
-        {
-            MaxOutputTokenCount = MaximumOutputTokenCount
-        };
+        var options = CreateChatCompletionOptions();
 
         if (_chatTools.Count == 0) return await CompleteSimpleChatAsync(messages, options, cancellationToken);
 
@@ -98,10 +101,7 @@ public partial class DengAiService : IDengAiService
                 new SystemChatMessage(SystemPrompt),
                 new UserChatMessage(userMessage)
             ];
-            options = new ChatCompletionOptions
-            {
-                MaxOutputTokenCount = MaximumOutputTokenCount
-            };
+            options = CreateChatCompletionOptions();
             return await CompleteSimpleChatAsync(messages, options, cancellationToken);
         }
     }
@@ -206,6 +206,40 @@ public partial class DengAiService : IDengAiService
 
     [GeneratedRegex(@"(?<!\*)\*(?!\s|\*)(.+?)(?<!\s|\*)\*(?!\*)|(?<!_)_(?!\s|_)(.+?)(?<!\s|_)_(?!_)", RegexOptions.CultureInvariant | RegexOptions.Singleline)]
     private static partial Regex MarkdownItalicTextRegex();
+
+    private ChatCompletionOptions CreateChatCompletionOptions()
+    {
+        var options = new ChatCompletionOptions
+        {
+            MaxOutputTokenCount = MaximumOutputTokenCount
+        };
+        ApplyProviderOptions(options);
+        return options;
+    }
+
+    private void ApplyProviderOptions(ChatCompletionOptions options)
+    {
+        if (_providerOrder.Count == 0 && !_providerAllowFallbacks.HasValue) return;
+
+        var providerOptions = new Dictionary<string, object>();
+        if (_providerOrder.Count > 0) providerOptions["order"] = _providerOrder;
+        if (_providerAllowFallbacks.HasValue) providerOptions["allow_fallbacks"] = _providerAllowFallbacks.Value;
+
+#pragma warning disable SCME0001
+        options.Patch.Set("$.provider"u8, BinaryData.FromObjectAsJson(providerOptions, DengAiToolJson.SerializerOptions));
+#pragma warning restore SCME0001
+    }
+
+    private static IReadOnlyList<string> ParseProviderOrder(string? providerOrder) =>
+        string.IsNullOrWhiteSpace(providerOrder) ? [] : providerOrder.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static bool? ParseProviderAllowFallbacks(string? providerAllowFallbacks)
+    {
+        if (string.IsNullOrWhiteSpace(providerAllowFallbacks)) return null;
+        if (bool.TryParse(providerAllowFallbacks, out var allowFallbacks)) return allowFallbacks;
+        if (int.TryParse(providerAllowFallbacks, CultureInfo.InvariantCulture, out var numericAllowFallbacks)) return numericAllowFallbacks != 0;
+        return null;
+    }
 
     private void RegisterTools(IEnumerable<IDengAiCallableService> callableServices)
     {
