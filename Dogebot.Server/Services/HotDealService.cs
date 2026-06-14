@@ -41,7 +41,7 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
         }
     }
 
-    public async Task<HotDealItem?> GetRandomHotDealAsync()
+    public async Task<IReadOnlyList<HotDealItem>> GetRecentHotDealsAsync()
     {
         try
         {
@@ -69,7 +69,7 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
                 if (string.IsNullOrEmpty(html))
                 {
                     logger.LogError("[HOTDEAL] Failed to fetch hot deals page");
-                    return null;
+                    return [];
                 }
 
                 deals = ParseHotDeals(html);
@@ -77,7 +77,7 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
                 if (deals.Count == 0)
                 {
                     logger.LogWarning("[HOTDEAL] No hot deals found on the page");
-                    return null;
+                    return [];
                 }
 
                 // Update cache
@@ -88,12 +88,27 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
                 }
             }
 
-            var randomDeal = deals[Random.Shared.Next(deals.Count)];
-            return randomDeal;
+            return deals;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "[HOTDEAL] Error fetching hot deals");
+            return [];
+        }
+    }
+
+    public async Task<HotDealItem?> GetRandomHotDealAsync()
+    {
+        try
+        {
+            var deals = await GetRecentHotDealsAsync();
+            if (deals.Count == 0) return null;
+
+            return deals[Random.Shared.Next(deals.Count)];
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "[HOTDEAL] Error selecting random hot deal");
             return null;
         }
     }
@@ -255,13 +270,22 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
 
     IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
     [
-        new("get_random_hot_deal", "Get one random hot deal item from the cached or fetched hot deal list. Include the returned Link as plain URL text when introducing the item.", DengAiJsonSchema.Object())
+        new("get_random_hot_deal", "Get one random hot deal item from the cached or fetched hot deal list. Include the returned Link as plain URL text when introducing the item.", DengAiJsonSchema.Object()),
+        new("get_recent_hot_deals", "Get the current first page of recent hot deal items for Deng AI RAG context. Use this when the user asks for recent hot deals, compares deals, or wants hot deal recommendations from the latest list. Include item links as plain URL text when recommending specific items.", DengAiJsonSchema.Object())
     ];
 
     async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
     {
-        if (!toolName.Equals("get_random_hot_deal", StringComparison.Ordinal)) return "Unknown hot deal tool.";
+        return toolName switch
+        {
+            "get_random_hot_deal" => await CreateRandomHotDealToolResultAsync(),
+            "get_recent_hot_deals" => await CreateRecentHotDealsToolResultAsync(),
+            _ => "Unknown hot deal tool."
+        };
+    }
 
+    private async Task<string> CreateRandomHotDealToolResultAsync()
+    {
         var hotDealItem = await GetRandomHotDealAsync();
         if (hotDealItem == null) return "핫딜 정보를 가져오지 못했습니다.";
 
@@ -272,6 +296,25 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
             hotDealItem.ShippingCost,
             hotDealItem.Mall,
             hotDealItem.Link,
+            LastCacheTime = GetLastCacheTime()
+        });
+    }
+
+    private async Task<string> CreateRecentHotDealsToolResultAsync()
+    {
+        var hotDealItems = await GetRecentHotDealsAsync();
+        if (hotDealItems.Count == 0) return "핫딜 정보를 가져오지 못했습니다.";
+
+        return DengAiToolJson.Serialize(new
+        {
+            HotDeals = hotDealItems.Select(hotDealItem => new
+            {
+                hotDealItem.Title,
+                hotDealItem.Price,
+                hotDealItem.ShippingCost,
+                hotDealItem.Mall,
+                hotDealItem.Link
+            }).ToList(),
             LastCacheTime = GetLastCacheTime()
         });
     }
