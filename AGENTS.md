@@ -7,6 +7,7 @@
 - Git commit은 영어로 작성한다.
 - 빌드는 사용자가 요청하였을 때에만 진행한다.
 - 별도의 안내가 없으면 참조한 파일의 주석 언어를 그대로 유지한다 (영어 주석 → 영어, 한국어 주석 → 한국어).
+- 새 기능을 구현할 때 해당 기능이 DengAi에 노출할 만한 기능이면, DengAi tool로도 추가할지 사용자에게 확인한다.
 
 ## Build Commands
 
@@ -168,6 +169,9 @@ public class ExampleCommandHandler(ILogger<ExampleCommandHandler> logger) : ICom
 - 생성자에서 `IMongoDbService`를 주입받아 `GetCollection<T>("collectionName")` 호출.
 - `CreateIndexes()` 메서드를 별도로 분리하고, 생성자에서 호출.
 - 인덱스 생성에 constructor body가 필요하므로 primary constructor 대신 일반 생성자 사용.
+- `IDengAiCallableService` 구현은 각 서비스 클래스 맨 아래 `#region Deng AI callable service`에 모아둔다.
+- 기존 서비스의 핵심 로직과 도지 tool 노출 로직을 섞지 않는다.
+- 도지 tool은 조회/요약 전용으로 유지하고 상태 변경 기능은 노출하지 않는다.
 
 ```csharp
 public class ExampleService : IExampleService

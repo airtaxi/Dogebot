@@ -2,7 +2,7 @@ using Dogebot.Server.Models;
 
 namespace Dogebot.Server.Services;
 
-public interface IBaseballTeamRankingService
+public interface IBaseballTeamRankingService : IDengAiCallableService
 {
     Task<BaseballTeamRankingSnapshot?> GetDailyBaseballTeamRankingSnapshotAsync();
     Task<BaseballTopFiveSnapshot?> GetBaseballTopFiveSnapshotAsync();

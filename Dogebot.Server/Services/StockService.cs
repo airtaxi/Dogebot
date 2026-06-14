@@ -932,4 +932,38 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         ForeignPopular,
         ForeignMarketValue
     }
+
+    #region Deng AI callable service
+
+    IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
+    [
+        new("get_stock_summary", "Get a short stock summary by stock name, code, or ticker.", CreateStockQuerySchema("Stock name, code, or ticker to query.", true)),
+        new("get_stock_detail", "Get detailed stock information by stock name, code, or ticker.", CreateStockQuerySchema("Stock name, code, or ticker to query.", true)),
+        new("get_stock_chart", "Get recent stock chart summary by stock name, code, or ticker.", CreateStockQuerySchema("Stock name, code, or ticker to query.", true)),
+        new("get_stock_news", "Get stock news. Query can be omitted for main market news.", CreateStockQuerySchema("Stock name, code, ticker, or empty for main market news.", false)),
+        new("get_market_summary", "Get market summary for domestic or US market.", CreateStockQuerySchema("Market query such as domestic index, domestic popular, US popular, NASDAQ market cap.", true))
+    ];
+
+    async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
+    {
+        var queryText = DengAiToolJson.ReadString(arguments, "query") ?? string.Empty;
+
+        return toolName switch
+        {
+            "get_stock_summary" => await CreateSummaryMessageAsync(queryText),
+            "get_stock_detail" => await CreateDetailMessageAsync(queryText),
+            "get_stock_chart" => await CreateChartMessageAsync(queryText),
+            "get_stock_news" => await CreateNewsMessageAsync(queryText),
+            "get_market_summary" => await CreateMarketMessageAsync(queryText),
+            _ => "Unknown stock tool."
+        };
+    }
+
+    private static DengAiJsonSchema CreateStockQuerySchema(string description, bool required) =>
+        DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        {
+            ["query"] = DengAiJsonSchemaProperty.String(description)
+        }, required ? ["query"] : null);
+
+    #endregion
 }

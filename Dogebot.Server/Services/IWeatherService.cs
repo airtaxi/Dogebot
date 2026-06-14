@@ -2,7 +2,7 @@ using Dogebot.Server.Models;
 
 namespace Dogebot.Server.Services;
 
-public interface IWeatherService
+public interface IWeatherService : IDengAiCallableService
 {
     Task<WeatherResponse?> GetWeatherAsync(string city = "Seoul");
     Task<WeatherResponse?> GetWeatherByCoordinatesAsync(double lat, double lon);

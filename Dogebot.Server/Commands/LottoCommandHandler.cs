@@ -1,11 +1,10 @@
 using Dogebot.Commons;
+using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class LottoCommandHandler(ILogger<LottoCommandHandler> logger) : ICommandHandler
+public class LottoCommandHandler(ILottoService lottoService, ILogger<LottoCommandHandler> logger) : ICommandHandler
 {
-    private readonly Random _random = new();
-
     public string Command => "!로또";
 
     public bool CanHandle(string content)
@@ -25,14 +24,7 @@ public class LottoCommandHandler(ILogger<LottoCommandHandler> logger) : ICommand
                 count = Math.Max(1, Math.Min(parsedCount, 10));
             }
 
-            var lines = new string[count];
-            for (var i = 0; i < count; i++)
-            {
-                var numbers = Enumerable.Range(1, 45).OrderBy(_ => _random.Next()).Take(6).OrderBy(n => n).ToArray();
-                lines[i] = $"{i + 1}회: {string.Join(", ", numbers)}";
-            }
-
-            var message = count == 1 ? $"🎱 로또 번호\n{lines[0][4..]}" : $"🎱 로또 번호 ({count}회)\n\n{string.Join('\n', lines)}";
+            var message = lottoService.CreateLottoMessage(count);
 
             if (logger.IsEnabled(LogLevel.Information))
                 logger.LogInformation("[LOTTO] Generated {Count} set(s) for {Sender} in room {RoomId}", count, data.SenderName, data.RoomId);

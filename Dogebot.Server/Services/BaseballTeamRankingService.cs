@@ -726,5 +726,29 @@ public partial class BaseballTeamRankingService(IHttpClientFactory httpClientFac
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhiteSpaceRegex();
+
+    #region Deng AI callable service
+
+    IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
+    [
+        new("get_baseball_team_ranking", "Get current KBO team ranking.", DengAiJsonSchema.Object()),
+        new("get_baseball_player_ranking", "Get KBO batting and pitching top five rankings.", DengAiJsonSchema.Object()),
+        new("get_baseball_crowd_ranking", "Get KBO crowd ranking by team.", DengAiJsonSchema.Object()),
+        new("get_baseball_news", "Get recent KBO news for the current target date.", DengAiJsonSchema.Object())
+    ];
+
+    async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
+    {
+        return toolName switch
+        {
+            "get_baseball_team_ranking" => DengAiToolJson.SerializeOrMessage(await GetDailyBaseballTeamRankingSnapshotAsync(), "KBO 팀 순위를 가져오지 못했습니다."),
+            "get_baseball_player_ranking" => DengAiToolJson.SerializeOrMessage(await GetBaseballTopFiveSnapshotAsync(), "KBO 선수 순위를 가져오지 못했습니다."),
+            "get_baseball_crowd_ranking" => DengAiToolJson.SerializeOrMessage(await GetBaseballCrowdRankingSnapshotAsync(), "KBO 관중 순위를 가져오지 못했습니다."),
+            "get_baseball_news" => DengAiToolJson.SerializeOrMessage(await GetBaseballNewsSnapshotAsync(), "KBO 뉴스를 가져오지 못했습니다."),
+            _ => "Unknown baseball ranking tool."
+        };
+    }
+
+    #endregion
 }
 

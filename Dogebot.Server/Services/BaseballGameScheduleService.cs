@@ -305,4 +305,54 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
     private sealed record BaseballGroundPayload([property: JsonPropertyName("ball")] int? Ball, [property: JsonPropertyName("strike")] int? Strike, [property: JsonPropertyName("out")] int? Out, [property: JsonPropertyName("base1")] string? BaseFirstRunnerProviderPersonId, [property: JsonPropertyName("base2")] string? BaseSecondRunnerProviderPersonId, [property: JsonPropertyName("base3")] string? BaseThirdRunnerProviderPersonId, [property: JsonPropertyName("lastPeriod")] string? LastPeriod);
 
     private sealed record BaseballLiveEventPayload([property: JsonPropertyName("period")] string? Period, [property: JsonPropertyName("batter")] string? BatterProviderPersonId, [property: JsonPropertyName("ballCount")] int? BallCount, [property: JsonPropertyName("ball")] int? Ball, [property: JsonPropertyName("strike")] int? Strike, [property: JsonPropertyName("speed")] int? Speed, [property: JsonPropertyName("pitcher")] string? PitcherProviderPersonId, [property: JsonPropertyName("text")] string? Text, [property: JsonPropertyName("stuff")] string? PitchKind);
+
+    #region Deng AI callable service
+
+    IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
+    [
+        new("get_baseball_schedule", "Get KBO game schedule for today, tomorrow, or a yyyy-MM-dd date.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        {
+            ["date"] = DengAiJsonSchemaProperty.String("Allowed values: today, tomorrow, or yyyy-MM-dd. Defaults to today.")
+        })),
+        new("get_baseball_game_detail", "Get KBO game detail by game id for today, tomorrow, or a yyyy-MM-dd date.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        {
+            ["date"] = DengAiJsonSchemaProperty.String("Allowed values: today, tomorrow, or yyyy-MM-dd. Defaults to today."),
+            ["gameId"] = DengAiJsonSchemaProperty.Integer("Game id from get_baseball_schedule.")
+        }, ["gameId"]))
+    ];
+
+    async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
+    {
+        var dateParseResult = TryParseToolDate(DengAiToolJson.ReadString(arguments, "date"));
+        if (!dateParseResult.Success) return dateParseResult.Message;
+
+        return toolName switch
+        {
+            "get_baseball_schedule" => DengAiToolJson.SerializeOrMessage(await GetGameSnapshotAsync(dateParseResult.TargetDate), "KBO 경기 일정을 가져오지 못했습니다."),
+            "get_baseball_game_detail" => await CreateGameDetailToolResultAsync(arguments, dateParseResult.TargetDate),
+            _ => "Unknown baseball schedule tool."
+        };
+    }
+
+    private async Task<string> CreateGameDetailToolResultAsync(string arguments, DateOnly targetDate)
+    {
+        var gameId = DengAiToolJson.ReadInt64(arguments, "gameId");
+        if (!gameId.HasValue) return "gameId is required.";
+
+        var gameDetail = await GetGameDetailAsync(targetDate, gameId.Value);
+        return gameDetail == null ? DengAiToolJson.Serialize(new { Message = "KBO 경기 상세 정보를 가져오지 못했습니다.", GameId = gameId.Value }) : DengAiToolJson.Serialize(gameDetail);
+    }
+
+    private static BaseballToolDateParseResult TryParseToolDate(string? dateText)
+    {
+        if (string.IsNullOrWhiteSpace(dateText) || dateText.Equals("today", StringComparison.OrdinalIgnoreCase)) return new BaseballToolDateParseResult(true, GetTodayKoreanDate(), string.Empty);
+        if (dateText.Equals("tomorrow", StringComparison.OrdinalIgnoreCase)) return new BaseballToolDateParseResult(true, GetTodayKoreanDate().AddDays(1), string.Empty);
+        if (DateOnly.TryParseExact(dateText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var targetDate)) return new BaseballToolDateParseResult(true, targetDate, string.Empty);
+
+        return new BaseballToolDateParseResult(false, default, "date must be today, tomorrow, or yyyy-MM-dd.");
+    }
+
+    private sealed record BaseballToolDateParseResult(bool Success, DateOnly TargetDate, string Message);
+
+    #endregion
 }

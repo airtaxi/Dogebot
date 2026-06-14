@@ -2,7 +2,7 @@ using Dogebot.Server.Models;
 
 namespace Dogebot.Server.Services;
 
-public interface IBaseballGameScheduleService
+public interface IBaseballGameScheduleService : IDengAiCallableService
 {
     Task<BaseballGameScheduleSnapshot?> GetTodayGameSnapshotAsync();
     Task<BaseballGameDetail?> GetTodayGameDetailAsync(long gameId);

@@ -1,6 +1,6 @@
 namespace Dogebot.Server.Services;
 
-public interface IHotDealService
+public interface IHotDealService : IDengAiCallableService
 {
     Task<HotDealItem?> GetRandomHotDealAsync();
     DateTime? GetLastCacheTime();

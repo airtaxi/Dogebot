@@ -411,5 +411,103 @@ public class ChatStatisticsService : IChatStatisticsService
             .Select(g => (Month: g.Key, MessageCount: g.Sum(r => r.MessageCount)))
             .OrderBy(x => x.Month)];
     }
+
+    #region Deng AI callable service
+
+    IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
+    [
+        new("get_chat_room_statistics", "Get total message count and unique user count for the current chat room.", DengAiJsonSchema.Object()),
+        new("get_chat_user_ranking", "Get message count ranking for users in the current chat room.", CreateRankingSchema()),
+        new("get_chat_my_ranking", "Get the current sender's message count rank in the current chat room.", DengAiJsonSchema.Object()),
+        new("get_chat_message_ranking", "Get frequent message content ranking in the current chat room.", CreateRankingSchema()),
+        new("get_chat_word_ranking", "Get frequent word ranking in the current chat room.", CreateRankingSchema()),
+        new("get_chat_hourly_statistics", "Get hourly message statistics for the current chat room or current sender.", CreateStatisticsScopeSchema()),
+        new("get_chat_daily_statistics", "Get day-of-week message statistics for the current chat room or current sender.", CreateStatisticsScopeSchema()),
+        new("get_chat_monthly_statistics", "Get monthly message statistics for the current chat room or current sender.", CreateStatisticsScopeSchema())
+    ];
+
+    async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
+    {
+        return toolName switch
+        {
+            "get_chat_room_statistics" => await CreateRoomStatisticsToolResultAsync(context),
+            "get_chat_user_ranking" => await CreateUserRankingToolResultAsync(arguments, context),
+            "get_chat_my_ranking" => await CreateMyRankingToolResultAsync(context),
+            "get_chat_message_ranking" => await CreateMessageRankingToolResultAsync(arguments, context),
+            "get_chat_word_ranking" => await CreateWordRankingToolResultAsync(arguments, context),
+            "get_chat_hourly_statistics" => await CreateHourlyStatisticsToolResultAsync(arguments, context),
+            "get_chat_daily_statistics" => await CreateDailyStatisticsToolResultAsync(arguments, context),
+            "get_chat_monthly_statistics" => await CreateMonthlyStatisticsToolResultAsync(arguments, context),
+            _ => "Unknown chat statistics tool."
+        };
+    }
+
+    private static DengAiJsonSchema CreateRankingSchema() =>
+        DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        {
+            ["limit"] = DengAiJsonSchemaProperty.Integer("Maximum number of ranking rows. Allowed range is 1 to 20.", 1, 20)
+        });
+
+    private static DengAiJsonSchema CreateStatisticsScopeSchema() =>
+        DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        {
+            ["scope"] = DengAiJsonSchemaProperty.String("Use 'room' for the current room or 'me' for the current sender.", ["room", "me"])
+        });
+
+    private static int ReadRankingLimit(string arguments) =>
+        Math.Clamp(DengAiToolJson.ReadInt32(arguments, "limit") ?? 10, 1, 20);
+
+    private static bool IsMeScope(string arguments) =>
+        string.Equals(DengAiToolJson.ReadString(arguments, "scope"), "me", StringComparison.OrdinalIgnoreCase);
+
+    private async Task<string> CreateRoomStatisticsToolResultAsync(DengAiToolContext context)
+    {
+        var statistics = await GetRoomStatisticsAsync(context.RoomId);
+        return DengAiToolJson.Serialize(new { statistics.TotalMessages, statistics.UniqueUsers });
+    }
+
+    private async Task<string> CreateUserRankingToolResultAsync(string arguments, DengAiToolContext context)
+    {
+        var rankings = await GetTopUsersAsync(context.RoomId, ReadRankingLimit(arguments));
+        return DengAiToolJson.Serialize(rankings.Select(ranking => new { ranking.SenderName, ranking.MessageCount }).ToList());
+    }
+
+    private async Task<string> CreateMyRankingToolResultAsync(DengAiToolContext context)
+    {
+        var ranking = await GetUserRankAsync(context.RoomId, context.SenderHash);
+        return ranking.HasValue ? DengAiToolJson.Serialize(new { ranking.Value.Rank, ranking.Value.MessageCount }) : DengAiToolJson.Serialize(new { Message = "현재 사용자의 랭킹을 찾지 못했습니다." });
+    }
+
+    private async Task<string> CreateMessageRankingToolResultAsync(string arguments, DengAiToolContext context)
+    {
+        var rankings = await GetTopMessagesAsync(context.RoomId, ReadRankingLimit(arguments));
+        return DengAiToolJson.Serialize(rankings.Select(ranking => new { ranking.Content, ranking.Count }).ToList());
+    }
+
+    private async Task<string> CreateWordRankingToolResultAsync(string arguments, DengAiToolContext context)
+    {
+        var rankings = await GetTopWordsAsync(context.RoomId, ReadRankingLimit(arguments));
+        return DengAiToolJson.Serialize(rankings.Select(ranking => new { ranking.Word, ranking.Count }).ToList());
+    }
+
+    private async Task<string> CreateHourlyStatisticsToolResultAsync(string arguments, DengAiToolContext context)
+    {
+        var statistics = IsMeScope(arguments) ? await GetUserHourlyStatisticsAsync(context.RoomId, context.SenderHash) : await GetHourlyStatisticsAsync(context.RoomId);
+        return DengAiToolJson.Serialize(statistics.Select(statistic => new { statistic.Hour, statistic.MessageCount }).ToList());
+    }
+
+    private async Task<string> CreateDailyStatisticsToolResultAsync(string arguments, DengAiToolContext context)
+    {
+        var statistics = IsMeScope(arguments) ? await GetUserDailyStatisticsAsync(context.RoomId, context.SenderHash) : await GetDailyStatisticsAsync(context.RoomId);
+        return DengAiToolJson.Serialize(statistics.Select(statistic => new { Day = statistic.Day.ToString(), statistic.MessageCount }).ToList());
+    }
+
+    private async Task<string> CreateMonthlyStatisticsToolResultAsync(string arguments, DengAiToolContext context)
+    {
+        var statistics = IsMeScope(arguments) ? await GetUserMonthlyStatisticsAsync(context.RoomId, context.SenderHash) : await GetMonthlyStatisticsAsync(context.RoomId);
+        return DengAiToolJson.Serialize(statistics.Select(statistic => new { statistic.Month, statistic.MessageCount }).ToList());
+    }
+
+    #endregion
 }
 
