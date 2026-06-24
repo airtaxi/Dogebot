@@ -1,4 +1,4 @@
-using System.ClientModel;
+﻿using System.ClientModel;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -211,14 +211,12 @@ public partial class DengAiService : IDengAiService
 
     private List<ChatMessage> CreateInitialMessages(string userMessage, DengAiToolContext toolContext)
     {
-        var messages = new List<ChatMessage>
-        {
-            new SystemChatMessage(SystemPrompt)
-        };
+        var messages = new List<ChatMessage> { new SystemChatMessage(SystemPrompt) };
 
         var conversationHistory = GetConversationHistory(toolContext);
         if (conversationHistory.Count > 0) messages.Add(new SystemChatMessage(CreateConversationHistoryContext(conversationHistory)));
 
+        messages.Add(new SystemChatMessage($"사용자 닉네임: {toolContext.SenderName}"));
         messages.Add(new UserChatMessage(userMessage));
         return messages;
     }
