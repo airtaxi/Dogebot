@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using KoreanNumberParser;
 
 namespace Dogebot.Server.Services;
 
@@ -362,7 +363,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         AppendValueLine(stringBuilder, "현재가", FormatPrice(basicStockNode, resolvedStock.IsDomestic));
         AppendValueLine(stringBuilder, "전일대비", FormatChangeText(basicStockNode));
         AppendValueLine(stringBuilder, "거래소", GetExchangeText(basicStockNode));
-        AppendValueLine(stringBuilder, "시가총액", FirstNonEmpty(FindInformationValue(informationItems, "marketValue", "시총"), FormatMarketValue(basicStockNode)));
+        AppendValueLine(stringBuilder, "시가총액", FirstNonEmpty(FormatMarketValue(basicStockNode), FindInformationValue(informationItems, "marketValue", "시총")));
 
         var metricLines = CreateMetricLines(informationItems);
         if (metricLines.Count > 0)
@@ -743,8 +744,8 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
 
     private static string FormatMarketValue(JsonNode? stockNode)
     {
-        var marketValue = FirstNonEmpty(GetText(stockNode, "marketValueHangeul"), FormatNumberText(GetText(stockNode, "marketValue", "marketValueFull")));
-        var marketValueKoreanWon = GetText(stockNode, "marketValueKrwHangeul");
+        var marketValue = FirstNonEmpty(FormatKoreanAmount(GetText(stockNode, "marketValue", "marketValueFull")), GetText(stockNode, "marketValueHangeul"));
+        var marketValueKoreanWon = FirstNonEmpty(FormatKoreanAmount(GetText(stockNode, "marketValueKrw")), GetText(stockNode, "marketValueKrwHangeul"));
         return JoinNonEmpty(" / ", marketValue, marketValueKoreanWon);
     }
 
@@ -785,6 +786,14 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         if (string.IsNullOrWhiteSpace(name)) return code;
         if (string.IsNullOrWhiteSpace(code)) return name;
         return $"{name} ({code})";
+    }
+
+    private static string FormatKoreanAmount(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var normalizedValue = value.Trim().Replace(",", string.Empty);
+        if (long.TryParse(normalizedValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)) return KoreanNumber.ToKoreanString(amount, KoreanNumberFormat.ArabicChunk);
+        return FormatNumberText(value);
     }
 
     private static string FormatNumberText(string value)
