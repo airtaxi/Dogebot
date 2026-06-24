@@ -18,7 +18,7 @@ public partial class DengAiService : IDengAiService
     private const int MaximumResponseCharacterCount = 800;
     private const int MaximumConversationHistoryTurnCount = 4;
     private const int MaximumOutputTokenCount = 1000;
-    private const int MaximumToolCallLoopCount = 2;
+    private const int MaximumToolCallLoopCount = 10;
     private static readonly TimeSpan s_conversationHistoryLifetime = TimeSpan.FromMinutes(5);
 
     private const string SystemPrompt = """
