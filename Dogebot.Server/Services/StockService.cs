@@ -278,7 +278,10 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         var popularNode = await FetchJsonNodeAsync(requestAddress, MobileStockBaseAddress);
         if (popularNode == null) return StockInformationUnavailableMessage;
 
-        var stockNodes = EnumerateItems(GetPropertyNode(popularNode, "datas")).Take(DisplayLimit).ToList();
+        var stockNodes = EnumerateItems(popularNode)
+            .Select(itemNode => GetPropertyNode(itemNode, "priceInfo") ?? itemNode)
+            .Take(DisplayLimit)
+            .ToList();
         return FormatMarketStockListMessage(title, stockNodes, isDomestic, false);
     }
 
