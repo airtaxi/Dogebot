@@ -18,6 +18,9 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
     private const string StockInformationUnavailableMessage = "주식 정보를 가져오지 못했습니다.\n잠시 후 다시 시도해주세요.";
     private const int DisplayLimit = 5;
 
+    private static readonly string[] s_foreignIndexCodes = [".DJI", ".DJT", ".INX", ".IXIC", ".NDX", ".SOX", ".VIX"];
+    private static readonly string[] s_foreignIndexFuturesCodes = ["YMcv1", "NQcv1", "EScv1", "RTYcv1"];
+
     private readonly HttpClient _stockClient = httpClientFactory.CreateClient();
 
     public async Task<string> CreateSummaryMessageAsync(string queryText)
@@ -83,6 +86,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
             StockMarketType.DomesticIndex => await CreateDomesticIndexMessageAsync(),
             StockMarketType.DomesticPopular => await CreatePopularStockMessageAsync("🇰🇷 국내 인기 종목", "KOR", true),
             StockMarketType.DomesticMarketValue => await CreateDomesticMarketValueMessageAsync(),
+            StockMarketType.ForeignIndex => await CreateForeignIndexMessageAsync(),
             StockMarketType.ForeignPopular => await CreatePopularStockMessageAsync("🌎 미국 인기 종목", "USA", false),
             StockMarketType.ForeignMarketValue => await CreateForeignMarketValueMessageAsync(marketContext.StockExchangeType),
             _ => CreateMarketUsageMessage()
@@ -232,6 +236,46 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         }
     }
 
+    private async Task<JsonNode?> FetchUnifiedRealtimeNodeAsync(string stockEndType, IReadOnlyList<string> codes, string refererAddress)
+    {
+        try
+        {
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{FrontServiceBaseAddress}/realTime/unified");
+            ConfigureRequestHeaders(requestMessage, refererAddress);
+            requestMessage.Content = new StringContent(CreateUnifiedRealtimeRequestBody(stockEndType, codes), Encoding.UTF8, "application/json");
+
+            using var responseMessage = await _stockClient.SendAsync(requestMessage);
+            var responseContent = await responseMessage.Content.ReadAsStringAsync();
+            if (!responseMessage.IsSuccessStatusCode)
+            {
+                logger.LogError("[STOCK] Unified realtime request failed with status code {StatusCode}.", responseMessage.StatusCode);
+                return null;
+            }
+
+            var rootNode = JsonNode.Parse(responseContent);
+            if (rootNode == null) return null;
+
+            if (IsFrontServiceFailure(rootNode, out var failureMessage))
+            {
+                logger.LogError("[STOCK] Unified realtime front service failed. Message: {FailureMessage}", failureMessage);
+                return null;
+            }
+
+            return UnwrapResultNode(rootNode);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or TaskCanceledException or UriFormatException)
+        {
+            logger.LogError(exception, "[STOCK] Error fetching unified realtime data");
+            return null;
+        }
+    }
+
+    private static string CreateUnifiedRealtimeRequestBody(string stockEndType, IReadOnlyList<string> codes)
+    {
+        var formattedCodes = string.Join(",", codes.Select(code => $"\"{code}\""));
+        return $"{{\"stockType\":\"foreign\",\"stockEndType\":\"{stockEndType}\",\"codes\":[{formattedCodes}],\"isNxt\":false}}";
+    }
+
     private static void ConfigureRequestHeaders(HttpRequestMessage requestMessage, string refererAddress)
     {
         requestMessage.Headers.Accept.Clear();
@@ -268,6 +312,28 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         stringBuilder.AppendLine();
 
         for (var index = 0; index < indexNodes.Count; index++) stringBuilder.AppendLine($"{index + 1}. {FormatIndexLine(indexNodes[index])}");
+
+        return stringBuilder.ToString().TrimEnd();
+    }
+
+    private async Task<string> CreateForeignIndexMessageAsync()
+    {
+        var refererAddress = $"{MobileStockBaseAddress}/worldstock/home/USA/marketValue/NASDAQ";
+        var indexNodeTask = FetchUnifiedRealtimeNodeAsync("index", s_foreignIndexCodes, refererAddress);
+        var futuresNodeTask = FetchUnifiedRealtimeNodeAsync("futures", s_foreignIndexFuturesCodes, refererAddress);
+        await Task.WhenAll(indexNodeTask, futuresNodeTask);
+
+        var indexNodes = EnumerateObjectValues(GetPropertyNode(await indexNodeTask, "items")).Take(DisplayLimit).ToList();
+        var futuresNodes = EnumerateObjectValues(GetPropertyNode(await futuresNodeTask, "items")).ToList();
+        if (indexNodes.Count == 0 && futuresNodes.Count == 0) return StockInformationUnavailableMessage;
+
+        var stringBuilder = new StringBuilder();
+        stringBuilder.AppendLine("📈 미국 주요 지수");
+        stringBuilder.AppendLine();
+
+        var rank = 1;
+        foreach (var indexNode in indexNodes) stringBuilder.AppendLine($"{rank++}. {FormatIndexLine(indexNode)}");
+        foreach (var futuresNode in futuresNodes) stringBuilder.AppendLine($"{rank++}. {FormatIndexLine(futuresNode)}");
 
         return stringBuilder.ToString().TrimEnd();
     }
@@ -556,14 +622,16 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         var wantsForeign = ContainsAny(normalizedQueryText, "미국", "해외", "USA", "US");
         var stockExchangeType = FindStockExchangeType(normalizedQueryText);
 
-        if (wantsIndex && (wantsForeign || stockExchangeType != null)) return null;
+        if (wantsIndex && (wantsForeign || stockExchangeType != null)) return new StockMarketContext(StockMarketType.ForeignIndex, null);
         if (wantsIndex) return new StockMarketContext(StockMarketType.DomesticIndex, null);
         if (wantsDomestic && wantsPopular) return new StockMarketContext(StockMarketType.DomesticPopular, null);
         if (wantsDomestic && wantsMarketValue) return new StockMarketContext(StockMarketType.DomesticMarketValue, null);
         if (wantsDomestic) return new StockMarketContext(StockMarketType.DomesticIndex, null);
+        if (wantsForeign && wantsPopular) return new StockMarketContext(StockMarketType.ForeignPopular, null);
         if (stockExchangeType != null) return new StockMarketContext(StockMarketType.ForeignMarketValue, stockExchangeType);
         if (wantsForeign && wantsMarketValue) return new StockMarketContext(StockMarketType.ForeignMarketValue, null);
-        if (wantsForeign || wantsPopular) return new StockMarketContext(StockMarketType.ForeignPopular, null);
+        if (wantsForeign) return new StockMarketContext(StockMarketType.ForeignIndex, null);
+        if (wantsPopular) return new StockMarketContext(StockMarketType.ForeignPopular, null);
 
         return null;
     }
@@ -616,7 +684,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         $"사용법: {command} [종목명/코드/티커]\n예시: {command} 삼성전자, {command} AAPL, {command} 005930";
 
     private static string CreateMarketUsageMessage() =>
-        "사용법: !증시 [국내/미국/나스닥/뉴욕/아멕스] [인기/시총/지수]\n예시: !증시 국내 지수, !증시 미국 인기, !증시 나스닥 시총";
+        "사용법: !증시 [국내/미국/나스닥/뉴욕/아멕스] [인기/시총/지수]\n예시: !증시 국내, !증시 미국, !증시 미국 인기, !증시 나스닥 시총";
 
     private static string CreateNoStockFoundMessage(string queryText, string command) =>
         $"'{queryText}'에 해당하는 종목을 찾지 못했습니다.\n예시: {command} 삼성전자, {command} AAPL, {command} 005930";
@@ -669,6 +737,18 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         }
 
         if (jsonNode is JsonObject) yield return jsonNode;
+    }
+
+    private static IEnumerable<JsonNode> EnumerateObjectValues(JsonNode? jsonNode)
+    {
+        if (jsonNode is not JsonObject jsonObject) yield break;
+        foreach (var (_, valueNode) in jsonObject)
+        {
+            if (valueNode != null)
+            {
+                yield return valueNode;
+            }
+        }
     }
 
     private static JsonNode? GetFirstPropertyNode(JsonNode? jsonNode, params string[] propertyNames)
@@ -941,6 +1021,7 @@ public class StockService(IHttpClientFactory httpClientFactory, ILogger<StockSer
         DomesticIndex,
         DomesticPopular,
         DomesticMarketValue,
+        ForeignIndex,
         ForeignPopular,
         ForeignMarketValue
     }
