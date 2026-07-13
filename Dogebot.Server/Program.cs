@@ -93,6 +93,9 @@ builder.Services.AddSingleton<LottoService>();
 builder.Services.AddSingleton<ILottoService>(serviceProvider => serviceProvider.GetRequiredService<LottoService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<LottoService>());
 
+// Register web search service
+builder.Services.AddSingleton<WebSearchService>();
+
 // Register Deng web search service
 builder.Services.AddSingleton<DengWebSearchService>();
 builder.Services.AddSingleton<IDengWebSearchService>(serviceProvider => serviceProvider.GetRequiredService<DengWebSearchService>());
@@ -202,9 +205,10 @@ builder.Services.AddSingleton<ICommandHandler, CgvMovieListCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ImaxScheduleQueryCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DebugCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, FortuneCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, WebSearchCommandHandler>();
+
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
-
 builder.Services.AddSingleton<CommandHandlerFactory>();
 builder.Services.AddSingleton<IKakaoService, KakaoService>();
 builder.Services.AddControllers();
