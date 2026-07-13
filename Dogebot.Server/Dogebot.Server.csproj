@@ -29,9 +29,8 @@
     <PackageReference Include="KoreanNumberParser" Version="1.1.0" />
     <PackageReference Include="MongoDB.Driver" Version="3.9.0" />
     <PackageReference Include="OpenAI" Version="2.11.0" />
-    <PackageReference Include="Selenium.WebDriver" Version="4.45.0" />
-    <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="149.0.7827.15500" />
     <PackageReference Include="SharpCompress" Version="0.49.1" />
+    <PackageReference Include="System.Net.Http.WinHttpHandler" Version="10.0.9" />
   </ItemGroup>
 
   <ItemGroup>

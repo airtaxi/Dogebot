@@ -1,44 +1,46 @@
+using System.Net.Security;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
+using System.Runtime.Versioning;
 
 namespace Dogebot.Server.Services;
 
-public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealService, IDisposable
+public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealService
 {
-    private static DateTime _lastFetchTime = DateTime.MinValue;
-    private static List<HotDealItem>? _cachedDeals;
-    private static ChromeDriver? _driver;
-    private static readonly Lock _cacheLock = new();
-    private static readonly Lock _driverLock = new();
+    private static DateTime s_lastFetchTime = DateTime.MinValue;
+    private static List<HotDealItem>? s_cachedDeals;
+    private static readonly Lock s_cacheLock = new();
 
     private const string HotDealUrl = "https://arca.live/b/hotdeal";
+    private const string UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(3);
 
-    private static ChromeDriver GetOrCreateDriver()
-    {
-        lock (_driverLock)
-        {
-            if (_driver == null)
-            {
-                var options = new ChromeOptions();
-                options.AddArgument("--headless");
-                options.AddArgument("--no-sandbox");
-                options.AddArgument("--disable-dev-shm-usage");
-                options.AddArgument("--disable-gpu");
-                options.AddArgument("--window-size=1920,1080");
-                options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-                options.AddArgument("--disable-blink-features=AutomationControlled");
-                options.AddExcludedArgument("enable-automation");
-                options.AddAdditionalOption("useAutomationExtension", false);
+    private static readonly HttpClient s_httpClient = CreateHttpClient();
 
-                _driver = new ChromeDriver(options);
-                _driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
-                _driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
+    // Windows: WinHttpHandler uses native WinHTTP TLS stack to bypass Cloudflare
+    // Linux: SocketsHttpHandler with custom cipher suites to change TLS fingerprint
+    private static HttpClient CreateHttpClient()
+    {
+        HttpMessageHandler handler = OperatingSystem.IsWindows() ? new WinHttpHandler() : CreateLinuxHandler();
+
+        var client = new HttpClient(handler);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+        client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("ko-KR");
+        client.DefaultRequestHeaders.Referrer = new Uri("https://arca.live/");
+        client.Timeout = TimeSpan.FromSeconds(30);
+        return client;
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    private static SocketsHttpHandler CreateLinuxHandler()
+    {
+        return new SocketsHttpHandler
+        {
+            SslOptions = new SslClientAuthenticationOptions
+            {
+                CipherSuitesPolicy = new CipherSuitesPolicy([TlsCipherSuite.TLS_AES_128_GCM_SHA256, TlsCipherSuite.TLS_AES_256_GCM_SHA384, TlsCipherSuite.TLS_CHACHA20_POLY1305_SHA256, TlsCipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TlsCipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TlsCipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, TlsCipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, TlsCipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, TlsCipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, ])
             }
-            return _driver;
-        }
+        };
     }
 
     public async Task<IReadOnlyList<HotDealItem>> GetRecentHotDealsAsync()
@@ -47,13 +49,13 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
         {
             List<HotDealItem> deals;
 
-            lock (_cacheLock)
+            lock (s_cacheLock)
             {
                 // Check if cache is still valid
-                if (_cachedDeals != null && DateTime.UtcNow - _lastFetchTime < CacheDuration)
+                if (s_cachedDeals != null && DateTime.UtcNow - s_lastFetchTime < CacheDuration)
                 {
-                    logger.LogInformation("[HOTDEAL] Using cached deals (age: {Age}s)", (DateTime.UtcNow - _lastFetchTime).TotalSeconds);
-                    deals = _cachedDeals;
+                    logger.LogInformation("[HOTDEAL] Using cached deals (age: {Age}s)", (DateTime.UtcNow - s_lastFetchTime).TotalSeconds);
+                    deals = s_cachedDeals;
                 }
                 else
                 {
@@ -64,7 +66,7 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
             // Fetch new deals if cache is invalid
             if (deals == null)
             {
-                var html = await Task.Run(FetchPageWithSelenium);
+                var html = await FetchPageWithHttpClientAsync();
 
                 if (string.IsNullOrEmpty(html))
                 {
@@ -81,10 +83,10 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
                 }
 
                 // Update cache
-                lock (_cacheLock)
+                lock (s_cacheLock)
                 {
-                    _cachedDeals = deals;
-                    _lastFetchTime = DateTime.UtcNow;
+                    s_cachedDeals = deals;
+                    s_lastFetchTime = DateTime.UtcNow;
                 }
             }
 
@@ -113,48 +115,33 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
         }
     }
 
-    private string? FetchPageWithSelenium()
+    private async Task<string?> FetchPageWithHttpClientAsync()
     {
         try
         {
-            var driver = GetOrCreateDriver();
-            
-            lock (_driverLock)
+            var response = await s_httpClient.GetAsync(HotDealUrl);
+            if (!response.IsSuccessStatusCode)
             {
-                driver.Navigate().GoToUrl(HotDealUrl);
-                
-                // Wait for the page to load
-                Thread.Sleep(3000);
-                
-                var html = driver.PageSource;
-                logger.LogInformation("[HOTDEAL] Successfully fetched page with Selenium");
-                return html;
+                logger.LogError("[HOTDEAL] HTTP request failed with status {StatusCode}", (int)response.StatusCode);
+                return null;
             }
+
+            var html = await response.Content.ReadAsStringAsync();
+            logger.LogInformation("[HOTDEAL] Successfully fetched page with HttpClient");
+            return html;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "[HOTDEAL] Error fetching page with Selenium");
-            
-            // Try to recreate driver on error
-            lock (_driverLock)
-            {
-                try
-                {
-                    _driver?.Quit();
-                }
-                catch { }
-                _driver = null;
-            }
-            
+            logger.LogError(ex, "[HOTDEAL] Error fetching page with HttpClient");
             return null;
         }
     }
 
     public DateTime? GetLastCacheTime()
     {
-        lock (_cacheLock)
+        lock (s_cacheLock)
         {
-            return _lastFetchTime == DateTime.MinValue ? null : _lastFetchTime;
+            return s_lastFetchTime == DateTime.MinValue ? null : s_lastFetchTime;
         }
     }
 
@@ -181,8 +168,7 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
                 try
                 {
                     // Skip closed deals (deal-close class)
-                    if (row.InnerHtml.Contains("deal-close"))
-                        continue;
+                    if (row.InnerHtml.Contains("deal-close")) continue;
 
                     var deal = new HotDealItem();
 
@@ -191,10 +177,7 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
                     if (titleLink != null)
                     {
                         var href = titleLink.GetAttributeValue("href", "");
-                        if (!string.IsNullOrEmpty(href))
-                        {
-                            deal.Link = $"https://arca.live{href.Split('?')[0]}";
-                        }
+                        if (!string.IsNullOrEmpty(href)) deal.Link = $"https://arca.live{href.Split('?')[0]}";
 
                         // Get title text (exclude child elements like comment count)
                         var titleText = titleLink.InnerText;
@@ -226,10 +209,7 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
                     }
 
                     // Only add if we have at least a title
-                    if (!string.IsNullOrEmpty(deal.Title))
-                    {
-                        deals.Add(deal);
-                    }
+                    if (!string.IsNullOrEmpty(deal.Title)) deals.Add(deal);
                 }
                 catch (Exception ex)
                 {
@@ -239,28 +219,9 @@ public partial class HotDealService(ILogger<HotDealService> logger) : IHotDealSe
 
             logger.LogInformation("[HOTDEAL] Parsed {Count} hot deals from page", deals.Count);
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "[HOTDEAL] Error parsing hot deals HTML");
-        }
+        catch (Exception ex) { logger.LogError(ex, "[HOTDEAL] Error parsing hot deals HTML"); }
 
         return deals;
-    }
-
-    public void Dispose()
-    {
-        lock (_driverLock)
-        {
-            try
-            {
-                _driver?.Quit();
-                _driver?.Dispose();
-            }
-            catch { }
-            _driver = null;
-        }
-
-        GC.SuppressFinalize(this);
     }
 
     [GeneratedRegex(@"\[\d+\]")]
