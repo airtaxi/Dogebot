@@ -44,8 +44,9 @@ public class KakaoNotificationListener : NotificationListenerService
         var logId = extras?.GetLong("chatLogId").ToString();
 
         Bundle? messageBundle;
-        if (OperatingSystem.IsAndroidVersionAtLeast(33)) messageBundle = extras?.GetParcelableArray(Notification.ExtraMessages, Java.Lang.Class.FromType(typeof(Bundle)))?.Cast<Bundle>().FirstOrDefault();
-        else messageBundle = extras?.GetParcelableArray(Notification.ExtraMessages)?.Cast<Bundle>().FirstOrDefault();
+        // ExtraMessages is ordered oldest-first; take the last bundle to get the latest message's sender
+        if (OperatingSystem.IsAndroidVersionAtLeast(33)) messageBundle = extras?.GetParcelableArray(Notification.ExtraMessages, Java.Lang.Class.FromType(typeof(Bundle)))?.Cast<Bundle>().LastOrDefault();
+        else messageBundle = extras?.GetParcelableArray(Notification.ExtraMessages)?.Cast<Bundle>().LastOrDefault();
 
         Person? senderPerson;
         if (OperatingSystem.IsAndroidVersionAtLeast(33))
