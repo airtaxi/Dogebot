@@ -243,6 +243,8 @@ public partial class DengAiService : IDengAiService
         var conversationHistory = GetConversationHistory(toolContext);
         if (conversationHistory.Count > 0) messages.Add(new SystemChatMessage(CreateConversationHistoryContext(conversationHistory)));
 
+        var timeFormat = "yyyy-MM-dd HH:mm:ss.fff";
+        messages.Add(new SystemChatMessage($"현재 시각: {DateTime.UtcNow.AddHours(9).ToString(timeFormat)} ({timeFormat})"));
         messages.Add(new SystemChatMessage($"사용자 닉네임: {toolContext.SenderName}"));
         messages.Add(new UserChatMessage(userMessage));
         return messages;
