@@ -3,7 +3,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class DengAiCommandHandler(IDengAiService dengAiService, ILogger<DengAiCommandHandler> logger) : ICommandHandler
+public class DengAiCommandHandler(IDengAiService dengAiService, IAdminService adminService, ILogger<DengAiCommandHandler> logger) : ICommandHandler
 {
     private const string DengAiCommand = "댕댕아";
 
@@ -21,7 +21,8 @@ public class DengAiCommandHandler(IDengAiService dengAiService, ILogger<DengAiCo
             if (!dengAiService.IsConfigured) return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = "AI 설정이 아직 안 되어 있어요멍." };
 
             var toolContext = new DengAiToolContext(data.RoomId, data.RoomName, data.SenderHash, data.SenderName);
-            var reply = await dengAiService.GenerateReplyAsync(userMessage, toolContext);
+            var isAdmin = await adminService.IsAdminAsync(data.SenderHash);
+            var reply = await dengAiService.GenerateReplyAsync(userMessage, toolContext, isAdmin);
 
             if (string.IsNullOrWhiteSpace(reply)) return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = "지금은 대답이 잘 안 나오고 있어요멍. 조금 뒤에 다시 불러줘요멍." };
 
