@@ -141,14 +141,20 @@ public class FortuneService : IFortuneService
 
     IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
     [
-        new("generate_fortune_preview", "Generate a stateless fortune preview without recording the user's daily fortune draw.", DengAiJsonSchema.Object())
+        new("generate_fortune", "Generate today's fortune for the current user. Each user can draw only once per day (KST). When the user already drew today, returns a message indicating that instead of a new fortune.", DengAiJsonSchema.Object())
     ];
 
-    Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
+    async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
     {
-        if (!toolName.Equals("generate_fortune_preview", StringComparison.Ordinal)) return Task.FromResult("Unknown fortune tool.");
+        if (!toolName.Equals("generate_fortune", StringComparison.Ordinal)) return "Unknown fortune tool.";
+        if (string.IsNullOrWhiteSpace(context.SenderHash)) return "사용자 식별 정보가 없어 운세를 뽑을 수 없습니다.";
+        if (await HasDrawnTodayAsync(context.SenderHash)) return "오늘의 운세는 이미 확인했습니다. 내일 다시 시도해주세요.";
 
-        return Task.FromResult(CreateFortuneMessage() ?? "운세 데이터를 불러올 수 없습니다.");
+        var message = CreateFortuneMessage();
+        if (message == null) return "운세 데이터를 불러올 수 없습니다.";
+
+        await RecordDrawAsync(context.SenderHash);
+        return message;
     }
 
     #endregion
