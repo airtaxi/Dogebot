@@ -7,6 +7,8 @@ namespace Dogebot.Server.Commands;
 /// </summary>
 public class DengCommandHandler(ILogger<DengCommandHandler> logger) : ICommandHandler
 {
+    private readonly Random _random = new();
+
     public string Command => "댕";
 
     public bool CanHandle(string content)
@@ -20,7 +22,7 @@ public class DengCommandHandler(ILogger<DengCommandHandler> logger) : ICommandHa
         {
             Action = "send_text",
             RoomId = data.RoomId,
-            Message = "댕"
+            Message = _random.Next(0, 100) < 15 ? "멍" : "댕"
         };
 
         if (logger.IsEnabled(LogLevel.Information))
