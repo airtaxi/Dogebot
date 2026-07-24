@@ -15,7 +15,7 @@ See the [LICENSE](LICENSE) file for details.
 Dogebot is a distributed system consisting of three main components:
 
 - **Dogebot.MobileClient**: A .NET MAUI Android application that listens to KakaoTalk notifications and communicates with the server
-- **Dogebot.Server**: An ASP.NET Core REST API server that processes messages with extensible command handlers and MongoDB-based statistics
+- **Dogebot.Server**: An ASP.NET Core REST API server that processes messages with extensible command handlers and stores statistics in MongoDB
 - **Dogebot.Commons**: Shared data models and contracts used by both client and server
 
 ## Architecture
@@ -56,7 +56,7 @@ Dogebot is a distributed system consisting of three main components:
 - **Message Processing**: Extracts message content, sender information, and room details
 - **Action Execution**: Can send replies and mark messages as read through notification actions
 - **Server Communication**: Sends notifications to server and polls for commands
-- **Battery Optimization**: Implements WakeLock to ensure continuous operation
+- **Battery Optimization**: Implements WakeLock to keep running in the background
 - **Permission Management**: Guides users through notification access and battery optimization settings
 
 ### Server
@@ -73,8 +73,8 @@ Dogebot is a distributed system consisting of three main components:
 
 ## Technology Stack
 
-- **.NET 10**: Latest .NET framework
-- **C# 14.0**: Latest C# language features
+- **.NET 10**: Target framework
+- **C# 14.0**: Language version
 - **.NET MAUI**: Cross-platform UI framework (Android target)
 - **ASP.NET Core**: Web API framework
 - **MongoDB**: NoSQL database for statistics and chat history
