@@ -1,3 +1,5 @@
+using Dogebot.Server.Models;
+
 namespace Dogebot.Server.Services;
 
 public interface IDengAiCallableService

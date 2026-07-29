@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Dogebot.Server.Models;
 
 namespace Dogebot.Server.Services;
 

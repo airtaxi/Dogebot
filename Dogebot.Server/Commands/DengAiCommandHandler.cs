@@ -1,4 +1,5 @@
 using Dogebot.Commons;
+using Dogebot.Server.Models;
 using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
