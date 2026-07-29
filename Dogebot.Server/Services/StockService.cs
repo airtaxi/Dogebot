@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using KoreanNumberParser;
+using Dogebot.Server.Models;
 
 namespace Dogebot.Server.Services;
 

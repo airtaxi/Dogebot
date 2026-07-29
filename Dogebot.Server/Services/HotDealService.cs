@@ -2,6 +2,7 @@ using System.Net.Security;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using System.Runtime.Versioning;
+using Dogebot.Server.Models;
 
 namespace Dogebot.Server.Services;
 

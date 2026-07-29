@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Dogebot.Server.Services;
+namespace Dogebot.Server.Models;
 
 public sealed record DengAiJsonSchema
 {

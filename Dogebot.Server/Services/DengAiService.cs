@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using OpenAI;
 using OpenAI.Chat;
+using Dogebot.Server.Models;
 
 namespace Dogebot.Server.Services;
 
