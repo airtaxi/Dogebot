@@ -101,6 +101,14 @@ builder.Services.AddSingleton<DengWebSearchService>();
 builder.Services.AddSingleton<IDengWebSearchService>(serviceProvider => serviceProvider.GetRequiredService<DengWebSearchService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<DengWebSearchService>());
 
+// Register web extract service
+builder.Services.AddSingleton<WebExtractService>();
+
+// Register Deng web extract service
+builder.Services.AddSingleton<DengWebExtractService>();
+builder.Services.AddSingleton<IDengWebExtractService>(serviceProvider => serviceProvider.GetRequiredService<DengWebExtractService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<DengWebExtractService>());
+
 // Register Deng AI service
 builder.Services.AddSingleton<IDengAiService, DengAiService>();
 
