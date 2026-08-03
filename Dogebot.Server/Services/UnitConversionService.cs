@@ -102,6 +102,23 @@ public partial class UnitConversionService : IUnitConversionService
         new("키비바이트", UnitCategory.Data, false, 1024m, 0m, ["키비바이트", "키비", "kib"])
     ];
 
+    private static readonly UnitDefinition[] s_bitDecimalUnits =
+    [
+        new("테라비트", UnitCategory.Data, true, 125000000000m, 0m, ["테라비트", "tbit"]),
+        new("기가비트", UnitCategory.Data, true, 125000000m, 0m, ["기가비트", "gbit"]),
+        new("메가비트", UnitCategory.Data, true, 125000m, 0m, ["메가비트", "mbit"]),
+        new("킬로비트", UnitCategory.Data, true, 125m, 0m, ["킬로비트", "kbit"]),
+        new("비트", UnitCategory.Data, true, 0.125m, 0m, ["비트", "bit"])
+    ];
+
+    private static readonly UnitDefinition[] s_bitBinaryUnits =
+    [
+        new("테비비트", UnitCategory.Data, false, 137438953472m, 0m, ["테비비트", "tibit"]),
+        new("기비비트", UnitCategory.Data, false, 134217728m, 0m, ["기비비트", "gibit"]),
+        new("메비비트", UnitCategory.Data, false, 131072m, 0m, ["메비비트", "mibit"]),
+        new("키비비트", UnitCategory.Data, false, 128m, 0m, ["키비비트", "kibit"])
+    ];
+
     private static readonly UnitDefinition[] s_allUnits =
     [
         .. s_lengthMetricUnits,
@@ -127,7 +144,9 @@ public partial class UnitConversionService : IUnitConversionService
         .. s_temperatureUnits,
         .. s_speedUnits,
         .. s_dataDecimalUnits,
-        .. s_dataBinaryUnits
+        .. s_dataBinaryUnits,
+        .. s_bitDecimalUnits,
+        .. s_bitBinaryUnits
     ];
 
     private static readonly Dictionary<string, UnitDefinition> s_unitAliasMap = CreateUnitAliasMap();
@@ -275,8 +294,11 @@ public partial class UnitConversionService : IUnitConversionService
 
         if (sourceUnit.Category == UnitCategory.Data)
         {
-            var decimalUnit = SelectAutoUnit(s_dataDecimalUnits, baseValue);
-            var binaryUnit = SelectAutoUnit(s_dataBinaryUnits, baseValue);
+            var isBitUnit = s_bitDecimalUnits.Contains(sourceUnit) || s_bitBinaryUnits.Contains(sourceUnit);
+            var decimalUnits = isBitUnit ? s_bitDecimalUnits : s_dataDecimalUnits;
+            var binaryUnits = isBitUnit ? s_bitBinaryUnits : s_dataBinaryUnits;
+            var decimalUnit = SelectAutoUnit(decimalUnits, baseValue);
+            var binaryUnit = SelectAutoUnit(binaryUnits, baseValue);
             var primaryUnit = sourceUnit.IsMetric ? decimalUnit : binaryUnit;
             var secondaryUnit = primaryUnit == decimalUnit ? binaryUnit : decimalUnit;
 
