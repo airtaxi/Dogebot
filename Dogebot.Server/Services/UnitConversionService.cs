@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Dogebot.Server.Models;
@@ -6,7 +6,7 @@ using KoreanNumberParser;
 
 namespace Dogebot.Server.Services;
 
-public class UnitConversionService : IUnitConversionService
+public partial class UnitConversionService : IUnitConversionService
 {
     private static readonly UnitDefinition s_squareMeterUnit = new("제곱미터", UnitCategory.Area, true, 1m, 0m, ["제곱미터", "평방미터", "m2", "m²", "sqm", "㎡"]);
     private static readonly UnitDefinition s_pyeongUnit = new("평", UnitCategory.Area, false, 400m / 121m, 0m, ["평", "pyeong", "py"]);
@@ -220,7 +220,14 @@ public class UnitConversionService : IUnitConversionService
     private static bool TryResolveUnit(string unitQuery, out UnitDefinition unit)
     {
         var normalizedUnitQuery = NormalizeUnitSearchText(unitQuery);
-        return s_unitAliasMap.TryGetValue(normalizedUnitQuery, out unit);
+        if (s_unitAliasMap.TryGetValue(normalizedUnitQuery, out var resolvedUnit))
+        {
+            unit = resolvedUnit;
+            return true;
+        }
+
+        unit = null!;
+        return false;
     }
 
     private static UnitDefinition[] GetAutoChain(UnitDefinition sourceUnit) => sourceUnit.Category switch
