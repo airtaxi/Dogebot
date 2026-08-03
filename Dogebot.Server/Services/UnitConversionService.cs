@@ -78,7 +78,7 @@ public partial class UnitConversionService : IUnitConversionService
     private static readonly UnitDefinition[] s_massImperialUnits =
     [
         new("파운드", UnitCategory.Mass, false, 453.59237m, 0m, ["파운드", "pound", "lb"]),
-        new("온스", UnitCategory.Mass, false, 28.349523125m, 0m, ["온스", "ounce", "oz"])
+        new("온스", UnitCategory.Mass, false, 28.349523125m, 0m, ["온스", "온즈", "ounce", "oz"])
     ];
 
     private static readonly UnitDefinition[] s_temperatureUnits = [s_celsiusUnit, s_fahrenheitUnit, s_kelvinUnit];
@@ -87,19 +87,19 @@ public partial class UnitConversionService : IUnitConversionService
 
     private static readonly UnitDefinition[] s_dataDecimalUnits =
     [
-        new("테라바이트", UnitCategory.Data, true, 1000000000000m, 0m, ["테라바이트", "tb"]),
-        new("기가바이트", UnitCategory.Data, true, 1000000000m, 0m, ["기가바이트", "gb"]),
-        new("메가바이트", UnitCategory.Data, true, 1000000m, 0m, ["메가바이트", "mb"]),
-        new("킬로바이트", UnitCategory.Data, true, 1000m, 0m, ["킬로바이트", "kb"]),
+        new("테라바이트", UnitCategory.Data, true, 1000000000000m, 0m, ["테라바이트", "테라", "tb"]),
+        new("기가바이트", UnitCategory.Data, true, 1000000000m, 0m, ["기가바이트", "기가", "gb"]),
+        new("메가바이트", UnitCategory.Data, true, 1000000m, 0m, ["메가바이트", "메가", "mb"]),
+        new("킬로바이트", UnitCategory.Data, true, 1000m, 0m, ["킬로바이트", "킬로", "kb"]),
         s_byteUnit
     ];
 
     private static readonly UnitDefinition[] s_dataBinaryUnits =
     [
-        new("테비바이트", UnitCategory.Data, false, 1099511627776m, 0m, ["테비바이트", "tib"]),
-        new("기비바이트", UnitCategory.Data, false, 1073741824m, 0m, ["기비바이트", "gib"]),
-        new("메비바이트", UnitCategory.Data, false, 1048576m, 0m, ["메비바이트", "mib"]),
-        new("키비바이트", UnitCategory.Data, false, 1024m, 0m, ["키비바이트", "kib"])
+        new("테비바이트", UnitCategory.Data, false, 1099511627776m, 0m, ["테비바이트", "테비", "tib"]),
+        new("기비바이트", UnitCategory.Data, false, 1073741824m, 0m, ["기비바이트", "기비", "gib"]),
+        new("메비바이트", UnitCategory.Data, false, 1048576m, 0m, ["메비바이트", "메비", "mib"]),
+        new("키비바이트", UnitCategory.Data, false, 1024m, 0m, ["키비바이트", "키비", "kib"])
     ];
 
     private static readonly UnitDefinition[] s_allUnits =
@@ -318,7 +318,7 @@ public partial class UnitConversionService : IUnitConversionService
         "사용법: !단위 [수치+단위] [목적지 단위]\n" +
         "수치는 단위에 붙여 쓰거나 띄어 쓸 수 있습니다.\n" +
         "목적지 단위를 생략하면 적절한 단위로 자동 변환됩니다.\n" +
-        "예시: !단위 100피트 미터, !단위 1.5킬로미터, !단위 1인치, !단위 25도 화씨, !단위 1기가바이트";
+        "예시: !단위 100피트 미터, !단위 1.5킬로미터, !단위 1인치, !단위 25도 화씨, !단위 1기가";
 
     private static string CreateUnitNotFoundMessage(string unitQuery) =>
         $"'{unitQuery}' 단위를 찾지 못했습니다.\n{CreateUsageMessage()}";
