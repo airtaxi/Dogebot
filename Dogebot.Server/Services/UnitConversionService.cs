@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Dogebot.Server.Models;
@@ -87,6 +87,10 @@ public partial class UnitConversionService : IUnitConversionService
 
     private static readonly UnitDefinition[] s_dataDecimalUnits =
     [
+        new("요타바이트", UnitCategory.Data, true, 1000000000000000000000000m, 0m, ["요타바이트", "요타", "yb"]),
+        new("제타바이트", UnitCategory.Data, true, 1000000000000000000000m, 0m, ["제타바이트", "제타", "zb"]),
+        new("엑사바이트", UnitCategory.Data, true, 1000000000000000000m, 0m, ["엑사바이트", "엑사", "eb"]),
+        new("페타바이트", UnitCategory.Data, true, 1000000000000000m, 0m, ["페타바이트", "페타", "pb"]),
         new("테라바이트", UnitCategory.Data, true, 1000000000000m, 0m, ["테라바이트", "테라", "tb"]),
         new("기가바이트", UnitCategory.Data, true, 1000000000m, 0m, ["기가바이트", "기가", "gb"]),
         new("메가바이트", UnitCategory.Data, true, 1000000m, 0m, ["메가바이트", "메가", "mb"]),
@@ -96,6 +100,10 @@ public partial class UnitConversionService : IUnitConversionService
 
     private static readonly UnitDefinition[] s_dataBinaryUnits =
     [
+        new("요비바이트", UnitCategory.Data, false, 1208925819614629174706176m, 0m, ["요비바이트", "요비", "yib"]),
+        new("제비바이트", UnitCategory.Data, false, 1180591620717411303424m, 0m, ["제비바이트", "제비", "zib"]),
+        new("엑스비바이트", UnitCategory.Data, false, 1152921504606846976m, 0m, ["엑스비바이트", "엑스비", "eib"]),
+        new("페비바이트", UnitCategory.Data, false, 1125899906842624m, 0m, ["페비바이트", "페비", "pib"]),
         new("테비바이트", UnitCategory.Data, false, 1099511627776m, 0m, ["테비바이트", "테비", "tib"]),
         new("기비바이트", UnitCategory.Data, false, 1073741824m, 0m, ["기비바이트", "기비", "gib"]),
         new("메비바이트", UnitCategory.Data, false, 1048576m, 0m, ["메비바이트", "메비", "mib"]),
@@ -104,6 +112,10 @@ public partial class UnitConversionService : IUnitConversionService
 
     private static readonly UnitDefinition[] s_bitDecimalUnits =
     [
+        new("요타비트", UnitCategory.Data, true, 125000000000000000000000m, 0m, ["요타비트", "ybit"]),
+        new("제타비트", UnitCategory.Data, true, 125000000000000000000m, 0m, ["제타비트", "zbit"]),
+        new("엑사비트", UnitCategory.Data, true, 125000000000000000m, 0m, ["엑사비트", "ebit"]),
+        new("페타비트", UnitCategory.Data, true, 125000000000000m, 0m, ["페타비트", "pbit"]),
         new("테라비트", UnitCategory.Data, true, 125000000000m, 0m, ["테라비트", "tbit"]),
         new("기가비트", UnitCategory.Data, true, 125000000m, 0m, ["기가비트", "gbit"]),
         new("메가비트", UnitCategory.Data, true, 125000m, 0m, ["메가비트", "mbit"]),
@@ -113,6 +125,10 @@ public partial class UnitConversionService : IUnitConversionService
 
     private static readonly UnitDefinition[] s_bitBinaryUnits =
     [
+        new("요비비트", UnitCategory.Data, false, 151115727451828646838272m, 0m, ["요비비트", "yibit"]),
+        new("제비비트", UnitCategory.Data, false, 147573952589676412928m, 0m, ["제비비트", "zibit"]),
+        new("엑스비비트", UnitCategory.Data, false, 144115188075855872m, 0m, ["엑스비비트", "eibit"]),
+        new("페비비트", UnitCategory.Data, false, 140737488355328m, 0m, ["페비비트", "pibit"]),
         new("테비비트", UnitCategory.Data, false, 137438953472m, 0m, ["테비비트", "tibit"]),
         new("기비비트", UnitCategory.Data, false, 134217728m, 0m, ["기비비트", "gibit"]),
         new("메비비트", UnitCategory.Data, false, 131072m, 0m, ["메비비트", "mibit"]),
@@ -158,7 +174,12 @@ public partial class UnitConversionService : IUnitConversionService
         var parseResult = ParseRequest(queryText);
         if (parseResult.Message is not null) return parseResult.Message;
 
-        var request = parseResult.Request!;
+        try { return CreateConversionResult(parseResult.Request!); }
+        catch (OverflowException) { return CreateOverflowMessage(); }
+    }
+
+    private static string CreateConversionResult(UnitConversionRequest request)
+    {
         if (request.TargetUnitQuery is not null)
         {
             if (!TryResolveUnit(request.TargetUnitQuery, out var targetUnit)) return CreateUnitNotFoundMessage(request.TargetUnitQuery);
@@ -168,6 +189,8 @@ public partial class UnitConversionService : IUnitConversionService
 
         return CreateAutoConversionMessage(request);
     }
+
+    private static string CreateOverflowMessage() => "변환 결과가 너무 커서 처리할 수 없습니다.\n더 작은 단위를 입력해 주세요.";
 
     private static UnitConversionParseResult ParseRequest(string queryText)
     {
