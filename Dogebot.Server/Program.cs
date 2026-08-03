@@ -56,6 +56,11 @@ builder.Services.AddSingleton<ExchangeRateService>();
 builder.Services.AddSingleton<IExchangeRateService>(serviceProvider => serviceProvider.GetRequiredService<ExchangeRateService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<ExchangeRateService>());
 
+// Register Unit Conversion service
+builder.Services.AddSingleton<UnitConversionService>();
+builder.Services.AddSingleton<IUnitConversionService>(serviceProvider => serviceProvider.GetRequiredService<UnitConversionService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<UnitConversionService>());
+
 // Register Baseball team ranking service
 builder.Services.AddSingleton<BaseballTeamRankingService>();
 builder.Services.AddSingleton<IBaseballTeamRankingService>(serviceProvider => serviceProvider.GetRequiredService<BaseballTeamRankingService>());
@@ -193,6 +198,7 @@ builder.Services.AddSingleton<ICommandHandler, MyMonthlyStatsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, HotDealCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, StockCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ExchangeRateCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, UnitCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballTeamRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballBattingRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballPitchingRankingCommandHandler>();
