@@ -11,7 +11,11 @@ public static class BaseballGameFormatter
     public static string FormatGameSummaryMessage(BaseballGameScheduleSnapshot gameSnapshot, string dayLabel, IReadOnlyDictionary<long, BaseballGameDetail>? gameDetailsByGameId = null)
     {
         var gameDateText = gameSnapshot.GameDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        if (gameSnapshot.GameSummaries.Count == 0) return $"⚾ {dayLabel} KBO 경기 ({gameDateText})\n\n{dayLabel} 예정된 KBO 경기가 없습니다.";
+        if (gameSnapshot.GameSummaries.Count == 0)
+        {
+            var noGameMessageText = gameSnapshot.GameDate < GetTodayKoreanDate() ? $"{dayLabel} 진행된 KBO 경기가 없습니다." : $"{dayLabel} 예정된 KBO 경기가 없습니다.";
+            return $"⚾ {dayLabel} KBO 경기 ({gameDateText})\n\n{noGameMessageText}";
+        }
 
         var stringBuilder = new StringBuilder();
         stringBuilder.AppendLine($"⚾ {dayLabel} KBO 경기 ({gameDateText})");
@@ -511,6 +515,22 @@ public static class BaseballGameFormatter
 
     private static string GetFirstText(params string?[] values) =>
         values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? string.Empty;
+
+    private static DateOnly GetTodayKoreanDate()
+    {
+        var koreanStandardTimeZoneInfo = GetKoreanStandardTimeZoneInfo();
+        var currentKoreanDateTimeOffset = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, koreanStandardTimeZoneInfo);
+        return DateOnly.FromDateTime(currentKoreanDateTimeOffset.DateTime);
+    }
+
+    private static TimeZoneInfo GetKoreanStandardTimeZoneInfo()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Seoul"); }
+        catch (Exception exception) when (exception is TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Korea Standard Time");
+        }
+    }
 
     private static bool HasCompleteLineup(IReadOnlyList<BaseballGamePlayer> players) =>
         players
