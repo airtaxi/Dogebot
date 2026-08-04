@@ -8,6 +8,7 @@ namespace Dogebot.Server.Commands;
 public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService baseballGameScheduleService, ILogger<BaseballGameScheduleCommandHandler> logger) : ICommandHandler
 {
     private const string TodayCommand = "!오늘야구";
+    private const string TodayAliasCommand = "!야구";
     private const string TomorrowCommand = "!내일야구";
 
     public string Command => TodayCommand;
@@ -143,8 +144,8 @@ public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService bas
     {
         if (content.StartsWith(TodayCommand, StringComparison.OrdinalIgnoreCase))
             return CreateCommandContext(content, TodayCommand, "오늘");
-        if (content.StartsWith(TomorrowCommand, StringComparison.OrdinalIgnoreCase))
-            return CreateCommandContext(content, TomorrowCommand, "내일");
+        if (content.Equals(TodayAliasCommand, StringComparison.OrdinalIgnoreCase) || content.StartsWith($"{TodayAliasCommand} ", StringComparison.OrdinalIgnoreCase)) return CreateCommandContext(content, TodayAliasCommand, "오늘");
+        if (content.StartsWith(TomorrowCommand, StringComparison.OrdinalIgnoreCase)) return CreateCommandContext(content, TomorrowCommand, "내일");
 
         return null;
     }
