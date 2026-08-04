@@ -10,6 +10,7 @@ public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService bas
     private const string TodayCommand = "!오늘야구";
     private const string TodayAliasCommand = "!야구";
     private const string TomorrowCommand = "!내일야구";
+    private const string YesterdayCommand = "!어제야구";
 
     public string Command => TodayCommand;
 
@@ -109,10 +110,14 @@ public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService bas
     }
 
     private Task<BaseballGameScheduleSnapshot?> GetGameSnapshotAsync(BaseballGameCommandContext commandContext) =>
-        commandContext.Command.Equals(TomorrowCommand, StringComparison.OrdinalIgnoreCase) ? baseballGameScheduleService.GetTomorrowGameSnapshotAsync() : baseballGameScheduleService.GetTodayGameSnapshotAsync();
+        commandContext.Command.Equals(TomorrowCommand, StringComparison.OrdinalIgnoreCase) ? baseballGameScheduleService.GetTomorrowGameSnapshotAsync() :
+        commandContext.Command.Equals(YesterdayCommand, StringComparison.OrdinalIgnoreCase) ? baseballGameScheduleService.GetYesterdayGameSnapshotAsync() :
+        baseballGameScheduleService.GetTodayGameSnapshotAsync();
 
     private Task<BaseballGameDetail?> GetGameDetailAsync(BaseballGameCommandContext commandContext, long gameId) =>
-        commandContext.Command.Equals(TomorrowCommand, StringComparison.OrdinalIgnoreCase) ? baseballGameScheduleService.GetTomorrowGameDetailAsync(gameId) : baseballGameScheduleService.GetTodayGameDetailAsync(gameId);
+        commandContext.Command.Equals(TomorrowCommand, StringComparison.OrdinalIgnoreCase) ? baseballGameScheduleService.GetTomorrowGameDetailAsync(gameId) :
+        commandContext.Command.Equals(YesterdayCommand, StringComparison.OrdinalIgnoreCase) ? baseballGameScheduleService.GetYesterdayGameDetailAsync(gameId) :
+        baseballGameScheduleService.GetTodayGameDetailAsync(gameId);
 
     private async Task<IReadOnlyDictionary<long, BaseballGameDetail>> GetGameDetailsByGameIdAsync(BaseballGameCommandContext commandContext, IReadOnlyList<BaseballGameScheduleSummary> gameSummaries)
     {
@@ -146,6 +151,7 @@ public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService bas
             return CreateCommandContext(content, TodayCommand, "오늘");
         if (content.Equals(TodayAliasCommand, StringComparison.OrdinalIgnoreCase) || content.StartsWith($"{TodayAliasCommand} ", StringComparison.OrdinalIgnoreCase)) return CreateCommandContext(content, TodayAliasCommand, "오늘");
         if (content.StartsWith(TomorrowCommand, StringComparison.OrdinalIgnoreCase)) return CreateCommandContext(content, TomorrowCommand, "내일");
+        if (content.StartsWith(YesterdayCommand, StringComparison.OrdinalIgnoreCase)) return CreateCommandContext(content, YesterdayCommand, "어제");
 
         return null;
     }
