@@ -87,6 +87,7 @@ public class WeatherCommandHandler(IWeatherService weatherService, IUserPreferen
             
             var message = $"{weatherEmoji} {displayCityName} 날씨\n\n" +
                          $"🌡️ 현재 기온: {weather.Main.Temp:F1}°C\n" +
+                         $"📊 최저/최고 기온: {weather.Main.TempMin:F1}°C / {weather.Main.TempMax:F1}°C\n" +
                          $"🤔 체감 온도: {weather.Main.FeelsLike:F1}°C\n" +
                          $"☁️ 날씨: {description}\n" +
                          $"💧 습도: {weather.Main.Humidity}%\n" +
