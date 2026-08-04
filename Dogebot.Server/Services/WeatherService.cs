@@ -215,6 +215,7 @@ public class WeatherService(IHttpClientFactory httpClientFactory, IConfiguration
 
         return $"{weatherEmoji} {displayCityName} 날씨\n\n" +
             $"현재 기온: {weatherResponse.Main.Temp:F1}°C\n" +
+            $"최저/최고 기온: {weatherResponse.Main.TempMin:F1}°C / {weatherResponse.Main.TempMax:F1}°C\n" +
             $"체감 온도: {weatherResponse.Main.FeelsLike:F1}°C\n" +
             $"날씨: {description}\n" +
             $"습도: {weatherResponse.Main.Humidity}%\n" +
