@@ -37,6 +37,12 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
     public Task<BaseballGameDetail?> GetTomorrowGameDetailAsync(long gameId) =>
         FetchGameDetailAsync(gameId, GetTodayKoreanDate().AddDays(1), "내일");
 
+    public Task<BaseballGameScheduleSnapshot?> GetYesterdayGameSnapshotAsync() =>
+        FetchGameSnapshotAsync(GetTodayKoreanDate().AddDays(-1), "어제");
+
+    public Task<BaseballGameDetail?> GetYesterdayGameDetailAsync(long gameId) =>
+        FetchGameDetailAsync(gameId, GetTodayKoreanDate().AddDays(-1), "어제");
+
     public Task<BaseballGameScheduleSnapshot?> GetGameSnapshotAsync(DateOnly targetDate) =>
         FetchGameSnapshotAsync(targetDate, targetDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
 
