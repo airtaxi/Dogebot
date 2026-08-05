@@ -12,16 +12,17 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
     private const int MinimumOperatingHour = 5;
     private const int MinimumLeaveWorkHour = 16;
     private const int MaximumLeaveWorkHour = 20;
+    private const int LeaveTimeSlotMinutes = 30;
     private const double AfterWorkWittyMessageProbability = 0.03;
     private static readonly TimeSpan s_koreaStandardTimeOffset = TimeSpan.FromHours(9);
 
     private static readonly string[] s_leaveTimeFormats =
     [
-        "오늘 퇴근 시각: {0}시!",
-        "🐶 오늘 퇴근은 {0}시! 조금만 더 힘내자!",
-        "퇴근 시간 뽑았다... 오늘은 {0}시다!",
-        "오늘의 퇴근 럭키타임: {0}시!",
-        "퇴근 카운트다운... {0}시까지 힘내자!"
+        "오늘 퇴근 시각: {0}!",
+        "🐶 오늘 퇴근은 {0}! 조금만 더 힘내자!",
+        "퇴근 시간 뽑았다... 오늘은 {0}!",
+        "오늘의 퇴근 럭키타임: {0}!",
+        "퇴근 카운트다운... {0}까지 힘내자!"
     ];
 
     private static readonly string[] s_weekendMessages =
@@ -121,8 +122,12 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
         var currentHour = now.Hour;
         if (currentHour >= MinimumOperatingHour && currentHour <= MaximumLeaveWorkHour)
         {
-            var leaveHour = Random.Shared.Next(Math.Clamp(currentHour + 1, MinimumLeaveWorkHour, MaximumLeaveWorkHour), MaximumLeaveWorkHour + 1);
-            return string.Format(CultureInfo.InvariantCulture, PickRandom(s_leaveTimeFormats), leaveHour);
+            var nowMinutes = now.Hour * 60 + now.Minute;
+            var earliestLeaveMinutes = Math.Max(nowMinutes + 1, MinimumLeaveWorkHour * 60);
+            var maximumSlotIndex = MaximumLeaveWorkHour * 60 / LeaveTimeSlotMinutes;
+            var earliestSlotIndex = Math.Min((earliestLeaveMinutes + LeaveTimeSlotMinutes - 1) / LeaveTimeSlotMinutes, maximumSlotIndex);
+            var leaveMinutes = Random.Shared.Next(earliestSlotIndex, maximumSlotIndex + 1) * LeaveTimeSlotMinutes;
+            return string.Format(CultureInfo.InvariantCulture, PickRandom(s_leaveTimeFormats), FormatLeaveTime(leaveMinutes));
         }
 
         if (Random.Shared.NextDouble() < AfterWorkWittyMessageProbability) return PickRandom(s_afterWorkWittyMessages);
@@ -237,6 +242,13 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
 
     private static string PickRandom(string[] messages) =>
         messages[Random.Shared.Next(messages.Length)];
+
+    private static string FormatLeaveTime(int leaveMinutes)
+    {
+        var hour = leaveMinutes / 60;
+        var minute = leaveMinutes % 60;
+        return minute == 0 ? $"{hour}시" : $"{hour}시 {minute}분";
+    }
 
     #region Deng AI callable service
 
