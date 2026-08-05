@@ -226,6 +226,7 @@ builder.Services.AddSingleton<ICommandHandler, DebugCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, FortuneCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, LeaveWorkCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WebSearchCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, NewsCommandHandler>();
 
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
