@@ -18,10 +18,14 @@ public class LeaveWorkCommandHandler(ILogger<LeaveWorkCommandHandler> logger, IL
     {
         try
         {
+            if (await leaveWorkService.HasDrawnTodayAsync(data.SenderHash)) return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = "⏰ 오늘의 퇴근 시간은 이미 확인하셨습니다. 내일 다시 시도해주세요!" };
+
             var message = await leaveWorkService.CreateLeaveWorkMessageAsync();
 
             if (logger.IsEnabled(LogLevel.Information))
                 logger.LogInformation("[LEAVE_WORK] Leave work message sent to {Sender} in room {RoomId}", data.SenderName, data.RoomId);
+
+            await leaveWorkService.RecordDrawAsync(data.SenderHash);
 
             return new ServerResponse
             {

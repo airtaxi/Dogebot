@@ -62,6 +62,7 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
     private readonly HttpClient _httpClient;
     private readonly string? _holidayApiKey;
     private readonly IMongoCollection<HolidayMonthRecord> _holidayMonthRecords;
+    private readonly IMongoCollection<DailyLeaveWorkRecord> _dailyLeaveWorkRecords;
     private readonly ILogger<LeaveWorkService> _logger;
 
     public LeaveWorkService(IHttpClientFactory httpClientFactory, ILogger<LeaveWorkService> logger, IMongoDbService mongoDbService)
@@ -69,6 +70,7 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
         _httpClient = httpClientFactory.CreateClient();
         _holidayApiKey = Environment.GetEnvironmentVariable(HolidayApiKeyEnvironmentVariableName);
         _holidayMonthRecords = mongoDbService.Database.GetCollection<HolidayMonthRecord>("holidayMonths");
+        _dailyLeaveWorkRecords = mongoDbService.Database.GetCollection<DailyLeaveWorkRecord>("dailyLeaveWorkRecords");
         _logger = logger;
         CreateIndexes();
     }
@@ -78,6 +80,31 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
         var indexKeys = Builders<HolidayMonthRecord>.IndexKeys.Ascending(record => record.YearMonth);
         var indexModel = new CreateIndexModel<HolidayMonthRecord>(indexKeys, new CreateIndexOptions { Unique = true });
         _holidayMonthRecords.Indexes.CreateOne(indexModel);
+
+        var dailyRecordIndexKeys = Builders<DailyLeaveWorkRecord>.IndexKeys
+            .Ascending(record => record.SenderHash)
+            .Ascending(record => record.Date);
+        var dailyRecordIndexModel = new CreateIndexModel<DailyLeaveWorkRecord>(dailyRecordIndexKeys, new CreateIndexOptions { Unique = true });
+        _dailyLeaveWorkRecords.Indexes.CreateOne(dailyRecordIndexModel);
+    }
+
+    public async Task<bool> HasDrawnTodayAsync(string senderHash)
+    {
+        var today = DateTimeOffset.UtcNow.ToOffset(s_koreaStandardTimeOffset).ToString("yyyy-MM-dd");
+        var filter = Builders<DailyLeaveWorkRecord>.Filter.Eq(record => record.SenderHash, senderHash) &
+                     Builders<DailyLeaveWorkRecord>.Filter.Eq(record => record.Date, today);
+        return await _dailyLeaveWorkRecords.Find(filter).AnyAsync();
+    }
+
+    public async Task RecordDrawAsync(string senderHash)
+    {
+        var today = DateTimeOffset.UtcNow.ToOffset(s_koreaStandardTimeOffset).ToString("yyyy-MM-dd");
+        var record = new DailyLeaveWorkRecord
+        {
+            SenderHash = senderHash,
+            Date = today
+        };
+        await _dailyLeaveWorkRecords.InsertOneAsync(record);
     }
 
     public async Task<string> CreateLeaveWorkMessageAsync(CancellationToken cancellationToken = default)
@@ -214,13 +241,18 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
 
     IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
     [
-        new("get_leave_work_time", "Tell the user when they can leave work today with a playful message. Returns the suggested leave time on weekdays, and a witty message on weekends or holidays.", DengAiJsonSchema.Object())
+        new("get_leave_work_time", "Tell the user when they can leave work today with a playful message. Each user can draw only once per day (KST). Returns the suggested leave time on weekdays, and a witty message on weekends or holidays.", DengAiJsonSchema.Object())
     ];
 
     async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
     {
         if (!toolName.Equals("get_leave_work_time", StringComparison.Ordinal)) return "Unknown leave work tool.";
-        return await CreateLeaveWorkMessageAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(context.SenderHash)) return "사용자 식별 정보가 없어 퇴근 시간을 확인할 수 없습니다.";
+        if (await HasDrawnTodayAsync(context.SenderHash)) return "오늘의 퇴근 시간은 이미 확인했습니다. 내일 다시 확인해주세요.";
+
+        var message = await CreateLeaveWorkMessageAsync(cancellationToken);
+        await RecordDrawAsync(context.SenderHash);
+        return message;
     }
 
     #endregion
