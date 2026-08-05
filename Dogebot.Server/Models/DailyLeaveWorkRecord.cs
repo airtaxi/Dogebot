@@ -14,4 +14,7 @@ public class DailyLeaveWorkRecord
 
     [BsonElement("date")]
     public string Date { get; set; } = string.Empty;
+
+    [BsonElement("leaveTimeMinutes")]
+    public int LeaveTimeMinutes { get; set; }
 }

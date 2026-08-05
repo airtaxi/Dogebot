@@ -61,6 +61,18 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
         "퇴근은 이미 끝났습니다! 혹시 지금이 아침이라고 착각하신 거라면, 그건 시계 문제가 아니라 현실 문제입니다."
     ];
 
+    private static readonly string[] s_alreadyCheckedMessages =
+    [
+        "오늘 퇴근은 이미 {0}로 정해져 있습니다! 잊으셨다고요? 다시 알려드릴게요!",
+        "🐶 퇴근 시간은 오늘 {0}! 이미 뽑은 시간은 바꿀 수 없습니다!",
+        "오늘의 퇴근 럭키타임은 {0}로 이미 확정됐습니다! 다시 물어봐도 똑같습니다!",
+        "오늘 퇴근은 {0}! 이미 뽑으셨는데, 잊으셨을까 봐 다시 알려드립니다.",
+        "퇴근 시간은 {0}로 결정났습니다! 운명은 이미 정해졌으니 따르시죠."
+    ];
+
+    private int _holidayMessageIndex = -1;
+    private int _weekendMessageIndex = -1;
+
     private readonly HttpClient _httpClient;
     private readonly string? _holidayApiKey;
     private readonly IMongoCollection<HolidayMonthRecord> _holidayMonthRecords;
@@ -90,48 +102,56 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
         _dailyLeaveWorkRecords.Indexes.CreateOne(dailyRecordIndexModel);
     }
 
-    public async Task<bool> HasDrawnTodayAsync(string senderHash)
+    public async Task<string> CreateLeaveWorkMessageAsync(string senderHash, CancellationToken cancellationToken = default)
     {
-        var today = DateTimeOffset.UtcNow.ToOffset(s_koreaStandardTimeOffset).ToString("yyyy-MM-dd");
-        var filter = Builders<DailyLeaveWorkRecord>.Filter.Eq(record => record.SenderHash, senderHash) &
-                     Builders<DailyLeaveWorkRecord>.Filter.Eq(record => record.Date, today);
-        return await _dailyLeaveWorkRecords.Find(filter).AnyAsync();
-    }
-
-    public async Task RecordDrawAsync(string senderHash)
-    {
-        var today = DateTimeOffset.UtcNow.ToOffset(s_koreaStandardTimeOffset).ToString("yyyy-MM-dd");
-        var record = new DailyLeaveWorkRecord
+        var existingRecord = await FindTodayRecordAsync(senderHash);
+        if (existingRecord is not null)
         {
-            SenderHash = senderHash,
-            Date = today
-        };
-        await _dailyLeaveWorkRecords.InsertOneAsync(record);
-    }
+            if (existingRecord.LeaveTimeMinutes > 0) return string.Format(CultureInfo.InvariantCulture, PickRandom(s_alreadyCheckedMessages), FormatLeaveTime(existingRecord.LeaveTimeMinutes));
 
-    public async Task<string> CreateLeaveWorkMessageAsync(CancellationToken cancellationToken = default)
-    {
+            return "오늘의 퇴근 시간은 이미 확인하셨습니다. 내일 다시 시도해주세요!";
+        }
+
         var now = DateTimeOffset.UtcNow.ToOffset(s_koreaStandardTimeOffset);
 
         var holidayName = await GetTodayHolidayNameAsync(now, cancellationToken);
-        if (holidayName is not null) return string.Format(CultureInfo.InvariantCulture, PickRandom(s_holidayMessages), holidayName);
+        if (holidayName is not null) return string.Format(CultureInfo.InvariantCulture, PickRotating(s_holidayMessages, ref _holidayMessageIndex), holidayName);
 
-        if (now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
-            return string.Format(CultureInfo.InvariantCulture, PickRandom(s_weekendMessages), GetKoreanDayName(now.DayOfWeek));
+        if (now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) return string.Format(CultureInfo.InvariantCulture, PickRotating(s_weekendMessages, ref _weekendMessageIndex), GetKoreanDayName(now.DayOfWeek));
 
-        var currentHour = now.Hour;
-        if (currentHour >= MinimumOperatingHour && currentHour <= MaximumLeaveWorkHour)
+        if (now.Hour >= MinimumOperatingHour && now.Hour <= MaximumLeaveWorkHour)
         {
             var nowMinutes = now.Hour * 60 + now.Minute;
             var earliestLeaveMinutes = Math.Max(nowMinutes + 1, MinimumLeaveWorkHour * 60);
             var maximumSlotIndex = MaximumLeaveWorkHour * 60 / LeaveTimeSlotMinutes;
             var earliestSlotIndex = Math.Min((earliestLeaveMinutes + LeaveTimeSlotMinutes - 1) / LeaveTimeSlotMinutes, maximumSlotIndex);
             var leaveMinutes = Random.Shared.Next(earliestSlotIndex, maximumSlotIndex + 1) * LeaveTimeSlotMinutes;
+            await RecordDrawAsync(senderHash, leaveMinutes);
             return string.Format(CultureInfo.InvariantCulture, PickRandom(s_leaveTimeFormats), FormatLeaveTime(leaveMinutes));
         }
 
         if (Random.Shared.NextDouble() < AfterWorkWittyMessageProbability) return PickRandom(s_afterWorkWittyMessages);
         return PickRandom(s_afterWorkMessages);
+    }
+
+    private async Task<DailyLeaveWorkRecord?> FindTodayRecordAsync(string senderHash)
+    {
+        var today = DateTimeOffset.UtcNow.ToOffset(s_koreaStandardTimeOffset).ToString("yyyy-MM-dd");
+        var filter = Builders<DailyLeaveWorkRecord>.Filter.Eq(record => record.SenderHash, senderHash) &
+                     Builders<DailyLeaveWorkRecord>.Filter.Eq(record => record.Date, today);
+        return await _dailyLeaveWorkRecords.Find(filter).FirstOrDefaultAsync();
+    }
+
+    private async Task RecordDrawAsync(string senderHash, int leaveTimeMinutes)
+    {
+        var today = DateTimeOffset.UtcNow.ToOffset(s_koreaStandardTimeOffset).ToString("yyyy-MM-dd");
+        var record = new DailyLeaveWorkRecord
+        {
+            SenderHash = senderHash,
+            Date = today,
+            LeaveTimeMinutes = leaveTimeMinutes
+        };
+        await _dailyLeaveWorkRecords.InsertOneAsync(record);
     }
 
     private async Task<string?> GetTodayHolidayNameAsync(DateTimeOffset koreaNow, CancellationToken cancellationToken)
@@ -243,6 +263,9 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
     private static string PickRandom(string[] messages) =>
         messages[Random.Shared.Next(messages.Length)];
 
+    private static string PickRotating(string[] messages, ref int messageIndex) =>
+        messages[Interlocked.Increment(ref messageIndex) % messages.Length];
+
     private static string FormatLeaveTime(int leaveMinutes)
     {
         var hour = leaveMinutes / 60;
@@ -254,18 +277,14 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
 
     IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
     [
-        new("get_leave_work_time", "Tell the user when they can leave work today with a playful message. Each user can draw only once per day (KST). Returns the suggested leave time on weekdays, and a witty message on weekends or holidays.", DengAiJsonSchema.Object())
+        new("get_leave_work_time", "Tell the user when they can leave work today with a playful message. Each user draws only once per day (KST); repeated calls report the already drawn leave time again. Returns the suggested leave time on weekdays, and a witty message on weekends or holidays.", DengAiJsonSchema.Object())
     ];
 
     async Task<string> IDengAiCallableService.ExecuteDengAiToolAsync(string toolName, string arguments, DengAiToolContext context, CancellationToken cancellationToken)
     {
         if (!toolName.Equals("get_leave_work_time", StringComparison.Ordinal)) return "Unknown leave work tool.";
         if (string.IsNullOrWhiteSpace(context.SenderHash)) return "사용자 식별 정보가 없어 퇴근 시간을 확인할 수 없습니다.";
-        if (await HasDrawnTodayAsync(context.SenderHash)) return "오늘의 퇴근 시간은 이미 확인했습니다. 내일 다시 확인해주세요.";
-
-        var message = await CreateLeaveWorkMessageAsync(cancellationToken);
-        await RecordDrawAsync(context.SenderHash);
-        return message;
+        return await CreateLeaveWorkMessageAsync(context.SenderHash, cancellationToken);
     }
 
     #endregion
