@@ -98,6 +98,11 @@ builder.Services.AddSingleton<LottoService>();
 builder.Services.AddSingleton<ILottoService>(serviceProvider => serviceProvider.GetRequiredService<LottoService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<LottoService>());
 
+// Register Leave Work service
+builder.Services.AddSingleton<LeaveWorkService>();
+builder.Services.AddSingleton<ILeaveWorkService>(serviceProvider => serviceProvider.GetRequiredService<LeaveWorkService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<LeaveWorkService>());
+
 // Register web search service
 builder.Services.AddSingleton<WebSearchService>();
 
@@ -219,6 +224,7 @@ builder.Services.AddSingleton<ICommandHandler, CgvMovieListCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ImaxScheduleQueryCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DebugCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, FortuneCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, LeaveWorkCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WebSearchCommandHandler>();
 
 // Add more command handlers here as needed
