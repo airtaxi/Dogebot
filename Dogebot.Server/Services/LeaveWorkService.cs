@@ -120,7 +120,7 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
         var currentHour = now.Hour;
         if (currentHour >= 5 && currentHour <= MaximumLeaveWorkHour)
         {
-            var leaveHour = Random.Shared.Next(Math.Max(currentHour, MinimumLeaveWorkHour), MaximumLeaveWorkHour + 1);
+            var leaveHour = Random.Shared.Next(Math.Clamp(currentHour + 1, MinimumLeaveWorkHour, MaximumLeaveWorkHour), MaximumLeaveWorkHour + 1);
             return string.Format(CultureInfo.InvariantCulture, PickRandom(s_leaveTimeFormats), leaveHour);
         }
 
