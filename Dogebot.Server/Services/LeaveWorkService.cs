@@ -9,6 +9,7 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
 {
     private const string HolidayApiKeyEnvironmentVariableName = "DOGEBOT_HOLIDAY_API_KEY";
     private const string HolidayApiBaseUrl = "https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getHoliDeInfo";
+    private const int MinimumOperatingHour = 5;
     private const int MinimumLeaveWorkHour = 16;
     private const int MaximumLeaveWorkHour = 20;
     private const double AfterWorkWittyMessageProbability = 0.03;
@@ -118,7 +119,7 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
             return string.Format(CultureInfo.InvariantCulture, PickRandom(s_weekendMessages), GetKoreanDayName(now.DayOfWeek));
 
         var currentHour = now.Hour;
-        if (currentHour >= 5 && currentHour <= MaximumLeaveWorkHour)
+        if (currentHour >= MinimumOperatingHour && currentHour <= MaximumLeaveWorkHour)
         {
             var leaveHour = Random.Shared.Next(Math.Clamp(currentHour + 1, MinimumLeaveWorkHour, MaximumLeaveWorkHour), MaximumLeaveWorkHour + 1);
             return string.Format(CultureInfo.InvariantCulture, PickRandom(s_leaveTimeFormats), leaveHour);
