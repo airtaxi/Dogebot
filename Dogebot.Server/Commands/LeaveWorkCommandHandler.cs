@@ -5,7 +5,6 @@ namespace Dogebot.Server.Commands;
 
 /// <summary>
 /// Handles the !퇴근 command.
-/// Intentionally hidden from the help message.
 /// </summary>
 public class LeaveWorkCommandHandler(ILogger<LeaveWorkCommandHandler> logger, ILeaveWorkService leaveWorkService) : ICommandHandler
 {
