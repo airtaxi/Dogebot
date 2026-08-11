@@ -51,6 +51,11 @@ builder.Services.AddSingleton<StockService>();
 builder.Services.AddSingleton<IStockService>(serviceProvider => serviceProvider.GetRequiredService<StockService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<StockService>());
 
+// Register Today Market Digest service
+builder.Services.AddSingleton<TodayMarketDigestService>();
+builder.Services.AddSingleton<ITodayMarketDigestService>(serviceProvider => serviceProvider.GetRequiredService<TodayMarketDigestService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<TodayMarketDigestService>());
+
 // Register Exchange Rate service
 builder.Services.AddSingleton<ExchangeRateService>();
 builder.Services.AddSingleton<IExchangeRateService>(serviceProvider => serviceProvider.GetRequiredService<ExchangeRateService>());
