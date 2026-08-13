@@ -76,6 +76,11 @@ builder.Services.AddSingleton<BaseballGameScheduleService>();
 builder.Services.AddSingleton<IBaseballGameScheduleService>(serviceProvider => serviceProvider.GetRequiredService<BaseballGameScheduleService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<BaseballGameScheduleService>());
 
+// Register Baseball team alias service
+builder.Services.AddSingleton<BaseballTeamAliasService>();
+builder.Services.AddSingleton<IBaseballTeamAliasService>(serviceProvider => serviceProvider.GetRequiredService<BaseballTeamAliasService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<BaseballTeamAliasService>());
+
 // Register Baseball game subscription service
 builder.Services.AddSingleton<IBaseballGameSubscriptionService, BaseballGameSubscriptionService>();
 
