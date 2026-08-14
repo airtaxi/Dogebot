@@ -29,7 +29,7 @@
                 FontSize="Medium"
                 Text="Permissions and Optimization Status" />
 
-            <Border BackgroundColor="{StaticResource Gray100}" StrokeShape="RoundRectangle 5">
+            <Border BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray600}}" StrokeShape="RoundRectangle 5">
                 <VerticalStackLayout Padding="5" Spacing="5">
                     <Label FontAttributes="Bold" Text="{Binding NotificationStatus}" />
                     <Button
@@ -40,7 +40,7 @@
                     <BoxView
                         Margin="0,5"
                         HeightRequest="1"
-                        Color="{StaticResource Gray300}" />
+                        Color="{AppThemeBinding Light={StaticResource Gray300}, Dark={StaticResource Gray200}}" />
 
                     <Label FontAttributes="Bold" Text="{Binding BatteryOptStatus}" />
                     <Button
