@@ -10,6 +10,7 @@ namespace Dogebot.MobileClient.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private const string ServerAddressPreferenceKey = "ServerAddress";
+    private const string BotRunningPreferenceKey = "IsBotRunning";
     private readonly IKakaoBotService _kakaoBotService;
     private readonly HttpClient _httpClient;
 
@@ -42,6 +43,9 @@ public partial class MainViewModel : ObservableObject
         KakaoNotificationListener.NotificationReceived += OnKakaoNotificationReceived;
 
         UpdateStatuses();
+
+        // Resume bot automatically if it was running when the app was force-closed
+        if (Preferences.Get(BotRunningPreferenceKey, false)) StartBot();
     }
 
     // Update notification and battery optimization statuses
@@ -73,37 +77,41 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ToggleBotRunning()
     {
-        if (IsBotRunning)
+        if (IsBotRunning) StopBot();
+        else StartBot();
+    }
+
+    private void StartBot()
+    {
+        UpdateStatuses(); // Check statuses before starting
+
+        if (!_kakaoBotService.IsNotificationServiceEnabled() || !_kakaoBotService.IsIgnoringBatteryOptimizations())
         {
-            // Stop
-            _pollingCts?.Cancel();
-            _pollingCts = null;
-            IsBotRunning = false;
-            LogText = "Bot stopped. Wakelock released.";
-            _kakaoBotService.ReleasePartialWakeLock();
+            LogText = "❌ Bot start failed: Both notification permission and battery optimization exemption are required.";
+            return;
         }
-        else
-        {
-            // Start
-            UpdateStatuses(); // Check statuses before starting
 
-            if (!_kakaoBotService.IsNotificationServiceEnabled() || !_kakaoBotService.IsIgnoringBatteryOptimizations())
-            {
-                LogText = "❌ Bot start failed: Both notification permission and battery optimization exemption are required.";
-                return;
-            }
+        // Save server address when bot starts
+        Preferences.Set(ServerAddressPreferenceKey, ServerAddress);
 
-            // Save server address when bot starts
-            Preferences.Set(ServerAddressPreferenceKey, ServerAddress);
+        IsBotRunning = true;
+        Preferences.Set(BotRunningPreferenceKey, true);
+        LogText = $"✅ Bot started. Wakelock acquired. Server: {ServerAddress}";
+        _kakaoBotService.AcquirePartialWakeLock();
 
-            IsBotRunning = true;
-            LogText = $"✅ Bot started. Wakelock acquired. Server: {ServerAddress}";
-            _kakaoBotService.AcquirePartialWakeLock();
+        // Run polling loop detached so the toggle command completes and the button stays enabled
+        _pollingCts = new CancellationTokenSource();
+        _ = Task.Run(() => StartPollingServer(_pollingCts.Token));
+    }
 
-            // Run polling loop detached so the toggle command completes and the button stays enabled
-            _pollingCts = new CancellationTokenSource();
-            _ = Task.Run(() => StartPollingServer(_pollingCts.Token));
-        }
+    private void StopBot()
+    {
+        _pollingCts?.Cancel();
+        _pollingCts = null;
+        IsBotRunning = false;
+        Preferences.Set(BotRunningPreferenceKey, false);
+        LogText = "Bot stopped. Wakelock released.";
+        _kakaoBotService.ReleasePartialWakeLock();
     }
 
     // Process incoming KakaoTalk notifications
