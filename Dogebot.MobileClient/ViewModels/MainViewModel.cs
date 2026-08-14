@@ -71,7 +71,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task ToggleBotRunning()
+    private void ToggleBotRunning()
     {
         if (IsBotRunning)
         {
@@ -100,8 +100,9 @@ public partial class MainViewModel : ObservableObject
             LogText = $"✅ Bot started. Wakelock acquired. Server: {ServerAddress}";
             _kakaoBotService.AcquirePartialWakeLock();
 
+            // Run polling loop detached so the toggle command completes and the button stays enabled
             _pollingCts = new CancellationTokenSource();
-            await Task.Run(() => StartPollingServer(_pollingCts.Token));
+            _ = Task.Run(() => StartPollingServer(_pollingCts.Token));
         }
     }
 
