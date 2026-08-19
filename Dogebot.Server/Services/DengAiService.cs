@@ -21,7 +21,7 @@ public partial class DengAiService : IDengAiService
     private const int MaximumOutputTokenCount = 1000;
     private const int MaximumToolCallLoopCount = 10;
     private const int MaximumRateLimitRetryCount = 3;
-    private static readonly TimeSpan s_rateLimitRetryDelay = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan s_rateLimitRetryDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan s_conversationHistoryLifetime = TimeSpan.FromMinutes(5);
 
     private const string BasePromptContent = """
