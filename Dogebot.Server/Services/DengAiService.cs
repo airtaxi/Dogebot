@@ -20,6 +20,8 @@ public partial class DengAiService : IDengAiService
     private const int MaximumConversationHistoryTurnCount = 4;
     private const int MaximumOutputTokenCount = 1000;
     private const int MaximumToolCallLoopCount = 10;
+    private const int MaximumRateLimitRetryCount = 3;
+    private static readonly TimeSpan s_rateLimitRetryDelay = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan s_conversationHistoryLifetime = TimeSpan.FromMinutes(5);
 
     private const string BasePromptContent = """
@@ -151,15 +153,28 @@ public partial class DengAiService : IDengAiService
 
     private async Task<string?> CompleteSimpleChatAsync(List<ChatMessage> messages, ChatCompletionOptions options, CancellationToken cancellationToken)
     {
-        var completion = await _chatClient!.CompleteChatAsync(messages, options, cancellationToken);
+        var completion = await CompleteChatWithRetryAsync(messages, options, cancellationToken);
         return ExtractReply(completion.Value);
+    }
+
+    private async Task<ChatCompletion> CompleteChatWithRetryAsync(List<ChatMessage> messages, ChatCompletionOptions options, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try { return await _chatClient!.CompleteChatAsync(messages, options, cancellationToken); }
+            catch (ClientResultException exception) when (exception.Status == 429 && attempt < MaximumRateLimitRetryCount)
+            {
+                _logger.LogWarning("[DENG_AI] Rate limited (HTTP 429). Retrying in {DelayMilliseconds}ms ({Attempt}/{MaximumRetryCount})", s_rateLimitRetryDelay.TotalMilliseconds, attempt + 1, MaximumRateLimitRetryCount);
+                await Task.Delay(s_rateLimitRetryDelay, cancellationToken);
+            }
+        }
     }
 
     private async Task<string?> CompleteToolChatAsync(List<ChatMessage> messages, ChatCompletionOptions options, DengAiToolContext toolContext, CancellationToken cancellationToken)
     {
         for (var loopIndex = 0; loopIndex <= MaximumToolCallLoopCount; loopIndex++)
         {
-            var completion = await _chatClient!.CompleteChatAsync(messages, options, cancellationToken);
+            var completion = await CompleteChatWithRetryAsync(messages, options, cancellationToken);
             if (completion.Value.FinishReason != ChatFinishReason.ToolCalls) return ExtractReply(completion.Value);
 
             messages.Add(new AssistantChatMessage(completion.Value));
@@ -168,7 +183,7 @@ public partial class DengAiService : IDengAiService
             {
                 foreach (var toolCall in completion.Value.ToolCalls) messages.Add(new ToolChatMessage(toolCall.Id, "Tool call limit exceeded."));
                 options.Tools.Clear();
-                var finalCompletion = await _chatClient!.CompleteChatAsync(messages, options, cancellationToken);
+                var finalCompletion = await CompleteChatWithRetryAsync(messages, options, cancellationToken);
                 return ExtractReply(finalCompletion.Value);
             }
 
