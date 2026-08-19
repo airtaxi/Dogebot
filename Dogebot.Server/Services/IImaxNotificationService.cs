@@ -24,14 +24,14 @@ public interface IImaxNotificationService : IDengAiCallableService
     Task<ServerResponse?> HandleSessionInputAsync(KakaoMessageData data);
 
     /// <summary>
-    /// Registers an IMAX notification for a room. Only one notification per room is allowed.
+    /// Registers an IMAX notification for a room. Duplicate registrations with the same movie, site, and date are rejected.
     /// </summary>
     Task<(bool Success, string Message)> RegisterAsync(string roomId, string screeningDate, string movieName, string movieNumber, string siteNumber, string siteName, string? keyword, string senderHash, string senderName, string roomName);
 
     /// <summary>
-    /// Gets the active IMAX notification for a room, or null if none exists.
+    /// Gets all active IMAX notifications for a room, ordered by creation time (oldest first).
     /// </summary>
-    Task<ImaxNotification?> GetNotificationAsync(string roomId);
+    Task<List<ImaxNotification>> GetNotificationsAsync(string roomId);
 
     /// <summary>
     /// Gets all active IMAX notifications across all rooms.
@@ -39,9 +39,15 @@ public interface IImaxNotificationService : IDengAiCallableService
     Task<List<ImaxNotification>> GetAllActiveNotificationsAsync();
 
     /// <summary>
-    /// Removes the IMAX notification for a room.
+    /// Removes the IMAX notification at the given display index (1-based) for a room.
+    /// Returns the removed notification, or null if the index is invalid.
     /// </summary>
-    Task<bool> RemoveNotificationAsync(string roomId);
+    Task<ImaxNotification?> RemoveNotificationAsync(string roomId, int displayIndex);
+
+    /// <summary>
+    /// Removes all IMAX notifications for a room.
+    /// </summary>
+    Task<int> RemoveAllNotificationsAsync(string roomId);
 
     /// <summary>
     /// Sets the pending message for a notification (called by background check service when IMAX is detected).

@@ -43,11 +43,19 @@ public class ImaxNotificationService : IImaxNotificationService
 
     private void CreateIndexes()
     {
-        var roomIdIndex = new CreateIndexModel<ImaxNotification>(Builders<ImaxNotification>.IndexKeys.Ascending(x => x.RoomId), new CreateIndexOptions { Unique = true });
+        var roomIdIndex = new CreateIndexModel<ImaxNotification>(Builders<ImaxNotification>.IndexKeys.Ascending(x => x.RoomId));
         _imaxNotifications.Indexes.CreateOne(roomIdIndex);
 
         var dateIndex = new CreateIndexModel<ImaxNotification>(Builders<ImaxNotification>.IndexKeys.Ascending(x => x.ScreeningDate));
         _imaxNotifications.Indexes.CreateOne(dateIndex);
+
+        var duplicateIndexKeys = Builders<ImaxNotification>.IndexKeys
+            .Ascending(x => x.RoomId)
+            .Ascending(x => x.ScreeningDate)
+            .Ascending(x => x.MovieNumber)
+            .Ascending(x => x.SiteNumber);
+        var duplicateIndex = new CreateIndexModel<ImaxNotification>(duplicateIndexKeys, new CreateIndexOptions { Unique = true, Name = "roomId_1_screeningDate_1_movieNumber_1_siteNumber_1" });
+        _imaxNotifications.Indexes.CreateOne(duplicateIndex);
     }
 
     #region Session Management
@@ -803,14 +811,16 @@ public class ImaxNotificationService : IImaxNotificationService
 
     public async Task<(bool Success, string Message)> RegisterAsync(string roomId, string screeningDate, string movieName, string movieNumber, string siteNumber, string siteName, string? keyword, string senderHash, string senderName, string roomName)
     {
-        var existing = await GetNotificationAsync(roomId);
-        if (existing is not null)
+        var duplicateFilter = Builders<ImaxNotification>.Filter.And(Builders<ImaxNotification>.Filter.Eq(x => x.RoomId, roomId), Builders<ImaxNotification>.Filter.Eq(x => x.ScreeningDate, screeningDate), Builders<ImaxNotification>.Filter.Eq(x => x.MovieNumber, movieNumber), Builders<ImaxNotification>.Filter.Eq(x => x.SiteNumber, siteNumber));
+        var duplicate = await _imaxNotifications.Find(duplicateFilter).FirstOrDefaultAsync();
+        if (duplicate is not null)
         {
-            var existingDateDisplay = FormatScreeningDate(existing.ScreeningDate);
-            return (false, $"❌ 이 방에 이미 알림이 등록되어 있습니다.\n\n" +
-                          $"🎬 {existing.MovieName}\n" +
-                          $"📅 기존 알림: {existingDateDisplay}\n\n" +
-                          $"!아이맥스해제 후 다시 등록해주세요.");
+            var duplicateDateDisplay = FormatScreeningDate(duplicate.ScreeningDate);
+            return (false, $"❌ 이미 등록된 알림입니다.\n\n" +
+                          $"🎬 {duplicate.MovieName}\n" +
+                          $"🏢 CGV {duplicate.SiteName}\n" +
+                          $"📅 {duplicateDateDisplay}\n\n" +
+                          $"!아이맥스목록으로 확인해주세요.");
         }
 
         var notification = new ImaxNotification
@@ -834,7 +844,7 @@ public class ImaxNotificationService : IImaxNotificationService
         }
         catch (MongoWriteException exception) when (exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
         {
-            return (false, "❌ 이 방에 이미 알림이 등록되어 있습니다.\n!아이맥스해제 후 다시 등록해주세요.");
+            return (false, "❌ 이미 등록된 알림입니다.\n!아이맥스목록으로 확인해주세요.");
         }
 
         var dateDisplay = FormatScreeningDate(screeningDate);
@@ -849,10 +859,11 @@ public class ImaxNotificationService : IImaxNotificationService
                       $"등록 후 최소 1건 이상의 채팅이 필요합니다.");
     }
 
-    public async Task<ImaxNotification?> GetNotificationAsync(string roomId)
+    public async Task<List<ImaxNotification>> GetNotificationsAsync(string roomId)
     {
         var filter = Builders<ImaxNotification>.Filter.Eq(x => x.RoomId, roomId);
-        return await _imaxNotifications.Find(filter).FirstOrDefaultAsync();
+        var sort = Builders<ImaxNotification>.Sort.Ascending(x => x.CreatedAt);
+        return await _imaxNotifications.Find(filter).Sort(sort).ToListAsync();
     }
 
     public async Task<List<ImaxNotification>> GetAllActiveNotificationsAsync()
@@ -860,11 +871,23 @@ public class ImaxNotificationService : IImaxNotificationService
         return await _imaxNotifications.Find(FilterDefinition<ImaxNotification>.Empty).ToListAsync();
     }
 
-    public async Task<bool> RemoveNotificationAsync(string roomId)
+    public async Task<ImaxNotification?> RemoveNotificationAsync(string roomId, int displayIndex)
+    {
+        var notifications = await GetNotificationsAsync(roomId);
+        if (displayIndex < 1 || displayIndex > notifications.Count)
+            return null;
+
+        var target = notifications[displayIndex - 1];
+        var filter = Builders<ImaxNotification>.Filter.Eq(x => x.Id, target.Id);
+        var result = await _imaxNotifications.DeleteOneAsync(filter);
+        return result.DeletedCount > 0 ? target : null;
+    }
+
+    public async Task<int> RemoveAllNotificationsAsync(string roomId)
     {
         var filter = Builders<ImaxNotification>.Filter.Eq(x => x.RoomId, roomId);
-        var result = await _imaxNotifications.DeleteOneAsync(filter);
-        return result.DeletedCount > 0;
+        var result = await _imaxNotifications.DeleteManyAsync(filter);
+        return (int)result.DeletedCount;
     }
 
     public async Task SetPendingMessageAsync(string notificationId, string message)

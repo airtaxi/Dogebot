@@ -80,12 +80,14 @@ public class RoomMigrationService : IRoomMigrationService
         totalMigrated += await UpdateRoomIdAsync<RoomRequestLimit>("roomRequestLimits", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<UserDailyRequest>("userDailyRequests", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<RoomMentionUsage>("roomMentionUsages", sourceRoomId, targetRoomId);
+        totalMigrated += await UpdateRoomIdAsync<ImaxNotification>("imaxNotifications", sourceRoomId, targetRoomId);
 
         // Also update roomName in settings/limits that store it
         await UpdateRoomNameAsync<RoomRankingSettings>("roomRankingSettings", targetRoomId, targetRoomName);
         await UpdateRoomNameAsync<RoomRequestLimit>("roomRequestLimits", targetRoomId, targetRoomName);
         await UpdateRoomNameAsync<BaseballGameSubscription>("baseballGameSubscriptions", targetRoomId, targetRoomName);
         await UpdateRoomNameAsync<RoomMentionUsage>("roomMentionUsages", targetRoomId, targetRoomName);
+        await UpdateRoomNameAsync<ImaxNotification>("imaxNotifications", targetRoomId, targetRoomName);
 
         // Record senderName→oldSenderHash mappings for lazy hash migration.
         // When a user sends a message in the target room, their old hash data

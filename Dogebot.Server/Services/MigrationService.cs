@@ -32,6 +32,7 @@ public class MigrationService : IMigrationService
         await ApplyMigrationAsync(3, "ManualSenderHashMappings", InsertManualSenderHashMappingsAsync);
         await ApplyMigrationAsync(4, "AddMovieInfoToImaxNotifications", AddMovieInfoToImaxNotificationsAsync);
         await ApplyMigrationAsync(5, "AddSiteInfoToImaxNotifications", AddSiteInfoToImaxNotificationsAsync);
+        await ApplyMigrationAsync(6, "AllowMultipleImaxNotificationsPerRoom", AllowMultipleImaxNotificationsPerRoomAsync);
     }
 
     private async Task ApplyMigrationAsync(int version, string name, Func<Task> migration)
@@ -272,6 +273,35 @@ public class MigrationService : IMigrationService
         var result = await imaxNotifications.UpdateManyAsync(filter, update);
 
         _logger.LogInformation("[MIGRATION] Updated {Count} IMAX notifications with site info (용산아이파크몰).", result.ModifiedCount);
+    }
+
+    /// <summary>
+    /// v6: Allow multiple IMAX notifications per room.
+    /// Drops the unique roomId_1 index and creates a compound unique index
+    /// (roomId + screeningDate + movieNumber + siteNumber) that enforces the RegisterAsync duplicate rule.
+    /// Existing data cannot violate the new index because the old unique roomId_1 index
+    /// guaranteed at most one notification per room.
+    /// </summary>
+    private async Task AllowMultipleImaxNotificationsPerRoomAsync()
+    {
+        try
+        {
+            await _database.GetCollection<ImaxNotification>("imaxNotifications").Indexes.DropOneAsync("roomId_1");
+            _logger.LogInformation("[MIGRATION] Dropped unique roomId_1 index on imaxNotifications.");
+        }
+        catch (MongoCommandException exception) when (exception.CodeName is "IndexNotFound" or "NamespaceNotFound")
+        {
+            _logger.LogInformation("[MIGRATION] roomId_1 index on imaxNotifications does not exist, skipping.");
+        }
+
+        var indexKeys = Builders<ImaxNotification>.IndexKeys
+            .Ascending(x => x.RoomId)
+            .Ascending(x => x.ScreeningDate)
+            .Ascending(x => x.MovieNumber)
+            .Ascending(x => x.SiteNumber);
+        var indexModel = new CreateIndexModel<ImaxNotification>(indexKeys, new CreateIndexOptions { Unique = true, Name = "roomId_1_screeningDate_1_movieNumber_1_siteNumber_1" });
+        await _database.GetCollection<ImaxNotification>("imaxNotifications").Indexes.CreateOneAsync(indexModel, new CreateOneIndexOptions());
+        _logger.LogInformation("[MIGRATION] Created compound unique index on imaxNotifications (roomId + screeningDate + movieNumber + siteNumber).");
     }
 }
 
