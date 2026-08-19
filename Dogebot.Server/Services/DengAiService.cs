@@ -154,7 +154,7 @@ public partial class DengAiService : IDengAiService
     private async Task<string?> CompleteSimpleChatAsync(List<ChatMessage> messages, ChatCompletionOptions options, CancellationToken cancellationToken)
     {
         var completion = await CompleteChatWithRetryAsync(messages, options, cancellationToken);
-        return ExtractReply(completion.Value);
+        return ExtractReply(completion);
     }
 
     private async Task<ChatCompletion> CompleteChatWithRetryAsync(List<ChatMessage> messages, ChatCompletionOptions options, CancellationToken cancellationToken)
@@ -175,19 +175,19 @@ public partial class DengAiService : IDengAiService
         for (var loopIndex = 0; loopIndex <= MaximumToolCallLoopCount; loopIndex++)
         {
             var completion = await CompleteChatWithRetryAsync(messages, options, cancellationToken);
-            if (completion.Value.FinishReason != ChatFinishReason.ToolCalls) return ExtractReply(completion.Value);
+            if (completion.FinishReason != ChatFinishReason.ToolCalls) return ExtractReply(completion);
 
-            messages.Add(new AssistantChatMessage(completion.Value));
+            messages.Add(new AssistantChatMessage(completion));
 
             if (loopIndex == MaximumToolCallLoopCount)
             {
-                foreach (var toolCall in completion.Value.ToolCalls) messages.Add(new ToolChatMessage(toolCall.Id, "Tool call limit exceeded."));
+                foreach (var toolCall in completion.ToolCalls) messages.Add(new ToolChatMessage(toolCall.Id, "Tool call limit exceeded."));
                 options.Tools.Clear();
                 var finalCompletion = await CompleteChatWithRetryAsync(messages, options, cancellationToken);
-                return ExtractReply(finalCompletion.Value);
+                return ExtractReply(finalCompletion);
             }
 
-            foreach (var toolCall in completion.Value.ToolCalls)
+            foreach (var toolCall in completion.ToolCalls)
             {
                 var toolResult = await ExecuteToolCallAsync(toolCall, toolContext, cancellationToken);
                 messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
