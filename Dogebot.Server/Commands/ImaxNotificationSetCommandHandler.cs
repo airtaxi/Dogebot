@@ -27,23 +27,6 @@ public class ImaxNotificationSetCommandHandler(IImaxNotificationService imaxNoti
                 };
             }
 
-            // Check if room already has an active notification
-            var existing = await imaxNotificationService.GetNotificationAsync(data.RoomId);
-            if (existing is not null)
-            {
-                var dateDisplay = ImaxNotificationService.FormatScreeningDate(existing.ScreeningDate);
-                return new ServerResponse
-                {
-                    Action = "send_text",
-                    RoomId = data.RoomId,
-                    Message = $"❌ 이 방에 이미 알림이 등록되어 있습니다.\n\n" +
-                              $"🏢 CGV {existing.SiteName}\n" +
-                              $"🎬 {existing.MovieName}\n" +
-                              $"📅 {dateDisplay}\n\n" +
-                              $"!아이맥스해제 후 다시 등록해주세요."
-                };
-            }
-
             imaxNotificationService.StartSession(data.RoomId, data.SenderHash, data.SenderName, data.RoomName);
 
             if (logger.IsEnabled(LogLevel.Information))

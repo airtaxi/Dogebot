@@ -27,9 +27,9 @@ public class ImaxNotificationListCommandHandler(IImaxNotificationService imaxNot
                 };
             }
 
-            var notification = await imaxNotificationService.GetNotificationAsync(data.RoomId);
+            var notifications = await imaxNotificationService.GetNotificationsAsync(data.RoomId);
 
-            if (notification is null)
+            if (notifications.Count == 0)
             {
                 return new ServerResponse
                 {
@@ -40,27 +40,14 @@ public class ImaxNotificationListCommandHandler(IImaxNotificationService imaxNot
                 };
             }
 
-            var dateDisplay = ImaxNotificationService.FormatScreeningDate(notification.ScreeningDate);
-            var keywordDisplay = string.IsNullOrEmpty(notification.Keyword) ? "없음" : notification.Keyword;
-            var statusDisplay = notification.PendingMessage is not null ? "🟢 IMAX 감지됨 (다음 메시지에 알림 전송)" : "🔍 대기 중 (IMAX 미감지)";
-            var siteDisplay = string.IsNullOrEmpty(notification.SiteName) ? "용산아이파크몰" : notification.SiteName;
-
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[IMAX_LIST] Showing IMAX notification for room {RoomName}", data.RoomName);
+                logger.LogInformation("[IMAX_LIST] Showing {Count} IMAX notifications for room {RoomName}", notifications.Count, data.RoomName);
 
             return new ServerResponse
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
-                Message = $"🔔 IMAX 알림 정보\n\n" +
-                         $"🏢 영화관: CGV {siteDisplay}\n" +
-                         $"🎬 영화: {notification.MovieName}\n" +
-                         $"📅 날짜: {dateDisplay}\n" +
-                         $"🔑 키워드: {keywordDisplay}\n" +
-                         $"👤 등록자: {notification.CreatedByName}\n" +
-                         $"📊 상태: {statusDisplay}\n\n" +
-                         $"ℹ️ 5~10초 간격으로 IMAX 상영 여부를 확인합니다.\n" +
-                         $"!아이맥스해제로 알림을 해제할 수 있습니다."
+                Message = FormatNotificationList(notifications)
             };
         }
         catch (Exception exception)
@@ -74,5 +61,28 @@ public class ImaxNotificationListCommandHandler(IImaxNotificationService imaxNot
             };
         }
     }
-}
 
+    private static string FormatNotificationList(List<Models.ImaxNotification> notifications)
+    {
+        var result = $"🔔 IMAX 알림 목록 ({notifications.Count}개)\n\n";
+        for (int i = 0; i < notifications.Count; i++)
+        {
+            var notification = notifications[i];
+            var dateDisplay = ImaxNotificationService.FormatScreeningDate(notification.ScreeningDate);
+            var keywordDisplay = string.IsNullOrEmpty(notification.Keyword) ? "없음" : notification.Keyword;
+            var statusDisplay = notification.PendingMessage is not null ? "🟢 IMAX 감지됨 (다음 메시지에 알림 전송)" : "🔍 대기 중 (IMAX 미감지)";
+            var siteName = string.IsNullOrEmpty(notification.SiteName) ? "용산아이파크몰" : notification.SiteName;
+
+            result += $"{i + 1}. 🎬 {notification.MovieName}\n";
+            result += $"   🏢 CGV {siteName}\n";
+            result += $"   📅 {dateDisplay}\n";
+            result += $"   🔑 키워드: {keywordDisplay}\n";
+            result += $"   📊 {statusDisplay}\n";
+            result += $"   👤 등록자: {notification.CreatedByName}\n\n";
+        }
+
+        return result.TrimEnd() + "\n\n" +
+               "ℹ️ 5~10초 간격으로 IMAX 상영 여부를 확인합니다.\n" +
+               "!아이맥스해제 (번호)로 특정 알림을 해제할 수 있습니다.";
+    }
+}
