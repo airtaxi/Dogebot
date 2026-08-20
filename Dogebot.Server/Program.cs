@@ -118,6 +118,11 @@ builder.Services.AddSingleton<OddEvenService>();
 builder.Services.AddSingleton<IOddEvenService>(serviceProvider => serviceProvider.GetRequiredService<OddEvenService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<OddEvenService>());
 
+// Register Food Recommend service
+builder.Services.AddSingleton<FoodRecommendService>();
+builder.Services.AddSingleton<IFoodRecommendService>(serviceProvider => serviceProvider.GetRequiredService<FoodRecommendService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<FoodRecommendService>());
+
 // Register web search service
 builder.Services.AddSingleton<WebSearchService>();
 
