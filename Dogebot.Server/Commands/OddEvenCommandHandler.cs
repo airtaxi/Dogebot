@@ -1,11 +1,10 @@
 using Dogebot.Commons;
+using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class OddEvenCommandHandler(ILogger<OddEvenCommandHandler> logger) : ICommandHandler
+public class OddEvenCommandHandler(ILogger<OddEvenCommandHandler> logger, IOddEvenService oddEvenService) : ICommandHandler
 {
-    private readonly Random _random = new();
-
     public string Command => "!홀짝";
 
     public bool CanHandle(string content)
@@ -18,14 +17,11 @@ public class OddEvenCommandHandler(ILogger<OddEvenCommandHandler> logger) : ICom
     {
         try
         {
-            var result = _random.Next(0, 2) == 0 ? "홀" : "짝";
             var userChoice = data.Content.Trim().TrimStart('!');
-            
-            var isWin = userChoice.Equals(result, StringComparison.OrdinalIgnoreCase);
-            var message = $"🎲 결과: {result}\n{(isWin ? "✅ 맞췄습니다!" : "❌ 틀렸습니다!")}";
+            var message = oddEvenService.PlayOddEven(userChoice);
 
             if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[ODDEVEN] User chose '{UserChoice}', result was '{Result}' ({WinLose}) for {Sender} in room {RoomId}", userChoice, result, isWin ? "WIN" : "LOSE", data.SenderName, data.RoomId);
+                logger.LogInformation("[ODDEVEN] User chose '{UserChoice}' for {Sender} in room {RoomId}", userChoice, data.SenderName, data.RoomId);
 
             return Task.FromResult(new ServerResponse
             {

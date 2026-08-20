@@ -113,6 +113,11 @@ builder.Services.AddSingleton<LeaveWorkService>();
 builder.Services.AddSingleton<ILeaveWorkService>(serviceProvider => serviceProvider.GetRequiredService<LeaveWorkService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<LeaveWorkService>());
 
+// Register Odd/Even service
+builder.Services.AddSingleton<OddEvenService>();
+builder.Services.AddSingleton<IOddEvenService>(serviceProvider => serviceProvider.GetRequiredService<OddEvenService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<OddEvenService>());
+
 // Register web search service
 builder.Services.AddSingleton<WebSearchService>();
 
