@@ -49,7 +49,7 @@ public class BaseballTeamPreferenceCommandHandler(IUserBaseballTeamPreferenceSer
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
-                Message = $"✅ 응원팀을 {matchedTeamName}(으)로 등록했습니다.\n이후 !야구, !야구팀순위, !야구구독 등에서 팀명을 생략하면 자동으로 사용됩니다."
+                Message = $"✅ 응원팀을 {matchedTeamName}(으)로 등록했습니다.\n이제 댕댕봇이 {matchedTeamName} 팬인 걸 알고 있어요! !야구, !야구팀순위 등에서 팀명을 생략하면 자동으로 사용됩니다.\n예시: 댕댕아 오늘 우리 야구팀 경기 어때?"
             };
         }
         catch (Exception exception)
