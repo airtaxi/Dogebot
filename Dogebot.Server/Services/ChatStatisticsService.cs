@@ -185,7 +185,8 @@ public class ChatStatisticsService : IChatStatisticsService
         var normalizedSenderName = senderName.Trim();
         if (normalizedSenderName.Length == 0) return [];
 
-        var regexFilter = Builders<ChatStatistics>.Filter.Regex(x => x.SenderName, new BsonRegularExpression($"^{Regex.Escape(normalizedSenderName)}$", "i"));
+        // Match sender names containing the search text so nickname fragments also resolve.
+        var regexFilter = Builders<ChatStatistics>.Filter.Regex(x => x.SenderName, new BsonRegularExpression(Regex.Escape(normalizedSenderName), "i"));
         var roomFilter = Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, roomId);
         var users = await _chatStatistics.Find(Builders<ChatStatistics>.Filter.And(roomFilter, regexFilter)).ToListAsync();
 
