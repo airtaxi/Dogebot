@@ -7,7 +7,7 @@ namespace Dogebot.Server.Services;
 /// <summary>
 /// Service implementation that handles bot logic.
 /// </summary>
-public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory commandHandlerFactory, IChatStatisticsService chatStatisticsService, IRequestLimitService requestLimitService, IScheduledMessageService scheduledMessageService, IImaxNotificationService imaxNotificationService, IBaseballGameSubscriptionService baseballGameSubscriptionService, IBotSettingService botSettingService, DebugLogService debugLogService) : IKakaoService
+public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory commandHandlerFactory, IChatStatisticsService chatStatisticsService, IRequestLimitService requestLimitService, IScheduledMessageService scheduledMessageService, IImaxNotificationService imaxNotificationService, IBaseballGameSubscriptionService baseballGameSubscriptionService, IBotSettingService botSettingService, DebugLogService debugLogService, IDengAiService dengAiService) : IKakaoService
 {
 
     /// <summary>
@@ -22,6 +22,9 @@ public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory co
 
         // Record message statistics
         await chatStatisticsService.RecordMessageAsync(data);
+
+        // Record room message for AI conversation context
+        dengAiService.RecordRoomMessage(data.RoomId, data.SenderName, data.Content);
 
         // Check for active scheduled message setup sessions
         var sessionResponse = await scheduledMessageService.HandleSessionInputAsync(data);
