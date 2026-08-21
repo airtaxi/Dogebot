@@ -6,6 +6,7 @@ public interface IChatStatisticsService : IDengAiCallableService
 {
     Task RecordMessageAsync(KakaoMessageData data);
     Task<List<string>> GetKnownSenderNamesAsync(string roomId, string excludedSenderHash, long? minimumLastMessageTimeMilliseconds = null);
+    Task<List<string>> GetSenderHashesByNameAsync(string roomId, string senderName);
     Task<List<(string SenderName, long MessageCount)>> GetTopUsersAsync(string roomId, int limit = 10);
     Task<(int Rank, long MessageCount)?> GetUserRankAsync(string roomId, string senderHash);
     Task<List<(string Content, long Count)>> GetTopMessagesAsync(string roomId, int limit = 10);

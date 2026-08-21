@@ -85,7 +85,9 @@ builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => service
 builder.Services.AddSingleton<IBaseballGameSubscriptionService, BaseballGameSubscriptionService>();
 
 // Register User Baseball team preference service
-builder.Services.AddSingleton<IUserBaseballTeamPreferenceService, UserBaseballTeamPreferenceService>();
+builder.Services.AddSingleton<UserBaseballTeamPreferenceService>();
+builder.Services.AddSingleton<IUserBaseballTeamPreferenceService>(serviceProvider => serviceProvider.GetRequiredService<UserBaseballTeamPreferenceService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<UserBaseballTeamPreferenceService>());
 
 // Register Migration service
 builder.Services.AddSingleton<IMigrationService, MigrationService>();
