@@ -30,8 +30,16 @@ public class BaseballTeamPreferenceCommandHandler(IUserBaseballTeamPreferenceSer
                 };
             }
 
-            var matchedTeamName = ResolveOfficialTeamName(teamSearchText);
-            if (matchedTeamName is null) return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = $"'{teamSearchText}'에 해당하는 KBO 팀을 찾지 못했습니다.\n사용 가능한 팀: LG, 롯데, 두산, 삼성, NC, KT, SSG, KIA, 한화, 키움"};
+            var matchedTeamNames = FindMatchingTeamNames(teamSearchText);
+            if (matchedTeamNames.Count == 0) return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = $"'{teamSearchText}'에 해당하는 KBO 팀을 찾지 못했습니다.\n사용 가능한 팀: LG, 롯데, 두산, 삼성, NC, KT, SSG, KIA, 한화, 키움"};
+
+            if (matchedTeamNames.Count > 1)
+            {
+                var matchedTeamNameList = string.Join(", ", matchedTeamNames);
+                return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = $"'{teamSearchText}' 검색 결과가 여러 팀과 일치합니다: {matchedTeamNameList}\n더 구체적으로 입력해주세요."};
+            }
+
+            var matchedTeamName = matchedTeamNames[0];
 
             await userBaseballTeamPreferenceService.SetUserPreferredTeamAsync(data.SenderHash, matchedTeamName);
 
@@ -56,19 +64,34 @@ public class BaseballTeamPreferenceCommandHandler(IUserBaseballTeamPreferenceSer
         }
     }
 
-    private static string? ResolveOfficialTeamName(string teamSearchText)
+    private static List<string> FindMatchingTeamNames(string teamSearchText)
     {
         var normalizedTeamSearchText = NormalizeTeamSearchText(teamSearchText);
+        var teamMatches = BaseballTeamAliasCatalog.TeamAliasDefinitions
+            .Select(teamAliasDefinition =>
+            {
+                var normalizedSearchAliases = teamAliasDefinition.SearchAliases
+                    .Select(NormalizeTeamSearchText)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
 
-        foreach (var teamAliasDefinition in BaseballTeamAliasCatalog.TeamAliasDefinitions)
-        {
-            var hasExactMatch = teamAliasDefinition.SearchAliases
-                .Select(NormalizeTeamSearchText)
-                .Any(searchAlias => searchAlias.Equals(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase));
-            if (hasExactMatch) return teamAliasDefinition.OfficialTeamName;
-        }
+                return new
+                {
+                    OfficialTeamName = teamAliasDefinition.OfficialTeamName,
+                    HasExactMatch = normalizedSearchAliases.Any(searchAlias => searchAlias.Equals(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase)),
+                    HasPartialMatch = normalizedSearchAliases.Any(searchAlias => searchAlias.Contains(normalizedTeamSearchText, StringComparison.OrdinalIgnoreCase) || normalizedTeamSearchText.Contains(searchAlias, StringComparison.OrdinalIgnoreCase))
+                };
+            })
+            .Where(teamMatch => teamMatch.HasPartialMatch)
+            .ToList();
 
-        return null;
+        var exactMatchedTeamNames = teamMatches
+            .Where(teamMatch => teamMatch.HasExactMatch)
+            .Select(teamMatch => teamMatch.OfficialTeamName)
+            .ToList();
+        if (exactMatchedTeamNames.Count > 0) return exactMatchedTeamNames;
+
+        return [.. teamMatches.Select(teamMatch => teamMatch.OfficialTeamName)];
     }
 
     private static string NormalizeTeamSearchText(string value) =>
