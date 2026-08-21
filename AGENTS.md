@@ -131,6 +131,14 @@ public class ExampleCommandHandler(ILogger<ExampleCommandHandler> logger) : ICom
 }
 ```
 
+### 야구 팀 등록 및 응원 컨텍스트
+
+- `!야구팀등록 (팀명)` 커맨드로 사용자의 응원 KBO 팀명을 MongoDB에 저장한다.
+- 저장 위치는 `userBaseballTeamPreferences` 컬렉션이며, `senderHash` → `teamName` 형태로 보관한다.
+- 팀명은 `BaseballTeamAliasCatalog`의 표준 별칭 매칭으로 공식 팀명으로 정규화한 뒤 저장한다.
+- `!야구팀순위`, `!오늘야구`, `!야구구독` 계열에서 팀명을 생략하면 이 서비스의 응원팀이 기본값으로 자동 사용된다.
+- `DengAiService`는 응답 생성 시 등록된 팀을 조회해 "이 사용자가 응원하는 KBO 야구팀" 컨텍스트로 시스템 프롬프트 메시지에 삽입한다.
+
 ## Dependency Injection
 
 - 일반 서비스와 커맨드 핸들러는 `AddSingleton`으로 등록.

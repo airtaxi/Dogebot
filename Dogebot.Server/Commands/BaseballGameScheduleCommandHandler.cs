@@ -5,7 +5,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService baseballGameScheduleService, ILogger<BaseballGameScheduleCommandHandler> logger) : ICommandHandler
+public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService baseballGameScheduleService, IUserBaseballTeamPreferenceService userBaseballTeamPreferenceService, ILogger<BaseballGameScheduleCommandHandler> logger) : ICommandHandler
 {
     private const string TodayCommand = "!오늘야구";
     private const string TodayAliasCommand = "!야구";
@@ -42,7 +42,10 @@ public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService bas
                 };
             }
 
-            if (string.IsNullOrWhiteSpace(commandContext.TeamSearchText))
+            var teamSearchText = commandContext.TeamSearchText;
+            if (string.IsNullOrWhiteSpace(teamSearchText)) teamSearchText = await userBaseballTeamPreferenceService.GetUserPreferredTeamAsync(data.SenderHash) ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(teamSearchText))
             {
                 var gameDetailsByGameId = await GetGameDetailsByGameIdAsync(commandContext, gameSnapshot.GameSummaries);
                 return new ServerResponse
@@ -53,16 +56,8 @@ public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService bas
                 };
             }
 
-            var matchedGameSummaries = BaseballGameFormatter.FindMatchingGameSummaries(gameSnapshot.GameSummaries, commandContext.TeamSearchText);
-            if (matchedGameSummaries.Count == 0)
-            {
-                return new ServerResponse
-                {
-                    Action = "send_text",
-                    RoomId = data.RoomId,
-                    Message = $"{commandContext.DayLabel} '{commandContext.TeamSearchText}' 팀 경기가 없습니다.\n예시: {commandContext.Command} KIA, {commandContext.Command} LG, {commandContext.Command} 타이거즈"
-                };
-            }
+            var matchedGameSummaries = BaseballGameFormatter.FindMatchingGameSummaries(gameSnapshot.GameSummaries, teamSearchText);
+            if (matchedGameSummaries.Count == 0) return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = $"{commandContext.DayLabel} '{teamSearchText}' 팀 경기가 없습니다.\n예시: {commandContext.Command} KIA, {commandContext.Command} LG, {commandContext.Command} 타이거즈"};
 
             if (matchedGameSummaries.Count > 1)
             {
@@ -71,24 +66,15 @@ public class BaseballGameScheduleCommandHandler(IBaseballGameScheduleService bas
                 {
                     Action = "send_text",
                     RoomId = data.RoomId,
-                    Message = $"'{commandContext.TeamSearchText}' 검색 결과가 여러 경기와 일치합니다: {matchedGameDescriptions}\n더 구체적으로 입력해주세요."
+                    Message = $"'{teamSearchText}' 검색 결과가 여러 경기와 일치합니다: {matchedGameDescriptions}\n더 구체적으로 입력해주세요."
                 };
             }
 
             var matchedGameSummary = matchedGameSummaries[0];
             var gameDetail = await GetGameDetailAsync(commandContext, matchedGameSummary.GameId);
-            if (gameDetail == null)
-            {
-                return new ServerResponse
-                {
-                    Action = "send_text",
-                    RoomId = data.RoomId,
-                    Message = baseballGameScheduleService.GetLastGameScheduleErrorDetails() ?? $"{commandContext.DayLabel} 야구 경기 상세 정보를 가져오지 못했습니다."
-                };
-            }
+            if (gameDetail == null) return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = baseballGameScheduleService.GetLastGameScheduleErrorDetails() ?? $"{commandContext.DayLabel} 야구 경기 상세 정보를 가져오지 못했습니다."};
 
-            if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[BASEBALL_SCHEDULE] Baseball {DayLabel} game requested by {Sender} in room {RoomId} for {TeamSearchText}", commandContext.DayLabel, data.SenderName, data.RoomId, commandContext.TeamSearchText);
+            if (logger.IsEnabled(LogLevel.Information)) logger.LogInformation("[BASEBALL_SCHEDULE] Baseball {DayLabel} game requested by {Sender} in room {RoomId} for {TeamSearchText}", commandContext.DayLabel, data.SenderName, data.RoomId, teamSearchText);
 
             return new ServerResponse
             {
