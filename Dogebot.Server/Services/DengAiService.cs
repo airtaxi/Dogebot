@@ -293,8 +293,10 @@ public partial class DengAiService : IDengAiService
         var roomMessages = GetRoomMessages(toolContext.RoomId);
         if (roomMessages.Count > 0) messages.Add(new SystemChatMessage(CreateRoomMessageContext(roomMessages)));
 
-        var timeFormat = "yyyy-MM-dd HH:mm:ss.fff";
-        messages.Add(new SystemChatMessage($"현재 시각: {DateTime.UtcNow.AddHours(9).ToString(timeFormat)} ({timeFormat})"));
+        var timeFormat = "yyyy-MM-dd HH:mm:ss";
+        var koreaNow = DateTime.UtcNow.AddHours(9);
+        var dayOfWeek = CultureInfo.GetCultureInfo("ko-KR").DateTimeFormat.GetDayName(koreaNow.DayOfWeek);
+        messages.Add(new SystemChatMessage($"현재 시각: {koreaNow.ToString(timeFormat, CultureInfo.InvariantCulture)} {dayOfWeek}"));
         messages.Add(new SystemChatMessage($"사용자 닉네임: {toolContext.SenderName}"));
         messages.Add(new UserChatMessage(userMessage));
         return messages;
