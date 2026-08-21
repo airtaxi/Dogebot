@@ -84,6 +84,9 @@ builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => service
 // Register Baseball game subscription service
 builder.Services.AddSingleton<IBaseballGameSubscriptionService, BaseballGameSubscriptionService>();
 
+// Register User Baseball team preference service
+builder.Services.AddSingleton<IUserBaseballTeamPreferenceService, UserBaseballTeamPreferenceService>();
+
 // Register Migration service
 builder.Services.AddSingleton<IMigrationService, MigrationService>();
 
@@ -231,6 +234,7 @@ builder.Services.AddSingleton<ICommandHandler, BaseballCrowdRankingCommandHandle
 builder.Services.AddSingleton<ICommandHandler, BaseballNewsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballGameScheduleCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballGameSubscriptionCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, BaseballTeamPreferenceCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WordRankCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageSetCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageRemoveCommandHandler>();

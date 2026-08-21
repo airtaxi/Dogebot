@@ -1,4 +1,4 @@
-﻿using System.ClientModel;
+using System.ClientModel;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -83,13 +83,15 @@ public partial class DengAiService : IDengAiService
     private readonly List<ChatTool> _chatTools = [];
     private readonly object _roomMessageLock = new();
     private readonly Dictionary<string, List<DengAiRoomMessage>> _roomMessageMap = [];
+    private readonly IUserBaseballTeamPreferenceService? _userBaseballTeamPreferenceService;
     private readonly ILogger<DengAiService> _logger;
     private readonly bool? _providerAllowFallbacks;
     private readonly IReadOnlyList<string> _providerOrder;
 
-    public DengAiService(IEnumerable<IDengAiCallableService> callableServices, ILogger<DengAiService> logger)
+    public DengAiService(IEnumerable<IDengAiCallableService> callableServices, ILogger<DengAiService> logger, IUserBaseballTeamPreferenceService? userBaseballTeamPreferenceService = null)
     {
         _logger = logger;
+        _userBaseballTeamPreferenceService = userBaseballTeamPreferenceService;
         RegisterTools(callableServices);
 
         var baseUrl = Environment.GetEnvironmentVariable(BaseUrlEnvironmentVariableName);
@@ -293,12 +295,27 @@ public partial class DengAiService : IDengAiService
         var roomMessages = GetRoomMessages(toolContext.RoomId);
         if (roomMessages.Count > 0) messages.Add(new SystemChatMessage(CreateRoomMessageContext(roomMessages)));
 
+        var preferredTeam = GetUserPreferredTeamName(toolContext.SenderHash);
+        if (!string.IsNullOrWhiteSpace(preferredTeam)) messages.Add(new SystemChatMessage($"이 사용자가 응원하는 KBO 야구팀은 {preferredTeam}입니다. 야구 관련 질문·커맨드·상대편 언급·승패 반응 등에서는 이 팀을 기본 기준으로 생각하고, 사용자가 다른 팀을 명시하면 그 팀을 우선합니다."));
+
         var timeFormat = "yyyy-MM-dd HH:mm:ss";
         var koreaNow = DateTime.UtcNow.AddHours(9);
         var dayOfWeek = CultureInfo.GetCultureInfo("ko-KR").DateTimeFormat.GetDayName(koreaNow.DayOfWeek);
         messages.Add(new SystemChatMessage($"현재 시각: {koreaNow.ToString(timeFormat, CultureInfo.InvariantCulture)} {dayOfWeek}"));
         messages.Add(new UserChatMessage($"{toolContext.SenderName}: {userMessage}"));
         return messages;
+    }
+
+    private string? GetUserPreferredTeamName(string senderHash)
+    {
+        if (_userBaseballTeamPreferenceService is null || string.IsNullOrWhiteSpace(senderHash)) return null;
+
+        try { return _userBaseballTeamPreferenceService.GetUserPreferredTeamAsync(senderHash).GetAwaiter().GetResult(); }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "[DENG_AI] Failed to load preferred baseball team for user {SenderHash}", senderHash);
+            return null;
+        }
     }
 
     private IReadOnlyList<DengAiRoomMessage> GetRoomMessages(string roomId)

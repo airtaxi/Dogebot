@@ -5,7 +5,7 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class BaseballGameSubscriptionCommandHandler(IBaseballGameScheduleService baseballGameScheduleService, IBaseballGameSubscriptionService baseballGameSubscriptionService, ILogger<BaseballGameSubscriptionCommandHandler> logger) : ICommandHandler
+public class BaseballGameSubscriptionCommandHandler(IBaseballGameScheduleService baseballGameScheduleService, IBaseballGameSubscriptionService baseballGameSubscriptionService, IUserBaseballTeamPreferenceService userBaseballTeamPreferenceService, ILogger<BaseballGameSubscriptionCommandHandler> logger) : ICommandHandler
 {
     private const string SubscribeCommand = "!야구구독";
     private const string UnsubscribeCommand = "!야구구독해제";
@@ -22,13 +22,16 @@ public class BaseballGameSubscriptionCommandHandler(IBaseballGameScheduleService
             if (commandContext == null)
                 return CreateTextResponse(data.RoomId, "야구 구독 명령어를 처리할 수 없습니다.");
 
-            if (string.IsNullOrWhiteSpace(commandContext.TeamSearchText))
-                return CreateTextResponse(data.RoomId, $"사용법: {commandContext.Command} [팀명]\n예시: {commandContext.Command} KIA");
+            var teamSearchText = commandContext.TeamSearchText;
+            if (string.IsNullOrWhiteSpace(teamSearchText))
+            {
+                teamSearchText = await userBaseballTeamPreferenceService.GetUserPreferredTeamAsync(data.SenderHash) ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(teamSearchText)) return CreateTextResponse(data.RoomId, $"사용법: {commandContext.Command} [팀명]\n예시: {commandContext.Command} KIA\n또는 !야구팀등록으로 응원팀을 먼저 등록해주세요.");
+            }
 
-            if (commandContext.IsUnsubscribe)
-                return await HandleUnsubscribeAsync(data, commandContext.TeamSearchText);
+            if (commandContext.IsUnsubscribe) return await HandleUnsubscribeAsync(data, teamSearchText);
 
-            return await HandleSubscribeAsync(data, commandContext.TeamSearchText);
+            return await HandleSubscribeAsync(data, teamSearchText);
         }
         catch (Exception exception)
         {
