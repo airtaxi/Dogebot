@@ -16,9 +16,10 @@ public partial class DengAiService : IDengAiService
     private const string ModelEnvironmentVariableName = "DOGEBOT_DENG_AI_MODEL";
     private const string ProviderOrderEnvironmentVariableName = "DOGEBOT_DENG_AI_PROVIDER_ORDER";
     private const string ProviderAllowFallbacksEnvironmentVariableName = "DOGEBOT_DENG_AI_PROVIDER_ALLOW_FALLBACKS";
+    private const string ReasoningEffortEnvironmentVariableName = "DOGEBOT_DENG_AI_REASONING_EFFORT";
     private const int MaximumResponseCharacterCount = 800;
     private const int MaximumRoomMessageCount = 8;
-    private const int MaximumOutputTokenCount = 1000;
+    private const int MaximumOutputTokenCount = 2000;
     private const int MaximumToolCallLoopCount = 10;
     private const int MaximumRateLimitRetryCount = 3;
     private static readonly TimeSpan s_rateLimitRetryDelay = TimeSpan.FromSeconds(1);
@@ -87,6 +88,9 @@ public partial class DengAiService : IDengAiService
     private readonly ILogger<DengAiService> _logger;
     private readonly bool? _providerAllowFallbacks;
     private readonly IReadOnlyList<string> _providerOrder;
+#pragma warning disable OPENAI001
+    private readonly ChatReasoningEffortLevel? _reasoningEffortLevel;
+#pragma warning restore OPENAI001
 
     public DengAiService(IEnumerable<IDengAiCallableService> callableServices, ILogger<DengAiService> logger, IUserBaseballTeamPreferenceService? userBaseballTeamPreferenceService = null)
     {
@@ -99,6 +103,7 @@ public partial class DengAiService : IDengAiService
         var model = Environment.GetEnvironmentVariable(ModelEnvironmentVariableName);
         _providerOrder = ParseProviderOrder(Environment.GetEnvironmentVariable(ProviderOrderEnvironmentVariableName));
         _providerAllowFallbacks = ParseProviderAllowFallbacks(Environment.GetEnvironmentVariable(ProviderAllowFallbacksEnvironmentVariableName));
+        _reasoningEffortLevel = ParseReasoningEffortLevel(Environment.GetEnvironmentVariable(ReasoningEffortEnvironmentVariableName));
 
         if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(model))
         {
@@ -391,6 +396,9 @@ public partial class DengAiService : IDengAiService
         {
             MaxOutputTokenCount = MaximumOutputTokenCount
         };
+#pragma warning disable OPENAI001
+        options.ReasoningEffortLevel = _reasoningEffortLevel;
+#pragma warning restore OPENAI001
         ApplyProviderOptions(options);
         return options;
     }
@@ -418,6 +426,19 @@ public partial class DengAiService : IDengAiService
         if (int.TryParse(providerAllowFallbacks, CultureInfo.InvariantCulture, out var numericAllowFallbacks)) return numericAllowFallbacks != 0;
         return null;
     }
+
+#pragma warning disable OPENAI001
+    private static ChatReasoningEffortLevel? ParseReasoningEffortLevel(string? reasoningEffort)
+    {
+        if (string.IsNullOrWhiteSpace(reasoningEffort)) return null;
+        if (reasoningEffort.Equals("none", StringComparison.OrdinalIgnoreCase)) return ChatReasoningEffortLevel.None;
+        if (reasoningEffort.Equals("minimal", StringComparison.OrdinalIgnoreCase)) return ChatReasoningEffortLevel.Minimal;
+        if (reasoningEffort.Equals("low", StringComparison.OrdinalIgnoreCase)) return ChatReasoningEffortLevel.Low;
+        if (reasoningEffort.Equals("medium", StringComparison.OrdinalIgnoreCase)) return ChatReasoningEffortLevel.Medium;
+        if (reasoningEffort.Equals("high", StringComparison.OrdinalIgnoreCase)) return ChatReasoningEffortLevel.High;
+        return null;
+    }
+#pragma warning restore OPENAI001
 
     private void RegisterTools(IEnumerable<IDengAiCallableService> callableServices)
     {
