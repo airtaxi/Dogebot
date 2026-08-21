@@ -297,8 +297,7 @@ public partial class DengAiService : IDengAiService
         var koreaNow = DateTime.UtcNow.AddHours(9);
         var dayOfWeek = CultureInfo.GetCultureInfo("ko-KR").DateTimeFormat.GetDayName(koreaNow.DayOfWeek);
         messages.Add(new SystemChatMessage($"현재 시각: {koreaNow.ToString(timeFormat, CultureInfo.InvariantCulture)} {dayOfWeek}"));
-        messages.Add(new SystemChatMessage($"사용자 닉네임: {toolContext.SenderName}"));
-        messages.Add(new UserChatMessage(userMessage));
+        messages.Add(new UserChatMessage($"{toolContext.SenderName}: {userMessage}"));
         return messages;
     }
 
