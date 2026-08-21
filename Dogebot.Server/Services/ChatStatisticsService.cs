@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Dogebot.Commons;
 using Dogebot.Server.Models;
 using MongoDB.Bson;
@@ -176,6 +177,21 @@ public class ChatStatisticsService : IChatStatisticsService
         return [.. users
             .Select(user => user.SenderName.Trim())
             .Where(senderName => senderName.Length > 0)
+            .Distinct(StringComparer.Ordinal)];
+    }
+
+    public async Task<List<string>> GetSenderHashesByNameAsync(string roomId, string senderName)
+    {
+        var normalizedSenderName = senderName.Trim();
+        if (normalizedSenderName.Length == 0) return [];
+
+        var regexFilter = Builders<ChatStatistics>.Filter.Regex(x => x.SenderName, new BsonRegularExpression($"^{Regex.Escape(normalizedSenderName)}$", "i"));
+        var roomFilter = Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, roomId);
+        var users = await _chatStatistics.Find(Builders<ChatStatistics>.Filter.And(roomFilter, regexFilter)).ToListAsync();
+
+        return [.. users
+            .Select(user => user.SenderHash)
+            .Where(senderHash => senderHash.Length > 0)
             .Distinct(StringComparer.Ordinal)];
     }
 
