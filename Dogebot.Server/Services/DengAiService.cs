@@ -364,7 +364,7 @@ public partial class DengAiService : IDengAiService
     private static string CreateRoomMessageContext(IReadOnlyList<DengAiRoomMessage> roomMessages)
     {
         var contextBuilder = new StringBuilder();
-        contextBuilder.AppendLine("아래는 같은 대화방의 최근 5분 안 대화 맥락입니다. 현재 답변에만 참고하고, 장기 기억처럼 말하지 마세요.");
+        contextBuilder.AppendLine(CultureInfo.InvariantCulture, $"아래는 같은 대화방의 최근 {s_roomMessageLifetime.TotalMinutes}분 안 대화 맥락입니다. 최대 {MaximumRoomMessageCount}개의 메시지가 포함됩니다. 현재 답변에만 참고하고, 장기 기억처럼 말하지 마세요.");
 
         foreach (var roomMessage in roomMessages)
         {
