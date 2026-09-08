@@ -166,10 +166,10 @@ builder.Services.AddHostedService<BaseballGameSubscriptionCheckService>();
 // 
 // Step 2: Update HelpCommandHandler.cs to include your command in the help message
 //         Add your command under the appropriate category:
-//         - 🎮 게임 & 랜덤 (Game & Random)
-//         - 🎭 재미 (Fun)
-//         - 📊 통계 (Statistics)
-//         - ℹ️ 기타 (Others)
+//         - 🎮 "게임 & 랜덤" (Game & Random)
+//         - 🎭 "재미" (Fun)
+//         - 📊 "통계" (Statistics)
+//         - ℹ️ "기타" (Others)
 //         Format: "• [command] - [description]"
 // 
 // Step 3: Your command handler must implement ICommandHandler interface
