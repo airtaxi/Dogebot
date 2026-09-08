@@ -33,6 +33,7 @@ public class MigrationService : IMigrationService
         await ApplyMigrationAsync(4, "AddMovieInfoToImaxNotifications", AddMovieInfoToImaxNotificationsAsync);
         await ApplyMigrationAsync(5, "AddSiteInfoToImaxNotifications", AddSiteInfoToImaxNotificationsAsync);
         await ApplyMigrationAsync(6, "AllowMultipleImaxNotificationsPerRoom", AllowMultipleImaxNotificationsPerRoomAsync);
+        await ApplyMigrationAsync(7, "RemoveHolidayMonthRecordsWithNullId", RemoveHolidayMonthRecordsWithNullIdAsync);
     }
 
     private async Task ApplyMigrationAsync(int version, string name, Func<Task> migration)
@@ -302,6 +303,18 @@ public class MigrationService : IMigrationService
         var indexModel = new CreateIndexModel<ImaxNotification>(indexKeys, new CreateIndexOptions { Unique = true, Name = "roomId_1_screeningDate_1_movieNumber_1_siteNumber_1" });
         await _database.GetCollection<ImaxNotification>("imaxNotifications").Indexes.CreateOneAsync(indexModel, new CreateOneIndexOptions());
         _logger.LogInformation("[MIGRATION] Created compound unique index on imaxNotifications (roomId + screeningDate + movieNumber + siteNumber).");
+    }
+
+    /// <summary>
+    /// v7: Remove documents with a null _id from the holidayMonths collection.
+    /// (Cleanup of legacy documents stored with _id: null because no ObjectId was generated on upsert insert.)
+    /// </summary>
+    private async Task RemoveHolidayMonthRecordsWithNullIdAsync()
+    {
+        var holidayMonthRecords = _database.GetCollection<HolidayMonthRecord>("holidayMonths");
+        var filter = Builders<HolidayMonthRecord>.Filter.Eq(record => record.Id, null);
+        var result = await holidayMonthRecords.DeleteManyAsync(filter);
+        _logger.LogInformation("[MIGRATION] Removed {Count} holiday month records with null _id.", result.DeletedCount);
     }
 }
 

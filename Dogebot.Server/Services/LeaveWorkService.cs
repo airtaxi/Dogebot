@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Dogebot.Server.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace Dogebot.Server.Services;
@@ -170,6 +171,8 @@ public class LeaveWorkService : ILeaveWorkService, IDengAiCallableService
 
         var record = new HolidayMonthRecord
         {
+            // Generate the id explicitly to prevent the upsert from storing a null _id.
+            Id = ObjectId.GenerateNewId().ToString(),
             YearMonth = yearMonth,
             Holidays = [.. holidayNames.Select(entry => new HolidayMonthRecord.HolidayEntry { Date = entry.Key, Name = entry.Value })]
         };
