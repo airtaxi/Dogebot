@@ -28,7 +28,7 @@ public class EnableDengAiLongReplyCommandHandler(IBotSettingService botSettingSe
                 Action = "send_text",
                 RoomId = data.RoomId,
                 Message = "✅ 댕댕링크 기능이 활성화되었습니다.\n\n" +
-                          "이제 200자 이상의 AI 답변은 링크로 표시됩니다." +
+                          "이제 80자 이상의 AI 답변은 링크로 표시됩니다." +
                           baseUrlWarning
             };
         }

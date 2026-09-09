@@ -7,7 +7,7 @@ namespace Dogebot.Server.Commands;
 public class DengAiCommandHandler(IDengAiService dengAiService, IAdminService adminService, IBotSettingService botSettingService, IDengAiLongReplyService dengAiLongReplyService, ILogger<DengAiCommandHandler> logger) : ICommandHandler
 {
     private const string DengAiCommand = "댕댕아";
-    private const int LongReplyMinimumCharacterCount = 200;
+    private const int LongReplyMinimumCharacterCount = 80;
 
     public string Command => DengAiCommand;
 
