@@ -26,23 +26,23 @@ public class DengReplyController(IDengAiLongReplyService dengAiLongReplyService)
         var escapedUrl = WebUtility.HtmlEncode(pageUrl);
         var escapedContent = WebUtility.HtmlEncode(content);
 
-        return $"""
+        return $$"""
             <!DOCTYPE html>
             <html lang="ko">
             <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <meta property="og:title" content="{escapedTitle}">
-            <meta property="og:description" content="{escapedDescription}">
+            <meta property="og:title" content="{{escapedTitle}}">
+            <meta property="og:description" content="{{escapedDescription}}">
             <meta property="og:type" content="article">
-            <meta property="og:url" content="{escapedUrl}">
-            <title>{escapedTitle}</title>
+            <meta property="og:url" content="{{escapedUrl}}">
+            <title>{{escapedTitle}}</title>
             <style>
-            body {{ font-family: -apple-system, sans-serif; max-width: 720px; margin: 0 auto; padding: 16px; line-height: 1.6; overflow-wrap: break-word; }}
+            body { font-family: -apple-system, sans-serif; max-width: 720px; margin: 0 auto; padding: 16px; line-height: 1.6; overflow-wrap: break-word; }
             </style>
             </head>
             <body>
-            <pre>{escapedContent}</pre>
+            <pre>{{escapedContent}}</pre>
             </body>
             </html>
             """;
