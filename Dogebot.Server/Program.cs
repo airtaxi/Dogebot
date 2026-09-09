@@ -144,6 +144,11 @@ builder.Services.AddSingleton<DengWebExtractService>();
 builder.Services.AddSingleton<IDengWebExtractService>(serviceProvider => serviceProvider.GetRequiredService<DengWebExtractService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<DengWebExtractService>());
 
+// Register Han River water quality service
+builder.Services.AddSingleton<HanRiverWaterQualityService>();
+builder.Services.AddSingleton<IHanRiverWaterQualityService>(serviceProvider => serviceProvider.GetRequiredService<HanRiverWaterQualityService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<HanRiverWaterQualityService>());
+
 // Register Deng AI service
 builder.Services.AddSingleton<IDengAiService, DengAiService>();
 
@@ -253,6 +258,7 @@ builder.Services.AddSingleton<ICommandHandler, FortuneCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, LeaveWorkCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WebSearchCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, NewsCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, HanRiverWaterQualityCommandHandler>();
 
 // Add more command handlers here as needed
 // builder.Services.AddSingleton<ICommandHandler, YourNewCommandHandler>();
