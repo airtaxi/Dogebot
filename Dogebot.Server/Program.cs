@@ -152,6 +152,9 @@ builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => service
 // Register Deng AI service
 builder.Services.AddSingleton<IDengAiService, DengAiService>();
 
+// Register Deng AI long reply service
+builder.Services.AddSingleton<IDengAiLongReplyService, DengAiLongReplyService>();
+
 // Register Debug Log service
 builder.Services.AddSingleton<DebugLogService>();
 
@@ -190,6 +193,8 @@ builder.Services.AddHostedService<BaseballGameSubscriptionCheckService>();
 //
 builder.Services.AddSingleton<ICommandHandler, DengCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, DengAiCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, EnableDengAiLongReplyCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, DisableDengAiLongReplyCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MyRankingCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, RankCommandHandler>();

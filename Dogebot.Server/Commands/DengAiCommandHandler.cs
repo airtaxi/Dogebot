@@ -4,9 +4,10 @@ using Dogebot.Server.Services;
 
 namespace Dogebot.Server.Commands;
 
-public class DengAiCommandHandler(IDengAiService dengAiService, IAdminService adminService, ILogger<DengAiCommandHandler> logger) : ICommandHandler
+public class DengAiCommandHandler(IDengAiService dengAiService, IAdminService adminService, IBotSettingService botSettingService, IDengAiLongReplyService dengAiLongReplyService, ILogger<DengAiCommandHandler> logger) : ICommandHandler
 {
     private const string DengAiCommand = "댕댕아";
+    private const int LongReplyMinimumCharacterCount = 200;
 
     public string Command => DengAiCommand;
 
@@ -27,6 +28,8 @@ public class DengAiCommandHandler(IDengAiService dengAiService, IAdminService ad
 
             if (string.IsNullOrWhiteSpace(reply)) return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = "지금은 대답이 잘 안 나오고 있어요멍. 조금 뒤에 다시 불러줘요멍." };
 
+            reply = await ConvertLongReplyToLinkAsync(reply);
+
             if (logger.IsEnabled(LogLevel.Information)) logger.LogInformation("[DENG_AI] Responded to {SenderName} in room {RoomId}", data.SenderName, data.RoomId);
 
             return new ServerResponse
@@ -46,6 +49,15 @@ public class DengAiCommandHandler(IDengAiService dengAiService, IAdminService ad
                 Message = "AI 답변 중 오류가 발생했어요멍."
             };
         }
+    }
+
+    private async Task<string> ConvertLongReplyToLinkAsync(string reply)
+    {
+        if (reply.Length < LongReplyMinimumCharacterCount) return reply;
+        if (!await botSettingService.IsDengAiLongReplyEnabledAsync()) return reply;
+
+        var url = await dengAiLongReplyService.StoreAndGetUrlAsync(reply);
+        return url ?? reply;
     }
 
     private static string ExtractUserMessage(string content)
