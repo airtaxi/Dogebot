@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -9,22 +9,17 @@
 <meta property="og:url" content="{{pageUrl}}">
 <title>도지봇 AI 답변</title>
 <style>
-:root { color-scheme: light dark; --page-background: #f4f5f7; --card-background: #ffffff; --text-color: #24292f; --muted-color: #656d76; --accent-color: #ff7a3d; --border-color: #e3e6ea; }
-@media (prefers-color-scheme: dark) { :root { --page-background: #0d1117; --card-background: #161b22; --text-color: #e6edf3; --muted-color: #8b949e; --border-color: #30363d; } }
-* { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--page-background); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; color: var(--text-color); }
-.card { width: 100%; max-width: 640px; background: var(--card-background); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); overflow: hidden; }
-.header { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--border-color); }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-color); flex-shrink: 0; }
-.header h1 { margin: 0; font-size: 15px; font-weight: 700; }
-.header small { color: var(--muted-color); font-size: 12px; }
-pre { margin: 0; padding: 20px; font-family: inherit; font-size: 15px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; }
+body { max-width: 42rem; margin: 0 auto; padding: 3.5rem 1.25rem 5rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; font-size: 16px; line-height: 1.8; color: #222222; word-break: keep-all; }
+h1 { margin: 0 0 1.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid #dddddd; font-size: 1rem; font-weight: 700; }
+pre { margin: 0; font-family: inherit; font-size: inherit; line-height: inherit; white-space: pre-wrap; overflow-wrap: break-word; }
+@media (prefers-color-scheme: dark) {
+body { background: #101214; color: #d6d9dd; }
+h1 { border-bottom-color: #2a2e33; }
+}
 </style>
 </head>
 <body>
-<div class="card">
-<div class="header"><span class="dot"></span><h1>도지봇 AI 답변</h1><small>댕댕이</small></div>
+<h1>도지봇 AI 답변</h1>
 <pre>{{content}}</pre>
-</div>
 </body>
 </html>
