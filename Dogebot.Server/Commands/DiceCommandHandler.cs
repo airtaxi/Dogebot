@@ -29,7 +29,9 @@ public class DiceCommandHandler(ILogger<DiceCommandHandler> logger) : ICommandHa
                 });
             }
 
-            if (!ulong.TryParse(parts[1], out ulong range) || range < 1)
+            var rangeText = parts[1].Replace(",", string.Empty).Replace(".", string.Empty);
+
+            if (!ulong.TryParse(rangeText, out ulong range) || range < 1)
             {
                 return Task.FromResult(new ServerResponse
                 {
