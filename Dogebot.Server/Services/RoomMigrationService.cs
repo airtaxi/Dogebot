@@ -74,6 +74,7 @@ public class RoomMigrationService : IRoomMigrationService
         totalMigrated += await UpdateRoomIdAsync<DailyChatStatistics>("dailyChatStatistics", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<MonthlyChatStatistics>("monthlyChatStatistics", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<RoomRankingSettings>("roomRankingSettings", sourceRoomId, targetRoomId);
+        totalMigrated += await UpdateRoomIdAsync<DengAiLongReplySetting>("dengAiLongReplySettings", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<ScheduledMessage>("scheduledMessages", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<BaseballGameSubscription>("baseballGameSubscriptions", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<BaseballGameSubscriptionMessage>("baseballGameSubscriptionMessages", sourceRoomId, targetRoomId);
@@ -84,6 +85,7 @@ public class RoomMigrationService : IRoomMigrationService
 
         // Also update roomName in settings/limits that store it
         await UpdateRoomNameAsync<RoomRankingSettings>("roomRankingSettings", targetRoomId, targetRoomName);
+        await UpdateRoomNameAsync<DengAiLongReplySetting>("dengAiLongReplySettings", targetRoomId, targetRoomName);
         await UpdateRoomNameAsync<RoomRequestLimit>("roomRequestLimits", targetRoomId, targetRoomName);
         await UpdateRoomNameAsync<BaseballGameSubscription>("baseballGameSubscriptions", targetRoomId, targetRoomName);
         await UpdateRoomNameAsync<RoomMentionUsage>("roomMentionUsages", targetRoomId, targetRoomName);

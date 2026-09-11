@@ -6,7 +6,6 @@ namespace Dogebot.Server.Services;
 public class BotSettingService : IBotSettingService
 {
     private const string MessageDeliveryModeKey = "messageDeliveryMode";
-    private const string DengAiLongReplyEnabledKey = "dengAiLongReplyEnabled";
 
     private readonly IMongoCollection<BotSetting> _settings;
 
@@ -39,28 +38,6 @@ public class BotSettingService : IBotSettingService
         var update = Builders<BotSetting>.Update
             .Set(setting => setting.Key, MessageDeliveryModeKey)
             .Set(setting => setting.Value, messageDeliveryMode.ToString())
-            .Set(setting => setting.UpdatedBy, updatedBy)
-            .Set(setting => setting.UpdatedAt, currentUnixTime);
-
-        await _settings.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
-    }
-
-    public async Task<bool> IsDengAiLongReplyEnabledAsync()
-    {
-        var filter = Builders<BotSetting>.Filter.Eq(setting => setting.Key, DengAiLongReplyEnabledKey);
-        var setting = await _settings.Find(filter).FirstOrDefaultAsync();
-        if (setting is null) return false;
-
-        return bool.TryParse(setting.Value, out var enabled) && enabled;
-    }
-
-    public async Task SetDengAiLongReplyEnabledAsync(bool enabled, string updatedBy)
-    {
-        var currentUnixTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var filter = Builders<BotSetting>.Filter.Eq(setting => setting.Key, DengAiLongReplyEnabledKey);
-        var update = Builders<BotSetting>.Update
-            .Set(setting => setting.Key, DengAiLongReplyEnabledKey)
-            .Set(setting => setting.Value, enabled.ToString())
             .Set(setting => setting.UpdatedBy, updatedBy)
             .Set(setting => setting.UpdatedAt, currentUnixTime);
 

@@ -7,4 +7,8 @@ public interface IDengAiLongReplyService
     Task<string?> StoreAndGetUrlAsync(string content);
 
     Task<string?> GetContentByUrlHashAsync(string urlHash);
+
+    Task<bool> IsEnabledAsync(string roomId);
+
+    Task SetEnabledAsync(string roomId, string roomName, bool enabled, string updatedBy);
 }

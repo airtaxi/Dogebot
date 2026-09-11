@@ -153,7 +153,9 @@ builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => service
 builder.Services.AddSingleton<IDengAiService, DengAiService>();
 
 // Register Deng AI long reply service
-builder.Services.AddSingleton<IDengAiLongReplyService, DengAiLongReplyService>();
+builder.Services.AddSingleton<DengAiLongReplyService>();
+builder.Services.AddSingleton<IDengAiLongReplyService>(serviceProvider => serviceProvider.GetRequiredService<DengAiLongReplyService>());
+builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<DengAiLongReplyService>());
 
 // Register Debug Log service
 builder.Services.AddSingleton<DebugLogService>();

@@ -46,6 +46,18 @@ internal static class DengAiToolJson
         return null;
     }
 
+    public static bool? ReadBoolean(string arguments, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(arguments)) return null;
+
+        using var document = JsonDocument.Parse(arguments);
+        if (!document.RootElement.TryGetProperty(propertyName, out var property)) return null;
+        if (property.ValueKind == JsonValueKind.True) return true;
+        if (property.ValueKind == JsonValueKind.False) return false;
+        if (property.ValueKind == JsonValueKind.String && bool.TryParse(property.GetString(), out var boolean)) return boolean;
+        return null;
+    }
+
     public static string Serialize(object value) =>
         JsonSerializer.Serialize(value, SerializerOptions);
 
