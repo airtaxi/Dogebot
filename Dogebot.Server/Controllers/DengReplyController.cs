@@ -1,18 +1,20 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using Dogebot.Server.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 
 namespace Dogebot.Server.Controllers;
 
 [Route("deng")]
-public partial class DengReplyController(IDengAiLongReplyService dengAiLongReplyService, ILogger<DengReplyController> logger) : ControllerBase
+public partial class DengReplyController(IDengAiLongReplyService dengAiLongReplyService, IDengReplyImageRenderer dengReplyImageRenderer, ILogger<DengReplyController> logger) : ControllerBase
 {
     private const string TemplateFileName = "DengReplyTemplate.html";
-    private const string DescriptionPlaceholder = "{{description}}";
     private const string PageUrlPlaceholder = "{{pageUrl}}";
+    private const string ImageUrlPlaceholder = "{{imageUrl}}";
     private const string ContentPlaceholder = "{{content}}";
+    private const string OgImageCacheControl = "public, max-age=259200";
     private static readonly object s_templateLoadLock = new();
     private static string? s_cachedTemplate;
 
@@ -24,8 +26,27 @@ public partial class DengReplyController(IDengAiLongReplyService dengAiLongReply
 
         var pageUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
         var template = LoadTemplate();
-        var html = template is null ? BuildFallbackHtml(content) : ApplyTemplate(template, pageUrl, content);
+        var html = template is null ? BuildFallbackHtml(pageUrl, content) : ApplyTemplate(template, pageUrl, content);
         return Content(html, "text/html; charset=utf-8");
+    }
+
+    [HttpGet("{urlHash}/image.png")]
+    public async Task<IActionResult> GetImage([FromRoute] string urlHash)
+    {
+        var content = await dengAiLongReplyService.GetContentByUrlHashAsync(urlHash);
+        if (string.IsNullOrEmpty(content)) return NotFound();
+
+        try
+        {
+            var imageBytes = dengReplyImageRenderer.Render(content);
+            Response.Headers[HeaderNames.CacheControl] = OgImageCacheControl;
+            return File(imageBytes, "image/png");
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "[DENG_REPLY_IMAGE] Failed to render the reply preview image for {UrlHash}", urlHash);
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
     }
 
     private string? LoadTemplate()
@@ -49,19 +70,20 @@ public partial class DengReplyController(IDengAiLongReplyService dengAiLongReply
 
     private static string ApplyTemplate(string template, string pageUrl, string content)
     {
-        var escapedDescription = WebUtility.HtmlEncode(content.Replace("\r", " ").Replace("\n", " "));
-        var escapedUrl = WebUtility.HtmlEncode(pageUrl);
+        var escapedPageUrl = WebUtility.HtmlEncode(pageUrl);
+        var escapedImageUrl = WebUtility.HtmlEncode($"{pageUrl}/image.png");
         var contentHtml = BuildContentHtml(content);
 
         return template
-            .Replace(DescriptionPlaceholder, escapedDescription, StringComparison.Ordinal)
-            .Replace(PageUrlPlaceholder, escapedUrl, StringComparison.Ordinal)
+            .Replace(PageUrlPlaceholder, escapedPageUrl, StringComparison.Ordinal)
+            .Replace(ImageUrlPlaceholder, escapedImageUrl, StringComparison.Ordinal)
             .Replace(ContentPlaceholder, contentHtml, StringComparison.Ordinal);
     }
 
-    private static string BuildFallbackHtml(string content)
+    private static string BuildFallbackHtml(string pageUrl, string content)
     {
-        var escapedDescription = WebUtility.HtmlEncode(content);
+        var escapedPageUrl = WebUtility.HtmlEncode(pageUrl);
+        var escapedImageUrl = WebUtility.HtmlEncode($"{pageUrl}/image.png");
         var contentHtml = BuildContentHtml(content);
         return $$"""
             <!DOCTYPE html>
@@ -69,7 +91,11 @@ public partial class DengReplyController(IDengAiLongReplyService dengAiLongReply
             <head>
             <meta charset="utf-8">
             <meta property="og:title" content="도지봇 AI 답변">
-            <meta property="og:description" content="{{escapedDescription}}">
+            <meta property="og:type" content="article">
+            <meta property="og:url" content="{{escapedPageUrl}}">
+            <meta property="og:image" content="{{escapedImageUrl}}">
+            <meta property="og:image:width" content="1200">
+            <meta property="og:image:height" content="630">
             <title>도지봇 AI 답변</title>
             </head>
             <body>

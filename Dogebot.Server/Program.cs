@@ -157,6 +157,9 @@ builder.Services.AddSingleton<DengAiLongReplyService>();
 builder.Services.AddSingleton<IDengAiLongReplyService>(serviceProvider => serviceProvider.GetRequiredService<DengAiLongReplyService>());
 builder.Services.AddSingleton<IDengAiCallableService>(serviceProvider => serviceProvider.GetRequiredService<DengAiLongReplyService>());
 
+// Register Deng reply preview image renderer
+builder.Services.AddSingleton<IDengReplyImageRenderer, DengReplyImageRenderer>();
+
 // Register Debug Log service
 builder.Services.AddSingleton<DebugLogService>();
 

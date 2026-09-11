@@ -25,6 +25,9 @@
     <None Update="Assets\DengReplyTemplate.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Assets\SUIT-Variable.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -33,6 +36,8 @@
     <PackageReference Include="MongoDB.Driver" Version="3.11.0" />
     <PackageReference Include="OpenAI" Version="2.13.0" />
     <PackageReference Include="SharpCompress" Version="0.50.4" />
+    <PackageReference Include="SkiaSharp" Version="4.152.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.152.0" />
     <PackageReference Include="System.Net.Http.WinHttpHandler" Version="10.0.11" />
   </ItemGroup>
 
