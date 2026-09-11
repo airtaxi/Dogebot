@@ -29,6 +29,26 @@ public partial class UnitConversionService : IUnitConversionService
     private static readonly UnitDefinition s_milesPerHourUnit = new("mph", UnitCategory.Speed, false, 1.609344m, 0m, ["mph"]);
     private static readonly UnitDefinition s_metersPerSecondUnit = new("m/s", UnitCategory.Speed, true, 3.6m, 0m, ["m/s", "mps", "미터퍼초"]);
     private static readonly UnitDefinition s_knotUnit = new("노트", UnitCategory.Speed, false, 1.852m, 0m, ["노트", "knot", "kt"]);
+    private static readonly UnitDefinition s_kilonewtonMeterUnit = new("킬로뉴턴미터", UnitCategory.Torque, true, 1000m, 0m, ["킬로뉴턴미터", "킬로뉴턴메터", "kn·m", "knm", "kn.m"]);
+    private static readonly UnitDefinition s_kilogramForceMeterUnit = new("킬로그램포스미터", UnitCategory.Torque, true, 9.80665m, 0m, ["킬로그램포스미터", "킬로그램중미터", "kgf·m", "kgfm", "kgf.m"]);
+    private static readonly UnitDefinition s_newtonMeterUnit = new("뉴턴미터", UnitCategory.Torque, true, 1m, 0m, ["뉴턴미터", "뉴턴메터", "n·m", "nm", "n.m", "newtonmeter"]);
+    private static readonly UnitDefinition s_kilogramForceCentimeterUnit = new("킬로그램포스센티미터", UnitCategory.Torque, true, 0.0980665m, 0m, ["킬로그램포스센티미터", "킬로그램중센티미터", "kgf·cm", "kgfcm", "kgf.cm"]);
+    private static readonly UnitDefinition s_newtonCentimeterUnit = new("뉴턴센티미터", UnitCategory.Torque, true, 0.01m, 0m, ["뉴턴센티미터", "n·cm", "ncm", "n.cm"]);
+    private static readonly UnitDefinition s_footPoundUnit = new("풋파운드", UnitCategory.Torque, false, 1.3558179483314004m, 0m, ["풋파운드", "파운드피트", "파운드풋", "ft·lb", "ftlb", "ft.lb", "lb·ft", "lbft", "lb.ft", "footpound"]);
+    private static readonly UnitDefinition s_inchPoundUnit = new("인치파운드", UnitCategory.Torque, false, 0.1129848290276167m, 0m, ["인치파운드", "파운드인치", "in·lb", "inlb", "in.lb", "lb·in", "lbin", "lb.in", "inchpound"]);
+    private static readonly UnitDefinition s_inchOunceUnit = new("인치온스", UnitCategory.Torque, false, 0.00706155181422604m, 0m, ["인치온스", "온스인치", "in·oz", "inoz", "in.oz", "oz·in", "ozin", "oz.in", "inchounce"]);
+    private static readonly UnitDefinition s_gigapascalUnit = new("GPa", UnitCategory.Pressure, true, 1000000000m, 0m, ["기가파스칼", "gpa", "gigapascal"]);
+    private static readonly UnitDefinition s_megapascalUnit = new("MPa", UnitCategory.Pressure, true, 1000000m, 0m, ["메가파스칼", "mpa", "megapascal"]);
+    private static readonly UnitDefinition s_barUnit = new("bar", UnitCategory.Pressure, true, 100000m, 0m, ["바", "bar"]);
+    private static readonly UnitDefinition s_kilopascalUnit = new("kPa", UnitCategory.Pressure, true, 1000m, 0m, ["킬로파스칼", "kpa", "kilopascal"]);
+    private static readonly UnitDefinition s_hectopascalUnit = new("hPa", UnitCategory.Pressure, true, 100m, 0m, ["헥토파스칼", "hpa", "hectopascal"]);
+    private static readonly UnitDefinition s_pascalUnit = new("Pa", UnitCategory.Pressure, true, 1m, 0m, ["파스칼", "pa", "pascal"]);
+    private static readonly UnitDefinition s_atmosphereUnit = new("atm", UnitCategory.Pressure, false, 101325m, 0m, ["대기압", "기압", "atm", "atmosphere"]);
+    private static readonly UnitDefinition s_kilogramForcePerSquareCentimeterUnit = new("kgf/cm²", UnitCategory.Pressure, false, 98066.5m, 0m, ["킬로그램포스퍼제곱센티미터", "킬로그램중퍼제곱센티미터", "kgf/cm²", "kgf/cm2", "kgfcm2", "kg/cm2"]);
+    private static readonly UnitDefinition s_psiUnit = new("psi", UnitCategory.Pressure, false, 6894.757293168361m, 0m, ["피에스아이", "프사이", "psi", "poundpersquareinch"]);
+    private static readonly UnitDefinition s_inchOfMercuryUnit = new("inHg", UnitCategory.Pressure, false, 3386.388640341m, 0m, ["인치수은주", "수은주인치", "inhg"]);
+    private static readonly UnitDefinition s_millimeterOfMercuryUnit = new("mmHg", UnitCategory.Pressure, false, 133.322387415m, 0m, ["밀리미터수은주", "수은주밀리미터", "mmhg"]);
+    private static readonly UnitDefinition s_torrUnit = new("Torr", UnitCategory.Pressure, false, 133.32236842105263m, 0m, ["토르", "torr"]);
     private static readonly UnitDefinition s_byteUnit = new("바이트", UnitCategory.Data, true, 1m, 0m, ["바이트", "b"]);
 
     private static readonly UnitDefinition[] s_lengthMetricUnits =
@@ -84,6 +104,37 @@ public partial class UnitConversionService : IUnitConversionService
     private static readonly UnitDefinition[] s_temperatureUnits = [s_celsiusUnit, s_fahrenheitUnit, s_kelvinUnit];
 
     private static readonly UnitDefinition[] s_speedUnits = [s_kilometersPerHourUnit, s_milesPerHourUnit, s_metersPerSecondUnit, s_knotUnit];
+
+    private static readonly UnitDefinition[] s_torqueMetricUnits =
+    [
+        s_kilonewtonMeterUnit,
+        s_kilogramForceMeterUnit,
+        s_newtonMeterUnit,
+        s_kilogramForceCentimeterUnit,
+        s_newtonCentimeterUnit
+    ];
+
+    private static readonly UnitDefinition[] s_torqueImperialUnits = [s_footPoundUnit, s_inchPoundUnit, s_inchOunceUnit];
+
+    private static readonly UnitDefinition[] s_pressureMetricUnits =
+    [
+        s_gigapascalUnit,
+        s_megapascalUnit,
+        s_barUnit,
+        s_kilopascalUnit,
+        s_hectopascalUnit,
+        s_pascalUnit
+    ];
+
+    private static readonly UnitDefinition[] s_pressureOtherUnits =
+    [
+        s_atmosphereUnit,
+        s_kilogramForcePerSquareCentimeterUnit,
+        s_psiUnit,
+        s_inchOfMercuryUnit,
+        s_millimeterOfMercuryUnit,
+        s_torrUnit
+    ];
 
     private static readonly UnitDefinition[] s_dataDecimalUnits =
     [
@@ -159,6 +210,10 @@ public partial class UnitConversionService : IUnitConversionService
         s_donUnit,
         .. s_temperatureUnits,
         .. s_speedUnits,
+        .. s_torqueMetricUnits,
+        .. s_torqueImperialUnits,
+        .. s_pressureMetricUnits,
+        .. s_pressureOtherUnits,
         .. s_dataDecimalUnits,
         .. s_dataBinaryUnits,
         .. s_bitDecimalUnits,
@@ -277,6 +332,8 @@ public partial class UnitConversionService : IUnitConversionService
         UnitCategory.Length => sourceUnit.IsMetric ? s_lengthImperialUnits : s_lengthMetricUnits,
         UnitCategory.Volume => sourceUnit.IsMetric ? s_volumeImperialUnits : s_volumeMetricUnits,
         UnitCategory.Mass => sourceUnit.IsMetric ? s_massImperialUnits : s_massMetricUnits,
+        UnitCategory.Torque => sourceUnit.IsMetric ? s_torqueImperialUnits : s_torqueMetricUnits,
+        UnitCategory.Pressure => sourceUnit.IsMetric ? s_pressureOtherUnits : s_pressureMetricUnits,
         UnitCategory.Area => s_areaMetricUnits,
         _ => throw new ArgumentOutOfRangeException(nameof(sourceUnit), sourceUnit, "The unit category is not supported for automatic conversion.")
     };
@@ -300,6 +357,12 @@ public partial class UnitConversionService : IUnitConversionService
         var baseValue = ConvertToBase(request.Amount, sourceUnit);
 
         if (sourceUnit.Category == UnitCategory.Area && sourceUnit == s_squareMeterUnit) return BuildConversionMessage(request.Amount, sourceUnit, ConvertFromBase(s_pyeongUnit, baseValue), s_pyeongUnit);
+
+        if (sourceUnit.Category == UnitCategory.Torque && sourceUnit == s_newtonMeterUnit) return BuildConversionMessage(request.Amount, sourceUnit, ConvertFromBase(s_kilogramForceMeterUnit, baseValue), s_kilogramForceMeterUnit);
+
+        if (sourceUnit.Category == UnitCategory.Pressure && sourceUnit == s_barUnit) return BuildConversionMessage(request.Amount, sourceUnit, ConvertFromBase(s_psiUnit, baseValue), s_psiUnit);
+
+        if (sourceUnit.Category == UnitCategory.Pressure && sourceUnit == s_psiUnit) return BuildConversionMessage(request.Amount, sourceUnit, ConvertFromBase(s_barUnit, baseValue), s_barUnit);
 
         if (sourceUnit.Category == UnitCategory.Temperature)
         {
@@ -363,7 +426,7 @@ public partial class UnitConversionService : IUnitConversionService
         "사용법: !단위 [수치+단위] [목적지 단위]\n" +
         "수치는 단위에 붙여 쓰거나 띄어 쓸 수 있습니다.\n" +
         "목적지 단위를 생략하면 적절한 단위로 자동 변환됩니다.\n" +
-        "예시: !단위 100피트 미터, !단위 1.5킬로미터, !단위 1인치, !단위 25도 화씨, !단위 1기가";
+        "예시: !단위 100피트 미터, !단위 1.5킬로미터, !단위 1인치, !단위 25도 화씨, !단위 100뉴턴미터 킬로그램포스미터, !단위 2.5bar psi, !단위 1기가";
 
     private static string CreateUnitNotFoundMessage(string unitQuery) =>
         $"'{unitQuery}' 단위를 찾지 못했습니다.\n{CreateUsageMessage()}";
@@ -382,6 +445,8 @@ public partial class UnitConversionService : IUnitConversionService
         UnitCategory.Mass => "무게",
         UnitCategory.Temperature => "온도",
         UnitCategory.Speed => "속도",
+        UnitCategory.Torque => "토크",
+        UnitCategory.Pressure => "압력",
         UnitCategory.Data => "데이터 용량",
         _ => throw new ArgumentOutOfRangeException(nameof(category), category, "The unit category is not supported.")
     };
@@ -421,6 +486,8 @@ public partial class UnitConversionService : IUnitConversionService
         Mass,
         Temperature,
         Speed,
+        Torque,
+        Pressure,
         Data
     }
 
@@ -434,9 +501,9 @@ public partial class UnitConversionService : IUnitConversionService
 
     IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
     [
-        new("convert_unit", "Convert a value between units of length, area, volume, mass, temperature, speed, or data size.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        new("convert_unit", "Convert a value between units of length, area, volume, mass, temperature, speed, torque, pressure, or data size.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
         {
-            ["query"] = DengAiJsonSchemaProperty.String("Query in Korean command style, such as '100피트 미터', '1.5킬로미터', '25도 화씨'.")
+            ["query"] = DengAiJsonSchemaProperty.String("Query in Korean command style, such as '100피트 미터', '1.5킬로미터', '25도 화씨', '100뉴턴미터 킬로그램포스미터', '2.5bar psi'.")
         }))
     ];
 
