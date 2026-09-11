@@ -66,6 +66,27 @@ public partial class UnitConversionService : IUnitConversionService
         new("인치", UnitCategory.Length, false, 0.0254m, 0m, ["인치", "inch", "in"])
     ];
 
+    private static readonly UnitDefinition s_astronomicalUnit = new("천문단위", UnitCategory.Length, false, 149597870700m, 0m, ["천문단위", "천문", "au", "astronomicalunit"]);
+    private static readonly UnitDefinition s_lightYearUnit = new("광년", UnitCategory.Length, false, 9460730472580800m, 0m, ["광년", "lightyear", "light-year", "ly"]);
+    private static readonly UnitDefinition s_parsecUnit = new("파섹", UnitCategory.Length, false, 30856775814913673m, 0m, ["파섹", "parsec", "pc"]);
+    private static readonly UnitDefinition s_kiloparsecUnit = new("킬로파섹", UnitCategory.Length, false, 30856775814913673000m, 0m, ["킬로파섹", "kiloparsec", "kpc"]);
+    private static readonly UnitDefinition s_megaparsecUnit = new("메가파섹", UnitCategory.Length, false, 30856775814913673000000m, 0m, ["메가파섹", "megaparsec", "mpc"]);
+    private static readonly UnitDefinition s_gigaparsecUnit = new("기가파섹", UnitCategory.Length, false, 30856775814913673000000000m, 0m, ["기가파섹", "gigaparsec", "gpc"]);
+
+    private static readonly UnitDefinition[] s_lengthAstronomicalUnits =
+    [
+        s_gigaparsecUnit,
+        s_megaparsecUnit,
+        s_kiloparsecUnit,
+        s_parsecUnit,
+        s_lightYearUnit,
+        s_astronomicalUnit
+    ];
+
+    private static readonly UnitDefinition[] s_lengthAstronomicalImperialUnits = [.. s_lengthAstronomicalUnits, .. s_lengthImperialUnits];
+
+    private static readonly UnitDefinition[] s_lengthAstronomicalMetricUnits = [.. s_lengthAstronomicalUnits, .. s_lengthMetricUnits];
+
     private static readonly UnitDefinition[] s_areaMetricUnits =
     [
         new("제곱킬로미터", UnitCategory.Area, true, 1000000m, 0m, ["제곱킬로미터", "평방킬로미터", "km2", "km²", "sqkm"]),
@@ -190,6 +211,7 @@ public partial class UnitConversionService : IUnitConversionService
     [
         .. s_lengthMetricUnits,
         .. s_lengthImperialUnits,
+        .. s_lengthAstronomicalUnits,
         s_yardUnit,
         .. s_areaMetricUnits,
         s_pyeongUnit,
@@ -329,7 +351,7 @@ public partial class UnitConversionService : IUnitConversionService
 
     private static UnitDefinition[] GetAutoChain(UnitDefinition sourceUnit) => sourceUnit.Category switch
     {
-        UnitCategory.Length => sourceUnit.IsMetric ? s_lengthImperialUnits : s_lengthMetricUnits,
+        UnitCategory.Length => GetLengthAutoChain(sourceUnit),
         UnitCategory.Volume => sourceUnit.IsMetric ? s_volumeImperialUnits : s_volumeMetricUnits,
         UnitCategory.Mass => sourceUnit.IsMetric ? s_massImperialUnits : s_massMetricUnits,
         UnitCategory.Torque => sourceUnit.IsMetric ? s_torqueImperialUnits : s_torqueMetricUnits,
@@ -337,6 +359,12 @@ public partial class UnitConversionService : IUnitConversionService
         UnitCategory.Area => s_areaMetricUnits,
         _ => throw new ArgumentOutOfRangeException(nameof(sourceUnit), sourceUnit, "The unit category is not supported for automatic conversion.")
     };
+
+    private static UnitDefinition[] GetLengthAutoChain(UnitDefinition sourceUnit)
+    {
+        if (s_lengthAstronomicalUnits.Contains(sourceUnit)) return s_lengthMetricUnits;
+        return sourceUnit.IsMetric ? s_lengthAstronomicalImperialUnits : s_lengthAstronomicalMetricUnits;
+    }
 
     private static UnitDefinition SelectAutoUnit(UnitDefinition[] chain, decimal baseValue)
     {
@@ -415,18 +443,49 @@ public partial class UnitConversionService : IUnitConversionService
         return stringBuilder.ToString().TrimEnd();
     }
 
+    private const string SuperscriptDigits = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+
     private static string FormatAmount(decimal value)
     {
+        if (value == 0m) return "0";
+
         var roundedValue = decimal.Round(value, 4, MidpointRounding.AwayFromZero);
-        if (roundedValue == decimal.Truncate(roundedValue)) return roundedValue.ToString("N0", CultureInfo.InvariantCulture);
-        return roundedValue.ToString("N4", CultureInfo.InvariantCulture).TrimEnd('0').TrimEnd('.');
+        if (roundedValue != 0m)
+        {
+            if (roundedValue == decimal.Truncate(roundedValue)) return roundedValue.ToString("N0", CultureInfo.InvariantCulture);
+            return roundedValue.ToString("N4", CultureInfo.InvariantCulture).TrimEnd('0').TrimEnd('.');
+        }
+
+        return FormatTinyAmount(value);
+    }
+
+    private static string FormatTinyAmount(decimal value)
+    {
+        var magnitude = decimal.Abs(value);
+        var exponent = 0;
+        while (magnitude < 1m) { magnitude *= 10m; exponent--; }
+        while (magnitude >= 10m) { magnitude /= 10m; exponent++; }
+
+        var mantissa = value < 0m ? -magnitude : magnitude;
+        mantissa = decimal.Round(mantissa, 3, MidpointRounding.AwayFromZero);
+        if (decimal.Abs(mantissa) >= 10m) { mantissa /= 10m; exponent++; }
+
+        return $"약 {mantissa.ToString("0.###", CultureInfo.InvariantCulture)}×10{ToSuperscript(exponent)}";
+    }
+
+    private static string ToSuperscript(int exponent)
+    {
+        var stringBuilder = new StringBuilder();
+        if (exponent < 0) stringBuilder.Append('⁻');
+        foreach (var digit in Math.Abs((long)exponent).ToString(CultureInfo.InvariantCulture)) stringBuilder.Append(SuperscriptDigits[digit - '0']);
+        return stringBuilder.ToString();
     }
 
     private static string CreateUsageMessage() =>
         "사용법: !단위 [수치+단위] [목적지 단위]\n" +
         "수치는 단위에 붙여 쓰거나 띄어 쓸 수 있습니다.\n" +
         "목적지 단위를 생략하면 적절한 단위로 자동 변환됩니다.\n" +
-        "예시: !단위 100피트 미터, !단위 1.5킬로미터, !단위 1인치, !단위 25도 화씨, !단위 100뉴턴미터 킬로그램포스미터, !단위 2.5bar psi, !단위 1기가";
+        "예시: !단위 100피트 미터, !단위 1.5킬로미터, !단위 1인치, !단위 25도 화씨, !단위 100뉴턴미터 킬로그램포스미터, !단위 2.5bar psi, !단위 1기가, !단위 1광년 킬로미터, !단위 1천문단위";
 
     private static string CreateUnitNotFoundMessage(string unitQuery) =>
         $"'{unitQuery}' 단위를 찾지 못했습니다.\n{CreateUsageMessage()}";
@@ -503,7 +562,7 @@ public partial class UnitConversionService : IUnitConversionService
     [
         new("convert_unit", "Convert a value between units of length, area, volume, mass, temperature, speed, torque, pressure, or data size.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
         {
-            ["query"] = DengAiJsonSchemaProperty.String("Query in Korean command style, such as '100피트 미터', '1.5킬로미터', '25도 화씨', '100뉴턴미터 킬로그램포스미터', '2.5bar psi'.")
+            ["query"] = DengAiJsonSchemaProperty.String("Query in Korean command style, such as '100피트 미터', '1.5킬로미터', '25도 화씨', '100뉴턴미터 킬로그램포스미터', '2.5bar psi', '1광년 킬로미터'.")
         }))
     ];
 
