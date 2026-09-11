@@ -25,11 +25,11 @@ public class DiceCommandHandler(ILogger<DiceCommandHandler> logger) : ICommandHa
                 {
                     Action = "send_text",
                     RoomId = data.RoomId,
-                    Message = $"🎲 사용법: !주사위 (범위)\n예시: !주사위 100 → 1~100 사이의 랜덤 숫자\n최대 범위: {int.MaxValue:N0}"
+                    Message = $"🎲 사용법: !주사위 (범위)\n예시: !주사위 100 → 1~100 사이의 랜덤 숫자\n최대 범위: {ulong.MaxValue:N0}"
                 });
             }
 
-            if (!int.TryParse(parts[1], out int range) || range < 1)
+            if (!ulong.TryParse(parts[1], out ulong range) || range < 1)
             {
                 return Task.FromResult(new ServerResponse
                 {
@@ -39,7 +39,7 @@ public class DiceCommandHandler(ILogger<DiceCommandHandler> logger) : ICommandHa
                 });
             }
 
-            var result = _random.Next(1, range + 1);
+            var result = NextUInt64(range) + 1;
             var message = $"🎲 주사위 (1~{range:N0})\n결과: {result:N0}";
 
             if (logger.IsEnabled(LogLevel.Information))
@@ -62,6 +62,24 @@ public class DiceCommandHandler(ILogger<DiceCommandHandler> logger) : ICommandHa
                 Message = "주사위 굴리기 중 오류가 발생했습니다."
             });
         }
+    }
+
+    // Returns a uniform value in [0, maxExclusive) across the full UInt64 range.
+    private ulong NextUInt64(ulong maxExclusive)
+    {
+        if (maxExclusive <= 1) return 0;
+
+        Span<byte> buffer = stackalloc byte[8];
+        var limit = ulong.MaxValue - (ulong.MaxValue % maxExclusive);
+
+        ulong value;
+        do
+        {
+            _random.NextBytes(buffer);
+            value = BitConverter.ToUInt64(buffer);
+        } while (value >= limit);
+
+        return value % maxExclusive;
     }
 }
 
