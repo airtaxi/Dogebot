@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Net;
 using System.Text.Json;
 using System.Text;
 using Dogebot.Commons;
@@ -10,12 +11,16 @@ namespace Dogebot.MobileClient.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private const string ServerAddressPreferenceKey = "ServerAddress";
+    private const string ApiKeyPreferenceKey = "ApiKey";
     private const string BotRunningPreferenceKey = "IsBotRunning";
     private readonly IKakaoBotService _kakaoBotService;
     private readonly HttpClient _httpClient;
 
     [ObservableProperty]
     private string serverAddress = string.Empty;
+
+    [ObservableProperty]
+    private string apiKey = string.Empty;
 
     [ObservableProperty]
     private string logText = "Waiting for bot to start...";
@@ -32,6 +37,9 @@ public partial class MainViewModel : ObservableObject
     // Background polling cancellation token source
     private CancellationTokenSource? _pollingCts;
 
+    // Suppress saving while the initial API key load from SecureStorage is in progress
+    private bool _isApiKeyLoaded;
+
     public MainViewModel(IKakaoBotService kakaoBotService)
     {
         _kakaoBotService = kakaoBotService;
@@ -40,12 +48,34 @@ public partial class MainViewModel : ObservableObject
         // Load saved server address or use default
         ServerAddress = Preferences.Get(ServerAddressPreferenceKey, Constants.ServerEndpointUrl);
 
+        // Load the API key from SecureStorage and resume the bot afterwards
+        _ = InitializeAsync();
+
         KakaoNotificationListener.NotificationReceived += OnKakaoNotificationReceived;
 
         UpdateStatuses();
+    }
+
+    private async Task InitializeAsync()
+    {
+        try { ApiKey = await SecureStorage.Default.GetAsync(ApiKeyPreferenceKey) ?? string.Empty; }
+        catch (Exception exception) { LogText = $"❌ Failed to load the API key: {exception.Message}"; }
+        finally { _isApiKeyLoaded = true; }
 
         // Resume bot automatically if it was running when the app was force-closed
         if (Preferences.Get(BotRunningPreferenceKey, false)) StartBot();
+    }
+
+    partial void OnApiKeyChanged(string value)
+    {
+        if (!_isApiKeyLoaded) return;
+        _ = SaveApiKeyAsync(value);
+    }
+
+    private async Task SaveApiKeyAsync(string value)
+    {
+        try { await SecureStorage.Default.SetAsync(ApiKeyPreferenceKey, value); }
+        catch (Exception exception) { LogText = $"❌ Failed to save the API key: {exception.Message}"; }
     }
 
     // Update notification and battery optimization statuses
@@ -126,9 +156,10 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{ServerAddress}/notify") { Content = new StringContent(json, Encoding.UTF8, "application/json") };
+            ApplyApiKeyHeader(request);
 
-            var response = await _httpClient.PostAsync($"{ServerAddress}/notify", content);
+            using var response = await _httpClient.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
             {
@@ -136,6 +167,10 @@ public partial class MainViewModel : ObservableObject
                 var serverResponse = JsonSerializer.Deserialize<ServerResponse>(responseJson);
 
                 if (serverResponse is not null) await ExecuteServerResponseAsync(serverResponse, "[OUT]", data.RoomName);
+            }
+            else if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                LogText = "❌ Authentication failed: Check the API key.";
             }
             else
             {
@@ -157,7 +192,10 @@ public partial class MainViewModel : ObservableObject
                 var availableRooms = KakaoNotificationListener.GetAvailableRoomIds();
                 var roomsParam = availableRooms.Count > 0 ? $"?availableRooms={Uri.EscapeDataString(string.Join(",", availableRooms))}" : "";
 
-                var response = await _httpClient.GetAsync($"{ServerAddress}/command{roomsParam}", cancellationToken);
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{ServerAddress}/command{roomsParam}");
+                ApplyApiKeyHeader(request);
+
+                using var response = await _httpClient.SendAsync(request, cancellationToken);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -165,6 +203,10 @@ public partial class MainViewModel : ObservableObject
                     var serverResponse = JsonSerializer.Deserialize<ServerResponse>(responseJson);
 
                     if (serverResponse != null) await ExecuteServerResponseAsync(serverResponse, "[CMD]", serverResponse.RoomId);
+                }
+                else if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    LogText = "❌ Authentication failed: Check the API key.";
                 }
                 else
                 {
@@ -183,6 +225,14 @@ public partial class MainViewModel : ObservableObject
 
             // Poll every 5 seconds
             await Task.Delay(5000, cancellationToken);
+        }
+    }
+
+    private void ApplyApiKeyHeader(HttpRequestMessage request)
+    {
+        if (!string.IsNullOrWhiteSpace(ApiKey))
+        {
+            request.Headers.TryAddWithoutValidation(ApiKeyAuthenticationDefaults.HeaderName, ApiKey);
         }
     }
 

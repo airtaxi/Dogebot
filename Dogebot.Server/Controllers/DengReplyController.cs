@@ -2,11 +2,13 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Dogebot.Server.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 
 namespace Dogebot.Server.Controllers;
 
+[AllowAnonymous]
 [Route("deng")]
 public partial class DengReplyController(IDengAiLongReplyService dengAiLongReplyService, IDengReplyImageRenderer dengReplyImageRenderer, ILogger<DengReplyController> logger) : ControllerBase
 {

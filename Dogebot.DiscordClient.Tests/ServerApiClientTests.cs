@@ -56,6 +56,28 @@ public class ServerApiClientTests
         Assert.Equal("read", result.Action);
     }
 
+    [Fact]
+    public async Task NotifyAsync_SendsApiKeyHeaderWhenConfigured()
+    {
+        var handler = new StubHandler(request =>
+        {
+            var apiKey = Assert.Single(request.Headers.GetValues(ApiKeyAuthenticationDefaults.HeaderName));
+            Assert.Equal("test-api-key", apiKey);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent(new ServerResponse { Action = "send_text", RoomId = "1", Message = "ok" })
+            };
+        });
+
+        var httpClient = new HttpClient(handler);
+        var options = Options.Create(new DiscordClientOptions { ServerBaseUrl = "https://localhost/api/kakao", ApiKey = "test-api-key" });
+        var apiClient = new ServerApiClient(httpClient, options, NullLogger<ServerApiClient>.Instance);
+
+        var result = await apiClient.NotifyAsync(new ServerNotification(), CancellationToken.None);
+
+        Assert.Equal("send_text", result.Action);
+    }
+
     private static StringContent JsonContent<T>(T value) =>
         new(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json");
 

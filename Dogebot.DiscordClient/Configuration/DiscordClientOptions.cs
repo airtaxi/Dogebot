@@ -6,6 +6,7 @@ public class DiscordClientOptions
 
     public string Token { get; set; } = string.Empty;
     public string ServerBaseUrl { get; set; } = "https://your-server-url.com/api/kakao";
+    public string ApiKey { get; set; } = string.Empty;
     public int PollIntervalSeconds { get; set; } = 5;
     public List<string> AllowedChannelIds { get; set; } = [];
 }

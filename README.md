@@ -61,6 +61,7 @@ Dogebot is a distributed system consisting of three main components:
 
 ### Server
 - **REST API**: Provides endpoints for receiving notifications and delivering commands
+- **API Key Authentication**: Protects bot endpoints with a shared API key sent in the `X-API-Key` header
 - **Command Handler Pattern**: Extensible architecture for adding new bot commands
 - **Built-in Commands**: 
   - `!핑` - Responds with `퐁` (ping/pong)
@@ -109,7 +110,23 @@ Edit `Dogebot.MobileClient\Constants.cs` and update the server URL:
 internal const string ServerEndpointUrl = "https://your-server-url.com/api/kakao";
 ```
 
-### 3. Configure MongoDB (Optional)
+### 3. Configure the API Key
+
+The server requires a shared API key for all bot endpoints. Set the `DOGEBOT_API_KEY` environment variable before starting the server:
+
+```bash
+export DOGEBOT_API_KEY="your-strong-random-key"
+```
+
+```powershell
+$env:DOGEBOT_API_KEY = "your-strong-random-key"
+```
+
+Clients must send the same value in the `X-API-Key` header: enter it in the mobile client's "API Key" field, or set `Discord:ApiKey` in the Discord client's `appsettings.json` (an empty value falls back to the `DOGEBOT_API_KEY` environment variable).
+
+When `DOGEBOT_API_KEY` is not set, the server fails closed and rejects every protected request with `401 Unauthorized`. The public `/deng/*` share pages remain accessible without a key.
+
+### 4. Configure MongoDB (Optional)
 If you want to use statistics features, configure MongoDB connection in `Dogebot.Server\appsettings.json`:
 ```json
 {
@@ -120,18 +137,18 @@ If you want to use statistics features, configure MongoDB connection in `Dogebot
 }
 ```
 
-### 4. Build the Solution
+### 5. Build the Solution
 ```bash
 dotnet build
 ```
 
-### 5. Run the Server
+### 6. Run the Server
 ```bash
 cd Dogebot.Server
 dotnet run
 ```
 
-### 6. Deploy Mobile Client
+### 7. Deploy Mobile Client
 Deploy the `Dogebot.MobileClient` project to your Android device through Visual Studio.
 
 ## Usage
@@ -149,6 +166,7 @@ Deploy the `Dogebot.MobileClient` project to your Android device through Visual 
 
 3. **Configure Server**
    - Enter your server endpoint URL
+   - Enter the API key that matches the server's `DOGEBOT_API_KEY` value
    - Tap "Update Status" to verify settings
 
 4. **Start the Bot**
@@ -192,8 +210,21 @@ builder.Services.AddSingleton<ICommandHandler, HelloCommandHandler>();
 
 ## API Endpoints
 
+All bot endpoints require authentication unless explicitly marked as anonymous.
+
+### Authentication
+
+Send the shared API key in the `X-API-Key` request header. The server reads the expected value from the `DOGEBOT_API_KEY` environment variable.
+
+- Missing or invalid key: `401 Unauthorized`
+- `DOGEBOT_API_KEY` not set: every protected request is rejected (fail closed)
+- Unknown paths return `401` instead of `404`, because the default authorization policy covers all endpoints that are not explicitly marked as anonymous
+- `GET /deng/{urlHash}` public share pages are anonymous and do not require a key
+
 ### POST /api/kakao/notify
 Receives notification messages from the MAUI client and returns immediate command response.
+
+**Headers:** `X-API-Key: <key>` (required)
 
 **Request Body:**
 ```json
@@ -223,6 +254,8 @@ Receives notification messages from the MAUI client and returns immediate comman
 
 ### GET /api/kakao/command
 Polling endpoint for retrieving queued commands (currently returns empty response).
+
+**Headers:** `X-API-Key: <key>` (required)
 
 **Response:**
 ```json
@@ -299,6 +332,12 @@ Dogebot/
 3. Check server endpoint URL matches in Constants.cs
 4. Review network connectivity on mobile device
 5. Check server logs for error messages
+
+### 401 Unauthorized Responses
+1. Verify `DOGEBOT_API_KEY` is set on the server
+2. Verify the client API key exactly matches the server value (watch for leading or trailing spaces)
+3. Check the server logs: authentication failures are logged at Debug level
+4. Remember that unknown paths also return 401 by design
 
 ### Replies Not Sending
 1. Reply actions expire when notification is dismissed

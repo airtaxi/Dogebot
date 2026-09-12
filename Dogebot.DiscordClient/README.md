@@ -16,6 +16,7 @@
 `appsettings.json`의 `Discord` 섹션을 설정합니다.
 
 - `Token`: Discord Bot Token
+- `ApiKey`: 서버 공유 API 키 (비우면 `DOGEBOT_API_KEY` 환경 변수 사용)
 - `ServerBaseUrl`: 예) `https://your-server-url.com/api/kakao`
 - `PollIntervalSeconds`: 폴링 주기(초)
 - `AllowedChannelIds`: 허용 채널 ID 목록 (비우면 수신된 채널 자동 추적)

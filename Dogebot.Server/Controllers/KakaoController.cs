@@ -1,10 +1,12 @@
 using Dogebot.Commons;
 using Dogebot.Server.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dogebot.Server.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/kakao")]
 public class KakaoController(IKakaoService kakaoService, ILogger<KakaoController> logger) : ControllerBase
 {

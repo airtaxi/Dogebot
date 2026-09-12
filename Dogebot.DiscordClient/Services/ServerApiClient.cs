@@ -11,7 +11,9 @@ public class ServerApiClient(HttpClient httpClient, IOptions<DiscordClientOption
     {
         var endpoint = BuildUrl("notify");
 
-        using var response = await httpClient.PostAsJsonAsync(endpoint, notification, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = JsonContent.Create(notification) };
+        ApplyApiKeyHeader(request);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             logger.LogWarning("[SERVER_API] Notify failed: {StatusCode}", response.StatusCode);
@@ -26,7 +28,9 @@ public class ServerApiClient(HttpClient httpClient, IOptions<DiscordClientOption
         var roomIds = availableRoomIds.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
         var query = roomIds.Length == 0 ? string.Empty : $"?availableRooms={string.Join(',', roomIds)}";
 
-        using var response = await httpClient.GetAsync($"{BuildUrl("command")}{query}", cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{BuildUrl("command")}{query}");
+        ApplyApiKeyHeader(request);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             logger.LogWarning("[SERVER_API] Polling failed: {StatusCode}", response.StatusCode);
@@ -34,6 +38,12 @@ public class ServerApiClient(HttpClient httpClient, IOptions<DiscordClientOption
         }
 
         return await response.Content.ReadFromJsonAsync<ServerResponse>(cancellationToken: cancellationToken) ?? new ServerResponse();
+    }
+
+    private void ApplyApiKeyHeader(HttpRequestMessage request)
+    {
+        var apiKey = string.IsNullOrWhiteSpace(options.Value.ApiKey) ? Environment.GetEnvironmentVariable(ApiKeyAuthenticationDefaults.EnvironmentVariableName) : options.Value.ApiKey;
+        if (!string.IsNullOrWhiteSpace(apiKey)) request.Headers.TryAddWithoutValidation(ApiKeyAuthenticationDefaults.HeaderName, apiKey);
     }
 
     private string BuildUrl(string path)

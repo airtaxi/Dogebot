@@ -1,6 +1,10 @@
+using Dogebot.Commons;
+using Dogebot.Server.Authentication;
 using Dogebot.Server.Commands;
 using Dogebot.Server.Services;
 using Dogebot.Server.BackgroundServices;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -276,6 +280,11 @@ builder.Services.AddSingleton<CommandHandlerFactory>();
 builder.Services.AddSingleton<IKakaoService, KakaoService>();
 builder.Services.AddControllers();
 
+// Register API key authentication and require it for all endpoints by default
+builder.Services.AddAuthentication(ApiKeyAuthenticationHandler.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationHandler.SchemeName, displayName: null, configureOptions: null);
+builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+
 var app = builder.Build();
 
 // Run cleanup on startup to remove blacklisted messages from database
@@ -321,7 +330,12 @@ using (var scope = app.Services.CreateScope())
     {
         logger.LogError(exception, "[STARTUP] Error during cleanup of expired approval codes");
     }
+
+    if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(ApiKeyAuthenticationDefaults.EnvironmentVariableName))) logger.LogWarning("[STARTUP] {EnvironmentVariableName} is not set. API requests will be rejected with 401 Unauthorized.", ApiKeyAuthenticationDefaults.EnvironmentVariableName);
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
