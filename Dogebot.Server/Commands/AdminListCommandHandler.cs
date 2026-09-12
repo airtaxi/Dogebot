@@ -47,7 +47,7 @@ public class AdminListCommandHandler(IAdminService adminService, ILogger<AdminLi
             string? currentRoom = null;
             int totalCount = 0;
 
-            foreach (var (roomName, senderName, senderHash, addedAt) in admins)
+            foreach (var (roomName, senderName, _, addedAt) in admins)
             {
                 if (currentRoom != roomName)
                 {
@@ -60,7 +60,6 @@ public class AdminListCommandHandler(IAdminService adminService, ILogger<AdminLi
 
                 var addedDate = DateTimeOffset.FromUnixTimeSeconds(addedAt).ToLocalTime();
                 messageBuilder.AppendLine($"• {senderName}");
-                messageBuilder.AppendLine($"  Hash: {senderHash[..16]}...");
                 messageBuilder.AppendLine($"  등록일: {addedDate:yyyy-MM-dd HH:mm}");
                 
                 totalCount++;
