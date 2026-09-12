@@ -17,8 +17,7 @@ public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory co
     {
         var data = notification.Data;
 
-        if (logger.IsEnabled(LogLevel.Information))
-            logger.LogInformation("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", data.RoomName, data.SenderName, data.Content);
+        if (logger.IsEnabled(LogLevel.Debug)) logger.LogDebug("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", data.RoomName, data.SenderName, data.Content);
 
         // Record message statistics
         await chatStatisticsService.RecordMessageAsync(data);

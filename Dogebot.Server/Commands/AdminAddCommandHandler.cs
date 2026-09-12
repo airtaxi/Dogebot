@@ -22,8 +22,7 @@ public class AdminAddCommandHandler(IAdminService adminService, ILogger<AdminAdd
             {
                 var approvalCode = await adminService.CreateApprovalCodeAsync(data.SenderHash, data.SenderName, data.RoomId, data.RoomName);
 
-                if (logger.IsEnabled(LogLevel.Information))
-                    logger.LogInformation("[ADMIN_ADD] {Sender} requested admin approval code: {Code}", data.SenderName, approvalCode);
+                if (logger.IsEnabled(LogLevel.Debug)) logger.LogDebug("[ADMIN_ADD] {Sender} requested admin approval code: {Code}", data.SenderName, approvalCode);
 
                 return new ServerResponse
                 {
@@ -70,8 +69,7 @@ public class AdminAddCommandHandler(IAdminService adminService, ILogger<AdminAdd
                     };
                 }
 
-                if (logger.IsEnabled(LogLevel.Warning))
-                    logger.LogWarning("[ADMIN_ADD] Code {Code} approved by {Sender}", code, data.SenderName);
+                if (logger.IsEnabled(LogLevel.Debug)) logger.LogDebug("[ADMIN_ADD] Code {Code} approved by {Sender}", code, data.SenderName);
 
                 return new ServerResponse
                 {

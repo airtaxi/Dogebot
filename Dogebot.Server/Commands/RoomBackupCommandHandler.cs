@@ -28,8 +28,7 @@ public class RoomBackupCommandHandler(IRoomMigrationService roomMigrationService
 
             var code = await roomMigrationService.CreateMigrationCodeAsync(data.RoomId, data.RoomName, data.SenderHash, data.SenderName);
 
-            if (logger.IsEnabled(LogLevel.Warning))
-                logger.LogWarning("[ROOM_BACKUP] Migration code {Code} created for room {RoomName} by {Sender}", code, data.RoomName, data.SenderName);
+            if (logger.IsEnabled(LogLevel.Debug)) logger.LogDebug("[ROOM_BACKUP] Migration code {Code} created for room {RoomName} by {Sender}", code, data.RoomName, data.SenderName);
 
             return new ServerResponse
             {

@@ -54,8 +54,7 @@ public class RoomRestoreCommandHandler(IRoomMigrationService roomMigrationServic
                 };
             }
 
-            if (logger.IsEnabled(LogLevel.Warning))
-                logger.LogWarning("[ROOM_RESTORE] Room data restored from {SourceRoom} to {TargetRoom} ({Count} documents) by {Sender}", result.SourceRoomName, data.RoomName, result.TotalDocumentsMigrated, data.SenderName);
+            if (logger.IsEnabled(LogLevel.Debug)) logger.LogDebug("[ROOM_RESTORE] Room data restored from {SourceRoom} to {TargetRoom} ({Count} documents) by {Sender}", result.SourceRoomName, data.RoomName, result.TotalDocumentsMigrated, data.SenderName);
 
             return new ServerResponse
             {
