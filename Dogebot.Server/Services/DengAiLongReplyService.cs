@@ -69,28 +69,37 @@ public class DengAiLongReplyService : IDengAiLongReplyService, IDengAiCallableSe
     {
         if (string.IsNullOrWhiteSpace(_baseUrl)) return null;
 
-        var sha512Hash = ComputeHash(SHA512.HashData(Encoding.UTF8.GetBytes(content)));
+        var sha512Bytes = SHA512.HashData(Encoding.UTF8.GetBytes(content));
+        var sha512Hash = ComputeHash(sha512Bytes);
         var existing = await _longReplies.Find(reply => reply.Id == sha512Hash).FirstOrDefaultAsync();
         if (existing is not null) return BuildUrl(existing.UrlHash);
 
-        var urlHash = ComputeHash(MD5.HashData(Encoding.UTF8.GetBytes(sha512Hash)));
-        var longReply = new DengAiLongReply
+        var maximumAttemptCount = sha512Bytes.Length / DengAiLongReplyUrlHash.ByteLength;
+        for (var attempt = 0; attempt < maximumAttemptCount; attempt++)
         {
-            Id = sha512Hash,
-            UrlHash = urlHash,
-            Content = content,
-            ExpireAt = DateTime.UtcNow.Add(s_retentionPeriod)
-        };
+            var urlHash = DengAiLongReplyUrlHash.Create(sha512Bytes, attempt);
+            var longReply = new DengAiLongReply
+            {
+                Id = sha512Hash,
+                UrlHash = urlHash,
+                Content = content,
+                ExpireAt = DateTime.UtcNow.Add(s_retentionPeriod)
+            };
 
-        try { await _longReplies.InsertOneAsync(longReply); }
-        catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
-        {
-            // A concurrent request already stored the same reply.
-            var concurrent = await _longReplies.Find(reply => reply.UrlHash == urlHash).FirstOrDefaultAsync();
-            if (concurrent is not null) return BuildUrl(concurrent.UrlHash);
+            try { await _longReplies.InsertOneAsync(longReply); }
+            catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+            {
+                // A concurrent request may have stored the same reply. If not, the short url hash collided with another reply, so retry with the next slice.
+                var concurrent = await _longReplies.Find(reply => reply.Id == sha512Hash).FirstOrDefaultAsync();
+                if (concurrent is not null) return BuildUrl(concurrent.UrlHash);
+                continue;
+            }
+
+            return BuildUrl(urlHash);
         }
 
-        return BuildUrl(urlHash);
+        _logger.LogError("[DENG_AI_LINK] Failed to allocate a unique url hash for a long reply after {AttemptCount} attempts", maximumAttemptCount);
+        return null;
     }
 
     public async Task<string?> GetContentByUrlHashAsync(string urlHash)
