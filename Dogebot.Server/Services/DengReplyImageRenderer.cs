@@ -8,7 +8,7 @@ public class DengReplyImageRenderer : IDengReplyImageRenderer
 {
     private const string FontFileName = "SUIT-Variable.ttf";
     private const string Ellipsis = "…";
-    private const int MaximumPreviewCharacterCount = 250;
+    private const int MaximumPreviewCharacterCount = 200;
     private const int WordBoundarySearchLength = 24;
     private const int ImageWidth = 1200;
     private const int ImageHeight = 630;
@@ -21,6 +21,7 @@ public class DengReplyImageRenderer : IDengReplyImageRenderer
     private const float MinimumFontSize = 26f;
     private const float FontSizeStep = 2f;
     private const float LineHeightMultiplier = 1.42f;
+    private const float BlankLineHeightDivisor = 3f;
     private const float FontWeight = 600f;
     private static readonly SKColor s_borderColor = new(0x00, 0x80, 0x80);
     private static readonly SKColor s_cardColor = SKColors.White;
@@ -72,13 +73,13 @@ public class DengReplyImageRenderer : IDengReplyImageRenderer
 
         var metrics = font.Metrics;
         var lineHeight = fontSize * LineHeightMultiplier;
-        var textBlockHeight = (lines.Count - 1) * lineHeight + (metrics.Descent - metrics.Ascent);
+        var textBlockHeight = MeasureTextBlockHeight(lines, lineHeight, metrics);
         var baseline = cardRect.MidY - textBlockHeight / 2 - metrics.Ascent;
 
         foreach (var line in lines)
         {
-            canvas.DrawText(line, cardRect.MidX, baseline, SKTextAlign.Center, font, textPaint);
-            baseline += lineHeight;
+            if (line.Length > 0) canvas.DrawText(line, cardRect.MidX, baseline, SKTextAlign.Center, font, textPaint);
+            baseline += GetBaselineAdvance(line, lineHeight);
         }
     }
 
@@ -88,19 +89,42 @@ public class DengReplyImageRenderer : IDengReplyImageRenderer
         {
             using var candidateFont = new SKFont(typeface, candidateFontSize);
             var candidateLines = WrapText(text, candidateFont, availableWidth);
-            var candidateMetrics = candidateFont.Metrics;
-            var candidateHeight = (candidateLines.Count - 1) * candidateFontSize * LineHeightMultiplier + (candidateMetrics.Descent - candidateMetrics.Ascent);
+            var candidateLineHeight = candidateFontSize * LineHeightMultiplier;
+            var candidateHeight = MeasureTextBlockHeight(candidateLines, candidateLineHeight, candidateFont.Metrics);
             if (candidateHeight <= availableHeight) return (candidateFontSize, candidateLines);
         }
 
         using var minimumFont = new SKFont(typeface, MinimumFontSize);
-        var minimumMetrics = minimumFont.Metrics;
-        var minimumGlyphHeight = minimumMetrics.Descent - minimumMetrics.Ascent;
         var minimumLineHeight = MinimumFontSize * LineHeightMultiplier;
-        var maximumLineCount = Math.Max(1, (int)((availableHeight - minimumGlyphHeight) / minimumLineHeight) + 1);
         var minimumLines = WrapText(text, minimumFont, availableWidth);
+        var maximumLineCount = GetFittingLineCount(minimumLines, minimumLineHeight, minimumFont.Metrics, availableHeight);
         return (MinimumFontSize, TruncateLines(minimumLines, maximumLineCount, minimumFont, availableWidth));
     }
+
+    private static float MeasureTextBlockHeight(List<string> lines, float lineHeight, SKFontMetrics metrics)
+    {
+        var textBlockHeight = metrics.Descent - metrics.Ascent;
+        for (var lineIndex = 0; lineIndex < lines.Count - 1; lineIndex++) textBlockHeight += GetBaselineAdvance(lines[lineIndex], lineHeight);
+        return textBlockHeight;
+    }
+
+    private static int GetFittingLineCount(List<string> lines, float lineHeight, SKFontMetrics metrics, float availableHeight)
+    {
+        var availableAdvanceHeight = availableHeight - (metrics.Descent - metrics.Ascent);
+        var accumulatedHeight = 0f;
+        var lineCount = 1;
+        while (lineCount < lines.Count)
+        {
+            var baselineAdvance = GetBaselineAdvance(lines[lineCount - 1], lineHeight);
+            if (accumulatedHeight + baselineAdvance > availableAdvanceHeight) break;
+            accumulatedHeight += baselineAdvance;
+            lineCount++;
+        }
+
+        return lineCount;
+    }
+
+    private static float GetBaselineAdvance(string line, float lineHeight) => line.Length == 0 ? lineHeight / BlankLineHeightDivisor : lineHeight;
 
     private static List<string> WrapText(string text, SKFont font, float maximumWidth)
     {
@@ -108,12 +132,6 @@ public class DengReplyImageRenderer : IDengReplyImageRenderer
 
         foreach (var paragraph in text.Split('\n'))
         {
-            if (paragraph.Length == 0)
-            {
-                lines.Add(string.Empty);
-                continue;
-            }
-
             var currentLine = string.Empty;
 
             foreach (var word in paragraph.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
@@ -154,6 +172,7 @@ public class DengReplyImageRenderer : IDengReplyImageRenderer
             }
 
             if (currentLine.Length > 0) lines.Add(currentLine);
+            else lines.Add(string.Empty);
         }
 
         return lines;
@@ -179,15 +198,14 @@ public class DengReplyImageRenderer : IDengReplyImageRenderer
 
     private static string PrepareText(string content, SKFont font)
     {
-        var normalizedText = content.ReplaceLineEndings("\n").Replace('\t', ' ').Trim();
+        var normalizedText = content.ReplaceLineEndings("\n").Trim();
         var preparedText = new StringBuilder(normalizedText.Length);
 
         foreach (var rune in normalizedText.EnumerateRunes())
         {
-            if (IsPrintableGlyph(font, rune))
-            {
-                preparedText.Append(rune.ToString());
-            }
+            if (rune.Value == '\n') preparedText.Append('\n');
+            else if (rune.Value == '\t') preparedText.Append(' ');
+            else if (font.ContainsGlyph(rune.Value)) preparedText.Append(rune.ToString());
         }
 
         return TruncateForPreview(preparedText.ToString());
@@ -200,13 +218,10 @@ public class DengReplyImageRenderer : IDengReplyImageRenderer
 
         var cutIndex = textElementIndexes[MaximumPreviewCharacterCount];
         var previewText = text[..cutIndex];
-        var lastWhitespaceIndex = previewText.LastIndexOf(' ');
-        if (lastWhitespaceIndex >= 0 && cutIndex - lastWhitespaceIndex <= WordBoundarySearchLength) previewText = previewText[..lastWhitespaceIndex];
+        var lastBoundaryIndex = previewText.LastIndexOfAny([' ', '\n']);
+        if (lastBoundaryIndex >= 0 && cutIndex - lastBoundaryIndex <= WordBoundarySearchLength) previewText = previewText[..lastBoundaryIndex];
         return $"{previewText.TrimEnd()}{Ellipsis}";
     }
-
-    private static bool IsPrintableGlyph(SKFont font, Rune rune) =>
-        rune.Value == '\n' || font.ContainsGlyph(rune.Value);
 
     private SKTypeface? GetTypeface()
     {
