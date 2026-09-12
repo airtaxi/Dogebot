@@ -108,6 +108,8 @@ public class DengAiLongReplyService : IDengAiLongReplyService, IDengAiCallableSe
         return longReply?.Content;
     }
 
+    public string? GetReplyUrl(string urlHash) => string.IsNullOrWhiteSpace(_baseUrl) ? null : BuildUrl(urlHash);
+
     private string BuildUrl(string urlHash) => $"{_baseUrl}/deng/{urlHash}";
 
     private static string ComputeHash(byte[] hashBytes) => Convert.ToHexString(hashBytes).ToLowerInvariant();

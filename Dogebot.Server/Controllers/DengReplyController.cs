@@ -24,7 +24,7 @@ public partial class DengReplyController(IDengAiLongReplyService dengAiLongReply
         var content = await dengAiLongReplyService.GetContentByUrlHashAsync(urlHash);
         if (string.IsNullOrEmpty(content)) return NotFound();
 
-        var pageUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
+        var pageUrl = dengAiLongReplyService.GetReplyUrl(urlHash) ?? $"{Request.Scheme}://{Request.Host}{Request.Path}";
         var template = LoadTemplate();
         var html = template is null ? BuildFallbackHtml(pageUrl, content) : ApplyTemplate(template, pageUrl, content);
         return Content(html, "text/html; charset=utf-8");
