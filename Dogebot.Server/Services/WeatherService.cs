@@ -21,7 +21,7 @@ public class WeatherService(IHttpClientFactory httpClientFactory, IConfiguration
             var encodedCityName = Uri.EscapeDataString(cityName);
             
             // First, try searching in Korea only
-            var koreaUrl = $"http://api.openweathermap.org/geo/1.0/direct?q={encodedCityName},KR&limit=5&appid={_apiKey}";
+            var koreaUrl = $"https://api.openweathermap.org/geo/1.0/direct?q={encodedCityName},KR&limit=5&appid={_apiKey}";
             var koreaResult = await TryGetGeocodingResultAsync(koreaUrl, cityName);
             
             if (koreaResult != null)
@@ -32,7 +32,7 @@ public class WeatherService(IHttpClientFactory httpClientFactory, IConfiguration
 
             // Fallback to global search
             logger.LogInformation("[WEATHER] No result found in Korea, falling back to global search for {CityName}", cityName);
-            var globalUrl = $"http://api.openweathermap.org/geo/1.0/direct?q={encodedCityName}&limit=5&appid={_apiKey}";
+            var globalUrl = $"https://api.openweathermap.org/geo/1.0/direct?q={encodedCityName}&limit=5&appid={_apiKey}";
             return await TryGetGeocodingResultAsync(globalUrl, cityName);
         }
         catch (Exception ex)
