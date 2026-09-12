@@ -8,7 +8,7 @@ public class DengReplyImageRenderer : IDengReplyImageRenderer
 {
     private const string FontFileName = "SUIT-Variable.ttf";
     private const string Ellipsis = "…";
-    private const int MaximumPreviewCharacterCount = 200;
+    private const int MaximumPreviewCharacterCount = 150;
     private const int WordBoundarySearchLength = 24;
     private const int ImageWidth = 1200;
     private const int ImageHeight = 630;
@@ -21,7 +21,7 @@ public class DengReplyImageRenderer : IDengReplyImageRenderer
     private const float MinimumFontSize = 26f;
     private const float FontSizeStep = 2f;
     private const float LineHeightMultiplier = 1.42f;
-    private const float BlankLineHeightDivisor = 3f;
+    private const float BlankLineHeightDivisor = 2f;
     private const float FontWeight = 600f;
     private static readonly SKColor s_borderColor = new(0x00, 0x80, 0x80);
     private static readonly SKColor s_cardColor = SKColors.White;
