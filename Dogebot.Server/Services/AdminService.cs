@@ -5,16 +5,20 @@ namespace Dogebot.Server.Services;
 
 public class AdminService : IAdminService
 {
+    private const string ChiefAdminHashEnvironmentVariableName = "DOGEBOT_CHIEF_ADMIN_HASH";
+
     private readonly IMongoCollection<AdminUser> _adminUsers;
     private readonly IMongoCollection<AdminApprovalCode> _approvalCodes;
     private readonly Random _random = new();
 
-    public string ChiefAdminHash => "***REMOVED***";
+    public string ChiefAdminHash { get; }
 
-    public AdminService(IMongoDbService mongoDbService)
+    public AdminService(IMongoDbService mongoDbService, ILogger<AdminService> logger)
     {
         _adminUsers = mongoDbService.Database.GetCollection<AdminUser>("adminUsers");
         _approvalCodes = mongoDbService.Database.GetCollection<AdminApprovalCode>("adminApprovalCodes");
+        ChiefAdminHash = Environment.GetEnvironmentVariable(ChiefAdminHashEnvironmentVariableName)?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(ChiefAdminHash)) logger.LogError("[ADMIN] Chief admin hash is not configured. Required environment variable: {EnvironmentVariableName}", ChiefAdminHashEnvironmentVariableName);
         CreateIndexes();
     }
 
