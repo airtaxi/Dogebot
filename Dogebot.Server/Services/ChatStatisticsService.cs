@@ -8,6 +8,9 @@ namespace Dogebot.Server.Services;
 
 public class ChatStatisticsService : IChatStatisticsService
 {
+    private const int MaximumStatisticsContentLength = 2000;
+    private const int MaximumWordCountPerMessage = 100;
+
     private readonly IMongoCollection<ChatStatistics> _chatStatistics;
     private readonly IMongoCollection<MessageContent> _messageContents;
     private readonly IMongoCollection<RoomRankingSettings> _roomRankingSettings;
@@ -114,8 +117,8 @@ public class ChatStatisticsService : IChatStatisticsService
         var monthlyUpdate = Builders<MonthlyChatStatistics>.Update.Inc(x => x.MessageCount, 1);
         await _monthlyChatStatistics.UpdateOneAsync(monthlyFilter, monthlyUpdate, new UpdateOptions { IsUpsert = true });
 
-        // Only record message content if enabled for this room
-        if (await IsMessageContentEnabledAsync(data.RoomId))
+        // Only record message content if enabled for this room and the message stays within the statistics size limits
+        if (await IsMessageContentEnabledAsync(data.RoomId) && data.Content.Length <= MaximumStatisticsContentLength)
         {
             var normalizedContent = NormalizeMessageContent(data.Content);
             var messageContentFilter = Builders<MessageContent>.Filter.And(Builders<MessageContent>.Filter.Eq(x => x.RoomId, data.RoomId), Builders<MessageContent>.Filter.Eq(x => x.Content, normalizedContent));
@@ -131,7 +134,8 @@ public class ChatStatisticsService : IChatStatisticsService
                 .Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
                 .Where(w => w.Length >= 2)
                 .Select(w => NormalizeMessageContent(w.ToLowerInvariant()))
-                .Distinct();
+                .Distinct()
+                .Take(MaximumWordCountPerMessage);
 
             foreach (var word in words)
             {

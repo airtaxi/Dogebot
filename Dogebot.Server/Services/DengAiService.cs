@@ -18,6 +18,7 @@ public partial class DengAiService : IDengAiService
     private const string ProviderAllowFallbacksEnvironmentVariableName = "DOGEBOT_DENG_AI_PROVIDER_ALLOW_FALLBACKS";
     private const string ReasoningEffortEnvironmentVariableName = "DOGEBOT_DENG_AI_REASONING_EFFORT";
     private const int MaximumResponseCharacterCount = 800;
+    private const int MaximumRoomMessageCharacterCount = 800;
     private const int MaximumRoomMessageCount = 8;
     private const int MaximumOutputTokenCount = 2000;
     private const int MaximumToolCallLoopCount = 10;
@@ -146,6 +147,8 @@ public partial class DengAiService : IDengAiService
         if (!IsConfigured || string.IsNullOrWhiteSpace(roomId)) return;
         if (MessageBlacklist.IsBlacklisted(content, senderName)) return;
 
+        content = TrimToMaximumCharacters(content, MaximumRoomMessageCharacterCount);
+
         var now = DateTimeOffset.UtcNow;
         lock (_roomMessageLock)
         {
@@ -261,7 +264,7 @@ public partial class DengAiService : IDengAiService
             return null;
         }
 
-        return TrimToMaximumCharacters(reply);
+        return TrimToMaximumCharacters(reply, MaximumResponseCharacterCount);
     }
 
     private static string RemoveKnownMarkdownSyntax(string message)
@@ -483,12 +486,12 @@ public partial class DengAiService : IDengAiService
         }
     }
 
-    private static string TrimToMaximumCharacters(string message)
+    private static string TrimToMaximumCharacters(string message, int maximumCharacterCount)
     {
         var textElementIndexes = StringInfo.ParseCombiningCharacters(message);
-        if (textElementIndexes.Length <= MaximumResponseCharacterCount) return message;
+        if (textElementIndexes.Length <= maximumCharacterCount) return message;
 
-        return message[..textElementIndexes[MaximumResponseCharacterCount]];
+        return message[..textElementIndexes[maximumCharacterCount]];
     }
 
     private sealed record DengAiRoomMessage(string SenderName, string Content, DateTimeOffset CreatedAt);
