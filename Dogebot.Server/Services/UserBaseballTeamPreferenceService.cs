@@ -9,7 +9,7 @@ public class UserBaseballTeamPreferenceService : IUserBaseballTeamPreferenceServ
     private readonly IChatStatisticsService _chatStatisticsService;
     private readonly ILogger<UserBaseballTeamPreferenceService> _logger;
 
-    public UserBaseballTeamPreferenceService(IMongoDbService mongoDbService,  IChatStatisticsService chatStatisticsService, ILogger<UserBaseballTeamPreferenceService> logger)
+    public UserBaseballTeamPreferenceService(IMongoDbService mongoDbService, IChatStatisticsService chatStatisticsService, ILogger<UserBaseballTeamPreferenceService> logger)
     {
         _preferences = mongoDbService.Database.GetCollection<UserBaseballTeamPreference>("userBaseballTeamPreferences");
         _chatStatisticsService = chatStatisticsService;
@@ -75,6 +75,21 @@ public class UserBaseballTeamPreferenceService : IUserBaseballTeamPreferenceServ
             _logger.LogInformation("[USER_BASEBALL_TEAM] Updated preferred team for user {SenderHash} to {TeamName}", senderHash, teamName);
         }
         catch (Exception exception) { _logger.LogError(exception, "[USER_BASEBALL_TEAM] Error setting preferred team for user {SenderHash}", senderHash); }
+    }
+
+    public async Task<string?> RemoveUserPreferredTeamAsync(string senderHash)
+    {
+        try
+        {
+            var filter = Builders<UserBaseballTeamPreference>.Filter.Eq(x => x.SenderHash, senderHash);
+            var removedPreference = await _preferences.FindOneAndDeleteAsync(filter);
+
+            if (removedPreference is null) return null;
+
+            _logger.LogInformation("[USER_BASEBALL_TEAM] Removed preferred team {TeamName} for user {SenderHash}", removedPreference.TeamName, senderHash);
+            return removedPreference.TeamName;
+        }
+        catch (Exception exception) { _logger.LogError(exception, "[USER_BASEBALL_TEAM] Error removing preferred team for user {SenderHash}", senderHash); }
     }
 
     #region Deng AI callable service

@@ -255,6 +255,8 @@ builder.Services.AddSingleton<ICommandHandler, BaseballCrowdRankingCommandHandle
 builder.Services.AddSingleton<ICommandHandler, BaseballNewsCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballGameScheduleCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballGameSubscriptionCommandHandler>();
+// ⚠️ Must be registered before BaseballTeamPreferenceCommandHandler, because !야구팀등록해제 also starts with !야구팀등록
+builder.Services.AddSingleton<ICommandHandler, BaseballTeamPreferenceRemoveCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, BaseballTeamPreferenceCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, WordRankCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, ScheduledMessageSetCommandHandler>();
@@ -294,7 +296,7 @@ using (var scope = app.Services.CreateScope())
     var cleanupService = scope.ServiceProvider.GetRequiredService<MessageCleanupService>();
     var adminService = scope.ServiceProvider.GetRequiredService<IAdminService>();
     var requestLimitService = scope.ServiceProvider.GetRequiredService<IRequestLimitService>();
-    
+
     // Run database migrations
     try
     {
