@@ -2,7 +2,7 @@
 
 public static class BaseballTeamAliasCatalog
 {
-    public static IReadOnlyList<BaseballTeamAliasDefinition> TeamAliasDefinitions { get; } =
+    public static IReadOnlyList<BaseballTeamAliasDefinition> KboTeamAliasDefinitions { get; } =
     [
         new("LG", ["LG", "엘지", "트윈스", "엘지트윈스", "LGTwins", "쥐", "꼴쥐", "잠실의주인"]),
         new("롯데", ["롯데", "자이언츠", "롯데자이언츠", "LotteGiants", "꼴데", "봄데", "갈매기", "데"]),
@@ -16,10 +16,19 @@ public static class BaseballTeamAliasCatalog
         new("키움", ["키움", "히어로즈", "키움히어로즈", "KiwoomHeroes", "겆", "거지"])
     ];
 
+    public static IReadOnlyList<BaseballTeamAliasDefinition> NationalTeamAliasDefinitions { get; } =
+    [
+        new("대한민국", ["대한민국", "한국", "코리아"])
+    ];
+
+    public static IReadOnlyList<BaseballTeamAliasDefinition> AllTeamAliasDefinitions { get; } = [.. KboTeamAliasDefinitions, .. NationalTeamAliasDefinitions];
+
     public static IReadOnlyList<string> GetSearchAliases(string officialTeamName)
     {
-        var teamAliasDefinition = TeamAliasDefinitions.FirstOrDefault(teamAliasDefinition => teamAliasDefinition.OfficialTeamName.Equals(officialTeamName, StringComparison.OrdinalIgnoreCase));
+        var teamAliasDefinition = AllTeamAliasDefinitions.FirstOrDefault(teamAliasDefinition => teamAliasDefinition.OfficialTeamName.Equals(officialTeamName, StringComparison.OrdinalIgnoreCase));
         return teamAliasDefinition?.SearchAliases ?? [officialTeamName];
     }
-}
 
+    public static bool IsKboTeamName(string teamName) =>
+        KboTeamAliasDefinitions.Any(teamAliasDefinition => teamAliasDefinition.OfficialTeamName.Equals(teamName, StringComparison.OrdinalIgnoreCase));
+}

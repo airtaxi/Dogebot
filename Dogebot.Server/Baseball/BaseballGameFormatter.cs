@@ -13,12 +13,12 @@ public static class BaseballGameFormatter
         var gameDateText = gameSnapshot.GameDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         if (gameSnapshot.GameSummaries.Count == 0)
         {
-            var noGameMessageText = gameSnapshot.GameDate < GetTodayKoreanDate() ? $"{dayLabel} 진행된 KBO 경기가 없습니다." : $"{dayLabel} 예정된 KBO 경기가 없습니다.";
-            return $"⚾ {dayLabel} KBO 경기 ({gameDateText})\n\n{noGameMessageText}";
+            var noGameMessageText = gameSnapshot.GameDate < GetTodayKoreanDate() ? $"{dayLabel} 진행된 야구 경기가 없습니다." : $"{dayLabel} 예정된 야구 경기가 없습니다.";
+            return $"⚾ {dayLabel} 야구 경기 ({gameDateText})\n\n{noGameMessageText}";
         }
 
         var stringBuilder = new StringBuilder();
-        stringBuilder.AppendLine($"⚾ {dayLabel} KBO 경기 ({gameDateText})");
+        stringBuilder.AppendLine($"⚾ {dayLabel} 야구 경기 ({gameDateText})");
         stringBuilder.AppendLine();
 
         for (var gameIndex = 0; gameIndex < gameSnapshot.GameSummaries.Count; gameIndex++)

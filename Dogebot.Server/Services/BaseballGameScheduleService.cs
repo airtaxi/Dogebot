@@ -10,6 +10,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
 {
     private const string BaseballGameListApiAddress = "https://issue.daum.net/api/arms/SPORTS_GAME_LIST";
     private const string BaseballGameDetailApiAddress = "https://issue.daum.net/api/arms/SPORTS_GAME";
+    private const string BaseballGameLeagueCodes = "kbo,kbnt";
     private const string DaumSportsUserAgentValue = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0";
     private static readonly TimeSpan s_cacheDuration = TimeSpan.FromSeconds(30);
     private static readonly Lock s_gameSnapshotCacheLock = new();
@@ -68,14 +69,14 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
         try
         {
             var dateText = targetDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-            var requestAddress = $"{BaseballGameListApiAddress}?leagueCode=kbo&seasonKey={targetDate.Year}&fromDate={dateText}&toDate={dateText}&detail=true";
+            var requestAddress = $"{BaseballGameListApiAddress}?leagueCode={BaseballGameLeagueCodes}&seasonKey={targetDate.Year}&fromDate={dateText}&toDate={dateText}&detail=true";
             var responseContent = await FetchApiContentAsync(requestAddress);
             if (string.IsNullOrWhiteSpace(responseContent)) return null;
 
             var responsePayload = JsonSerializer.Deserialize<BaseballGameListResponsePayload>(responseContent, s_jsonSerializerOptions);
             if (responsePayload?.Document?.Games == null || responsePayload.ResponseCode != 200)
             {
-                SetLastGameScheduleErrorDetails($"{dayLabel} KBO 경기 목록 응답 파싱에 실패했습니다.", Environment.StackTrace, $"RequestAddress: {requestAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
+                SetLastGameScheduleErrorDetails($"{dayLabel} 경기 목록 응답 파싱에 실패했습니다.", Environment.StackTrace, $"RequestAddress: {requestAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
                 logger.LogError("[BASEBALL_SCHEDULE] Failed to parse {DayLabel} game list response", dayLabel);
                 return null;
             }
@@ -120,7 +121,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
             var responsePayload = JsonSerializer.Deserialize<BaseballGameDetailResponsePayload>(responseContent, s_jsonSerializerOptions);
             if (responsePayload?.Game == null || responsePayload.ResponseCode != 200)
             {
-                SetLastGameScheduleErrorDetails($"{dayLabel} KBO 경기 상세 응답 파싱에 실패했습니다.", Environment.StackTrace, $"RequestAddress: {requestAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
+                SetLastGameScheduleErrorDetails($"{dayLabel} 경기 상세 응답 파싱에 실패했습니다.", Environment.StackTrace, $"RequestAddress: {requestAddress}\nResponsePreview:\n{BuildContentPreview(responseContent, 1000)}");
                 logger.LogError("[BASEBALL_SCHEDULE] Failed to parse {DayLabel} game detail response for {GameId}", dayLabel, gameId);
                 return null;
             }
@@ -316,11 +317,11 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
 
     IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
     [
-        new("get_baseball_schedule", "Get KBO game schedule for today, tomorrow, or a yyyy-MM-dd date.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        new("get_baseball_schedule", "Get the KBO and Korean national team game schedule for today, tomorrow, or a yyyy-MM-dd date.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
         {
             ["date"] = DengAiJsonSchemaProperty.String("Allowed values: today, tomorrow, or yyyy-MM-dd. Defaults to today.")
         })),
-        new("get_baseball_game_detail", "Get KBO game detail by game id for today, tomorrow, or a yyyy-MM-dd date.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        new("get_baseball_game_detail", "Get KBO or Korean national team game detail by game id for today, tomorrow, or a yyyy-MM-dd date.", DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
         {
             ["date"] = DengAiJsonSchemaProperty.String("Allowed values: today, tomorrow, or yyyy-MM-dd. Defaults to today."),
             ["gameId"] = DengAiJsonSchemaProperty.Integer("Game id from get_baseball_schedule.")
@@ -334,7 +335,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
 
         return toolName switch
         {
-            "get_baseball_schedule" => DengAiToolJson.SerializeOrMessage(await GetGameSnapshotAsync(dateParseResult.TargetDate), "KBO 경기 일정을 가져오지 못했습니다."),
+            "get_baseball_schedule" => DengAiToolJson.SerializeOrMessage(await GetGameSnapshotAsync(dateParseResult.TargetDate), "야구 경기 일정을 가져오지 못했습니다."),
             "get_baseball_game_detail" => await CreateGameDetailToolResultAsync(arguments, dateParseResult.TargetDate),
             _ => "Unknown baseball schedule tool."
         };
@@ -346,7 +347,7 @@ public class BaseballGameScheduleService(IHttpClientFactory httpClientFactory, I
         if (!gameId.HasValue) return "gameId is required.";
 
         var gameDetail = await GetGameDetailAsync(targetDate, gameId.Value);
-        return gameDetail == null ? DengAiToolJson.Serialize(new { Message = "KBO 경기 상세 정보를 가져오지 못했습니다.", GameId = gameId.Value }) : DengAiToolJson.Serialize(gameDetail);
+        return gameDetail == null ? DengAiToolJson.Serialize(new { Message = "야구 경기 상세 정보를 가져오지 못했습니다.", GameId = gameId.Value }) : DengAiToolJson.Serialize(gameDetail);
     }
 
     private static BaseballToolDateParseResult TryParseToolDate(string? dateText)
