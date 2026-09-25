@@ -89,7 +89,11 @@ public class UserBaseballTeamPreferenceService : IUserBaseballTeamPreferenceServ
             _logger.LogInformation("[USER_BASEBALL_TEAM] Removed preferred team {TeamName} for user {SenderHash}", removedPreference.TeamName, senderHash);
             return removedPreference.TeamName;
         }
-        catch (Exception exception) { _logger.LogError(exception, "[USER_BASEBALL_TEAM] Error removing preferred team for user {SenderHash}", senderHash); }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "[USER_BASEBALL_TEAM] Error removing preferred team for user {SenderHash}", senderHash);
+            return null;
+        }
     }
 
     #region Deng AI callable service
