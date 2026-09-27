@@ -33,22 +33,13 @@ public class AdminAddCommandHandler(IAdminService adminService, ILogger<AdminAdd
                              $"⏰ 10분 이내에 최고 관리자의 개인톡에서\n" +
                              $"!관리추가 {approvalCode}\n" +
                              $"를 입력하여 승인받으세요.\n\n" +
-                             $"⚠️ RoomId마다 SenderHash가 다르므로,\n" +
-                             $"반드시 개인톡에서 입력해주세요!"
+                             $"⚠️ 관리자 권한은 요청자의 신원(SenderHash)에 연결됩니다."
                 };
             }
 
             if (parts.Length == 2)
             {
-                if (data.SenderHash != adminService.ChiefAdminHash)
-                {
-                    return new ServerResponse
-                    {
-                        Action = "send_text",
-                        RoomId = data.RoomId,
-                        Message = "⛔ 권한이 없습니다. 최고 관리자만 승인할 수 있습니다."
-                    };
-                }
+                if (!adminService.IsChiefAdmin(data.SenderHash)) return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = "⛔ 권한이 없습니다. 최고 관리자만 승인할 수 있습니다." };
 
                 var code = parts[1];
                 var approved = await adminService.ApproveAdminAsync(code, data.SenderHash);

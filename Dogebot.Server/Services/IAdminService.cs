@@ -2,7 +2,7 @@ namespace Dogebot.Server.Services;
 
 public interface IAdminService
 {
-    string ChiefAdminHash { get; }
+    bool IsChiefAdmin(string senderHash);
     Task<bool> IsAdminAsync(string senderHash);
     Task<string> CreateApprovalCodeAsync(string senderHash, string senderName, string roomId, string roomName);
     Task<bool> ApproveAdminAsync(string code, string approverHash);

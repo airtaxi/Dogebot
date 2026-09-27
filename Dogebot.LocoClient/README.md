@@ -43,6 +43,13 @@ $env:DOGEBOT_API_KEY = "your-api-key"
 dotnet run --project .\Dogebot.LocoClient\Dogebot.LocoClient.csproj
 ```
 
+## 신원(senderHash) 처리
+
+- 브리지는 kakao-cli가 전달한 LOCO 계정 ID(`senderId`)를 `senderHash`로 보내고, `isLoco`를 `true`로 표시합니다. 이 값은 방이 달라도 동일한 계정 전역 값입니다.
+- `Dogebot.Server`는 `(roomId, senderName)` 기준으로 canonical 신원을 관리합니다. 모바일 알림 해시로 먼저 등록된 신원은 임시 canonical이 되고, 같은 방과 이름으로 LOCO 계정 ID가 관측되면 기존 해시 데이터가 canonical로 병합됩니다.
+- 따라서 `Dogebot.MobileClient`로 돌아가도 같은 방과 이름이면 기존 canonical 신원으로 이어집니다. 로코가 아직 관측하지 못한 방은 다음 관측 시점에 병합됩니다.
+- `senderId`가 비어 있는 메시지는 잘못된 신원으로 기록되지 않도록 건너뜁니다.
+
 ## 주의사항
 
 - kakao-cli 0.1.7 API에는 읽음 처리 엔드포인트가 없습니다. 다만 현재 `Dogebot.Server` 코드는 `read` 액션을 발행하지 않으므로 동작에는 영향이 없습니다.

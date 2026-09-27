@@ -16,15 +16,7 @@ public class AdminRemoveCommandHandler(IAdminService adminService, ILogger<Admin
     {
         try
         {
-            if (data.SenderHash != adminService.ChiefAdminHash)
-            {
-                return new ServerResponse
-                {
-                    Action = "send_text",
-                    RoomId = data.RoomId,
-                    Message = "⛔ 권한이 없습니다. 최고 관리자만 제거할 수 있습니다."
-                };
-            }
+            if (!adminService.IsChiefAdmin(data.SenderHash)) return new ServerResponse { Action = "send_text", RoomId = data.RoomId, Message = "⛔ 권한이 없습니다. 최고 관리자만 제거할 수 있습니다." };
 
             var parts = data.Content.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 

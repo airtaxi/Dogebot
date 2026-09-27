@@ -99,6 +99,12 @@ public class LocoBridgeService(ILocoCliApiClient cliApiClient, IDogebotServerApi
     {
         if (message.IsMine) return;
 
+        if (string.IsNullOrWhiteSpace(message.SenderId))
+        {
+            logger.LogWarning("[LOCO_NOTIFY] Skipped a message with an empty sender id. room={RoomId}", message.RoomId);
+            return;
+        }
+
         var roomName = room?.Name ?? (_rooms.TryGetValue(message.RoomId, out var cachedRoom) ? cachedRoom.Name : message.RoomId);
         logger.LogInformation("[LOCO_NOTIFY] Room: {RoomName} / Sender: {SenderName} / Content: {Content}", roomName, message.Nickname, message.Text);
 
@@ -184,6 +190,7 @@ public class LocoBridgeService(ILocoCliApiClient cliApiClient, IDogebotServerApi
     private static KakaoMessageData MapToKakaoMessageData(LocoRoomMessage message, string roomName) => new()
     {
         Source = KakaoMessageData.KakaoSource,
+        IsLoco = true,
         RoomName = roomName,
         RoomId = message.RoomId,
         SenderHash = message.SenderId,

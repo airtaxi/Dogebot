@@ -102,6 +102,10 @@ builder.Services.AddSingleton<IScheduledMessageService, ScheduledMessageService>
 // Register Room Migration service
 builder.Services.AddSingleton<IRoomMigrationService, RoomMigrationService>();
 
+// Register user identity services
+builder.Services.AddSingleton<IUserIdentityMergeService, UserIdentityMergeService>();
+builder.Services.AddSingleton<IIdentityResolutionService, IdentityResolutionService>();
+
 // Register IMAX Notification service
 builder.Services.AddSingleton<ImaxNotificationService>();
 builder.Services.AddSingleton<IImaxNotificationService>(serviceProvider => serviceProvider.GetRequiredService<ImaxNotificationService>());

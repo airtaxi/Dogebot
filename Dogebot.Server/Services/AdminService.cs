@@ -9,18 +9,23 @@ public class AdminService : IAdminService
 
     private readonly IMongoCollection<AdminUser> _adminUsers;
     private readonly IMongoCollection<AdminApprovalCode> _approvalCodes;
+    private readonly HashSet<string> _chiefAdminHashes = [];
     private readonly Random _random = new();
-
-    public string ChiefAdminHash { get; }
 
     public AdminService(IMongoDbService mongoDbService, ILogger<AdminService> logger)
     {
         _adminUsers = mongoDbService.Database.GetCollection<AdminUser>("adminUsers");
         _approvalCodes = mongoDbService.Database.GetCollection<AdminApprovalCode>("adminApprovalCodes");
-        ChiefAdminHash = Environment.GetEnvironmentVariable(ChiefAdminHashEnvironmentVariableName)?.Trim() ?? string.Empty;
-        if (string.IsNullOrEmpty(ChiefAdminHash)) logger.LogError("[ADMIN] Chief admin hash is not configured. Required environment variable: {EnvironmentVariableName}", ChiefAdminHashEnvironmentVariableName);
+
+        // The variable accepts multiple hashes separated by commas so both the LOCO account id and legacy mobile hashes can stay chief admins.
+        var configuredChiefAdminHashes = Environment.GetEnvironmentVariable(ChiefAdminHashEnvironmentVariableName) ?? string.Empty;
+        foreach (var chiefAdminHash in configuredChiefAdminHashes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) _chiefAdminHashes.Add(chiefAdminHash);
+
+        if (_chiefAdminHashes.Count == 0) logger.LogError("[ADMIN] Chief admin hash is not configured. Required environment variable: {EnvironmentVariableName}", ChiefAdminHashEnvironmentVariableName);
         CreateIndexes();
     }
+
+    public bool IsChiefAdmin(string senderHash) => _chiefAdminHashes.Contains(senderHash);
 
     private void CreateIndexes()
     {
@@ -35,8 +40,7 @@ public class AdminService : IAdminService
 
     public async Task<bool> IsAdminAsync(string senderHash)
     {
-        if (senderHash == ChiefAdminHash)
-            return true;
+        if (IsChiefAdmin(senderHash)) return true;
 
         var filter = Builders<AdminUser>.Filter.Eq(x => x.SenderHash, senderHash);
         return await _adminUsers.Find(filter).AnyAsync();
@@ -66,8 +70,7 @@ public class AdminService : IAdminService
 
     public async Task<bool> ApproveAdminAsync(string code, string approverHash)
     {
-        if (approverHash != ChiefAdminHash)
-            return false;
+        if (!IsChiefAdmin(approverHash)) return false;
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var filter = Builders<AdminApprovalCode>.Filter.And(Builders<AdminApprovalCode>.Filter.Eq(x => x.Code, code), Builders<AdminApprovalCode>.Filter.Gt(x => x.ExpiresAt, now));
@@ -76,8 +79,7 @@ public class AdminService : IAdminService
         if (approvalCode == null)
             return false;
 
-        if (approvalCode.SenderHash == ChiefAdminHash)
-            return false;
+        if (IsChiefAdmin(approvalCode.SenderHash)) return false;
 
         var adminUser = new AdminUser
         {
@@ -105,11 +107,9 @@ public class AdminService : IAdminService
 
     public async Task<bool> RemoveAdminAsync(string senderHash, string removerHash)
     {
-        if (removerHash != ChiefAdminHash)
-            return false;
+        if (!IsChiefAdmin(removerHash)) return false;
 
-        if (senderHash == ChiefAdminHash)
-            return false;
+        if (IsChiefAdmin(senderHash)) return false;
 
         var filter = Builders<AdminUser>.Filter.Eq(x => x.SenderHash, senderHash);
         var result = await _adminUsers.DeleteOneAsync(filter);
@@ -120,7 +120,7 @@ public class AdminService : IAdminService
     {
         var sort = Builders<AdminUser>.Sort.Ascending(x => x.RoomName).Ascending(x => x.SenderName);
         var admins = await _adminUsers.Find(FilterDefinition<AdminUser>.Empty).Sort(sort).ToListAsync();
-        
+
         return admins.Select(a => (a.RoomName, a.SenderName, a.SenderHash, a.AddedAt)).ToList();
     }
 

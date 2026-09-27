@@ -126,6 +126,12 @@ Clients must send the same value in the `X-API-Key` header: enter it in the mobi
 
 When `DOGEBOT_API_KEY` is not set, the server fails closed and rejects every protected request with `401 Unauthorized`. The public `/deng/*` share pages remain accessible without a key.
 
+The chief admin is configured separately through the `DOGEBOT_CHIEF_ADMIN_HASH` environment variable. It accepts a comma-separated list of sender hashes (the value shown by `!정보`), so both the LOCO account id and legacy mobile notification hashes can stay chief admins:
+
+```powershell
+$env:DOGEBOT_CHIEF_ADMIN_HASH = "loco-account-id,mobile-notification-hash"
+```
+
 ### 4. Configure MongoDB (Optional)
 If you want to use statistics features, configure MongoDB connection in `Dogebot.Server\appsettings.json`:
 ```json

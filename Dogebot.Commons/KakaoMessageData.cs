@@ -10,6 +10,9 @@ public class KakaoMessageData
     [JsonPropertyName("source")]
     public string Source { get; set; } = string.Empty;
 
+    [JsonPropertyName("isLoco")]
+    public bool IsLoco { get; set; }
+
     [JsonPropertyName("roomName")]
     public string RoomName { get; set; } = string.Empty;
 

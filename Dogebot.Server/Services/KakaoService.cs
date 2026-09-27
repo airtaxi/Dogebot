@@ -7,7 +7,7 @@ namespace Dogebot.Server.Services;
 /// <summary>
 /// Service implementation that handles bot logic.
 /// </summary>
-public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory commandHandlerFactory, IChatStatisticsService chatStatisticsService, IRequestLimitService requestLimitService, IScheduledMessageService scheduledMessageService, IImaxNotificationService imaxNotificationService, IBaseballGameSubscriptionService baseballGameSubscriptionService, IBotSettingService botSettingService, DebugLogService debugLogService, IDengAiService dengAiService) : IKakaoService
+public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory commandHandlerFactory, IChatStatisticsService chatStatisticsService, IIdentityResolutionService identityResolutionService, IRequestLimitService requestLimitService, IScheduledMessageService scheduledMessageService, IImaxNotificationService imaxNotificationService, IBaseballGameSubscriptionService baseballGameSubscriptionService, IBotSettingService botSettingService, DebugLogService debugLogService, IDengAiService dengAiService) : IKakaoService
 {
 
     /// <summary>
@@ -16,6 +16,9 @@ public class KakaoService(ILogger<KakaoService> logger, CommandHandlerFactory co
     public async Task<ServerResponse> HandleNotificationAsync(ServerNotification notification)
     {
         var data = notification.Data;
+
+        // Resolve the canonical sender identity and merge legacy sender hashes when a client link is discovered.
+        data.SenderHash = await identityResolutionService.ResolveSenderHashAsync(data);
 
         if (logger.IsEnabled(LogLevel.Debug)) logger.LogDebug("[NOTIFY] Received from Room: {RoomName}, Sender: {SenderName}, Content: {Content}", data.RoomName, data.SenderName, data.Content);
 
