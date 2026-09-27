@@ -7,6 +7,7 @@ namespace Dogebot.Server.Models;
 /// Stores the canonical sender identity for a room and sender name pair.
 /// A mobile notification hash is registered as a provisional canonical and is replaced
 /// by the LOCO account id once the LOCO bridge observes the same sender in the room.
+/// Known identity values are recorded together so messages keep resolving after a nickname change.
 /// </summary>
 public class IdentityCanonical
 {
@@ -22,6 +23,9 @@ public class IdentityCanonical
 
     [BsonElement("canonicalValue")]
     public string CanonicalValue { get; set; } = string.Empty;
+
+    [BsonElement("knownValues")]
+    public List<string> KnownValues { get; set; } = [];
 
     [BsonElement("isLoco")]
     public bool IsLoco { get; set; }
