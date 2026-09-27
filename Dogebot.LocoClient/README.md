@@ -45,9 +45,9 @@ dotnet run --project .\Dogebot.LocoClient\Dogebot.LocoClient.csproj
 
 ## 신원(senderHash) 처리
 
-- 브리지는 kakao-cli가 전달한 LOCO 계정 ID(`senderId`)를 `senderHash`로 보내고, `isLoco`를 `true`로 표시합니다. 이 값은 방이 달라도 동일한 계정 전역 값입니다.
-- `Dogebot.Server`는 `(roomId, senderName)` 기준으로 canonical 신원을 관리합니다. 모바일 알림 해시로 먼저 등록된 신원은 임시 canonical이 되고, 같은 방과 이름으로 LOCO 계정 ID가 관측되면 기존 해시 데이터가 canonical로 병합됩니다. 이때 연결된 신원 값(모바일 해시·LOCO ID)은 canonical에 함께 기록됩니다.
-- 신원을 조회할 때는 기록된 값이 이름보다 먼저 확인됩니다. 따라서 닉네임이 바뀌어도 값이 그대로면 같은 canonical로 이어지고, 닉네임 변경도 canonical에 반영됩니다. 다만 로코가 아직 관측하지 못한 방이나 연결 전에 닉네임과 해시가 동시에 바뀐 경우는 자동으로 연결되지 않습니다.
+- 브리지는 kakao-cli가 전달한 LOCO 계정 ID(`senderId`)를 `senderHash`로 보냅니다. 이 값은 방이 달라도 동일한 계정 전역 값입니다.
+- `Dogebot.Server`는 메시지를 기록하기 전에 해시를 해석합니다. 방에 아직 없는 완전히 새로운 해시는 같은 이름의 기존 문서(가장 최근 활동) 해시로 자동 마이그레이션됩니다.
+- 따라서 `Dogebot.MobileClient`와 오가도 같은 방·같은 이름이면 같은 신원으로 기록됩니다. 같은 방에 같은 이름이 여러 명이면 가장 최근에 활동한 문서로 해석되며, 닉네임과 해시가 동시에 바뀐 경우는 자동으로 연결되지 않습니다.
 - `senderId`가 비어 있는 메시지는 잘못된 신원으로 기록되지 않도록 건너뜁니다.
 
 ## 주의사항

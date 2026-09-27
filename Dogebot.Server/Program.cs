@@ -104,7 +104,7 @@ builder.Services.AddSingleton<IRoomMigrationService, RoomMigrationService>();
 
 // Register user identity services
 builder.Services.AddSingleton<IUserIdentityMergeService, UserIdentityMergeService>();
-builder.Services.AddSingleton<IIdentityResolutionService, IdentityResolutionService>();
+builder.Services.AddSingleton<ISenderHashResolutionService, SenderHashResolutionService>();
 
 // Register IMAX Notification service
 builder.Services.AddSingleton<ImaxNotificationService>();

@@ -82,7 +82,6 @@ public class RoomMigrationService : IRoomMigrationService
         totalMigrated += await UpdateRoomIdAsync<RoomRequestLimit>("roomRequestLimits", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<UserDailyRequest>("userDailyRequests", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<RoomMentionUsage>("roomMentionUsages", sourceRoomId, targetRoomId);
-        totalMigrated += await UpdateRoomIdAsync<IdentityCanonical>("identityCanonicals", sourceRoomId, targetRoomId);
         totalMigrated += await UpdateRoomIdAsync<ImaxNotification>("imaxNotifications", sourceRoomId, targetRoomId);
 
         // Also update roomName in settings/limits that store it

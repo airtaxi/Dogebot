@@ -4,8 +4,8 @@ using MongoDB.Driver;
 namespace Dogebot.Server.Services;
 
 /// <summary>
-/// Merges records that reference an old sender identity into the canonical identity.
-/// Room-scoped statistics are merged per room, while preferences and audit fields are merged globally.
+/// Merges room-scoped records that reference an old sender identity into the new identity.
+/// Used when a room migration changes the sender hashes of the room members.
 /// </summary>
 public class UserIdentityMergeService : IUserIdentityMergeService
 {
@@ -16,13 +16,6 @@ public class UserIdentityMergeService : IUserIdentityMergeService
     {
         _database = mongoDbService.Database;
         _logger = logger;
-    }
-
-    public async Task MergeAsync(string roomId, string oldSenderHash, string newSenderHash)
-    {
-        await MergeRoomScopedAsync(roomId, oldSenderHash, newSenderHash);
-        await MergeDailyRequestCountsAsync(roomId, oldSenderHash, newSenderHash);
-        await MergeGlobalAsync(oldSenderHash, newSenderHash);
     }
 
     public async Task MergeRoomScopedAsync(string roomId, string oldSenderHash, string newSenderHash)
@@ -43,66 +36,6 @@ public class UserIdentityMergeService : IUserIdentityMergeService
 
         // roomMentionUsages: keep the latest cooldown when a sender hash changes
         await MergeHashInCollectionAsync("roomMentionUsages", roomId, oldSenderHash, newSenderHash, additionalKeyFields: [], incrementFields: [], maxFields: ["lastUsedAt", "nextAvailableAt"], setFields: ["roomName", "senderName"]);
-    }
-
-    public async Task MergeGlobalAsync(string oldSenderHash, string newSenderHash)
-    {
-        if (oldSenderHash == newSenderHash) return;
-
-        // Preferences and registrations that keep a single document per sender
-        await MergeUniqueSenderHashCollectionAsync("adminUsers", oldSenderHash, newSenderHash);
-        await MergeUniqueSenderHashCollectionAsync("userBaseballTeamPreferences", oldSenderHash, newSenderHash);
-        await MergeUniqueSenderHashCollectionAsync("userWeatherPreferences", oldSenderHash, newSenderHash);
-
-        // Documents keyed by senderHash and a date
-        await MergeHashInCollectionAsync("dailyFortuneRecords", null, oldSenderHash, newSenderHash, additionalKeyFields: ["date"], incrementFields: []);
-        await MergeHashInCollectionAsync("dailyLeaveWorkRecords", null, oldSenderHash, newSenderHash, additionalKeyFields: ["date"], incrementFields: [], setOnInsertFields: ["leaveTimeMinutes"]);
-
-        // References that only record who created or changed a document
-        await UpdateIdentityFieldAsync("adminApprovalCodes", "senderHash", oldSenderHash, newSenderHash);
-        await UpdateIdentityFieldAsync("adminUsers", "addedBy", oldSenderHash, newSenderHash);
-        await UpdateIdentityFieldAsync("scheduledMessages", "createdBy", oldSenderHash, newSenderHash);
-        await UpdateIdentityFieldAsync("baseballGameSubscriptions", "createdBy", oldSenderHash, newSenderHash);
-        await UpdateIdentityFieldAsync("imaxNotifications", "createdBy", oldSenderHash, newSenderHash);
-        await UpdateIdentityFieldAsync("simSimData", "createdBy", oldSenderHash, newSenderHash);
-        await UpdateIdentityFieldAsync("dengAiLongReplySettings", "updatedBy", oldSenderHash, newSenderHash);
-        await UpdateIdentityFieldAsync("botSettings", "updatedBy", oldSenderHash, newSenderHash);
-
-        _logger.LogInformation("[IDENTITY_MERGE] Merged the old sender identity into the canonical identity. old={OldSenderHash}, new={NewSenderHash}", oldSenderHash, newSenderHash);
-    }
-
-    // userDailyRequests: merge daily counters so the request limit keeps counting after a client switch
-    private Task MergeDailyRequestCountsAsync(string roomId, string oldSenderHash, string newSenderHash) => MergeHashInCollectionAsync("userDailyRequests", roomId, oldSenderHash, newSenderHash, additionalKeyFields: ["date"], incrementFields: ["requestCount"], maxFields: ["lastRequestTime"]);
-
-    private async Task MergeUniqueSenderHashCollectionAsync(string collectionName, string oldSenderHash, string newSenderHash)
-    {
-        try
-        {
-            var collection = _database.GetCollection<BsonDocument>(collectionName);
-            var oldFilter = new BsonDocument("senderHash", oldSenderHash);
-            var newFilter = new BsonDocument("senderHash", newSenderHash);
-
-            if (await collection.Find(newFilter).Limit(1).AnyAsync())
-            {
-                await collection.DeleteManyAsync(oldFilter);
-                return;
-            }
-
-            await collection.UpdateManyAsync(oldFilter, new BsonDocument("$set", new BsonDocument("senderHash", newSenderHash)));
-        }
-        catch (Exception exception) { _logger.LogWarning(exception, "[IDENTITY_MERGE] Failed to merge senderHash in {Collection}", collectionName); }
-    }
-
-    private async Task UpdateIdentityFieldAsync(string collectionName, string fieldName, string oldValue, string newValue)
-    {
-        try
-        {
-            var collection = _database.GetCollection<BsonDocument>(collectionName);
-            var filter = new BsonDocument(fieldName, oldValue);
-            var update = new BsonDocument("$set", new BsonDocument(fieldName, newValue));
-            await collection.UpdateManyAsync(filter, update);
-        }
-        catch (Exception exception) { _logger.LogWarning(exception, "[IDENTITY_MERGE] Failed to update {Field} in {Collection}", fieldName, collectionName); }
     }
 
     private async Task MergeHashInCollectionAsync(string collectionName, string? roomId, string oldSenderHash, string newSenderHash, string[] additionalKeyFields, string[] incrementFields, string[]? maxFields = null, string[]? setFields = null, string[]? setOnInsertFields = null)

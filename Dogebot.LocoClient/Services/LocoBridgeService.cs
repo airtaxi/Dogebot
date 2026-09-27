@@ -190,7 +190,6 @@ public class LocoBridgeService(ILocoCliApiClient cliApiClient, IDogebotServerApi
     private static KakaoMessageData MapToKakaoMessageData(LocoRoomMessage message, string roomName) => new()
     {
         Source = KakaoMessageData.KakaoSource,
-        IsLoco = true,
         RoomName = roomName,
         RoomId = message.RoomId,
         SenderHash = message.SenderId,
