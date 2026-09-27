@@ -18,7 +18,7 @@ public static class BaseballTeamAliasCatalog
 
     public static IReadOnlyList<BaseballTeamAliasDefinition> NationalTeamAliasDefinitions { get; } =
     [
-        new("대한민국", ["대한민국", "한국", "코리아"])
+        new("대한민국", ["대한민국", "한국", "코리아", "국가대표", "국가대표팀", "대표팀", "국대"])
     ];
 
     public static IReadOnlyList<BaseballTeamAliasDefinition> AllTeamAliasDefinitions { get; } = [.. KboTeamAliasDefinitions, .. NationalTeamAliasDefinitions];
@@ -31,4 +31,10 @@ public static class BaseballTeamAliasCatalog
 
     public static bool IsKboTeamName(string teamName) =>
         KboTeamAliasDefinitions.Any(teamAliasDefinition => teamAliasDefinition.OfficialTeamName.Equals(teamName, StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsNationalTeamName(string teamName) =>
+        NationalTeamAliasDefinitions.Any(teamAliasDefinition => teamAliasDefinition.OfficialTeamName.Equals(teamName, StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsKnownTeamName(string teamName) =>
+        IsKboTeamName(teamName) || IsNationalTeamName(teamName);
 }

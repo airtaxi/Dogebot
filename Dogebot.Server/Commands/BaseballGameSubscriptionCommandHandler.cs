@@ -9,7 +9,7 @@ public class BaseballGameSubscriptionCommandHandler(IBaseballGameScheduleService
 {
     private const string SubscribeCommand = "!야구구독";
     private const string UnsubscribeCommand = "!야구구독해제";
-    private const string KboOnlySubscriptionMessage = "대표팀 경기는 구독할 수 없습니다. KBO 팀 경기만 구독할 수 있습니다.\n예시: !야구구독 KIA, !야구구독 LG";
+    private const string UnsupportedSubscriptionMessage = "KBO 팀과 대한민국 대표팀 경기만 구독할 수 있습니다.\n예시: !야구구독 KIA, !야구구독 LG, !야구구독 대한민국";
 
     public string Command => SubscribeCommand;
 
@@ -27,7 +27,7 @@ public class BaseballGameSubscriptionCommandHandler(IBaseballGameScheduleService
             if (string.IsNullOrWhiteSpace(teamSearchText))
             {
                 teamSearchText = await userBaseballTeamPreferenceService.GetUserPreferredTeamAsync(data.SenderHash) ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(teamSearchText)) return CreateTextResponse(data.RoomId, $"사용법: {commandContext.Command} [팀명]\n예시: {commandContext.Command} KIA\n또는 !야구팀등록으로 응원팀을 먼저 등록해주세요.");
+                if (string.IsNullOrWhiteSpace(teamSearchText)) return CreateTextResponse(data.RoomId, $"사용법: {commandContext.Command} [팀명]\n예시: {commandContext.Command} KIA, {commandContext.Command} 대한민국\n또는 !야구팀등록으로 응원팀을 먼저 등록해주세요.");
             }
 
             if (commandContext.IsUnsubscribe) return await HandleUnsubscribeAsync(data, teamSearchText);
@@ -85,7 +85,7 @@ public class BaseballGameSubscriptionCommandHandler(IBaseballGameScheduleService
             return CreateMultipleMatchResult(teamSearchText, todayMatches);
 
         var todayMatch = todayMatches.FirstOrDefault();
-        if (todayMatch is not null && !IsKboGame(todayMatch)) return BaseballGameSubscriptionSelectionResult.CreateFailure(KboOnlySubscriptionMessage);
+        if (todayMatch is not null && !IsSubscriptionSupportedGame(todayMatch)) return BaseballGameSubscriptionSelectionResult.CreateFailure(UnsupportedSubscriptionMessage);
         if (todayMatch is not null && !BaseballGameFormatter.IsFinishedOrUnavailableGame(todayMatch))
             return BaseballGameSubscriptionSelectionResult.CreateSuccess(todaySnapshot.GameDate, todayMatch);
 
@@ -100,7 +100,7 @@ public class BaseballGameSubscriptionCommandHandler(IBaseballGameScheduleService
             return CreateMultipleMatchResult(teamSearchText, tomorrowMatches);
         if (tomorrowMatches.Count == 1)
         {
-            if (!IsKboGame(tomorrowMatches[0])) return BaseballGameSubscriptionSelectionResult.CreateFailure(KboOnlySubscriptionMessage);
+            if (!IsSubscriptionSupportedGame(tomorrowMatches[0])) return BaseballGameSubscriptionSelectionResult.CreateFailure(UnsupportedSubscriptionMessage);
             return BaseballGameSubscriptionSelectionResult.CreateSuccess(tomorrowSnapshot.GameDate, tomorrowMatches[0]);
         }
 
@@ -116,8 +116,8 @@ public class BaseballGameSubscriptionCommandHandler(IBaseballGameScheduleService
         return BaseballGameSubscriptionSelectionResult.CreateFailure($"'{teamSearchText}' 검색 결과가 여러 경기와 일치합니다: {matchedGameDescriptions}\n더 구체적으로 입력해주세요.");
     }
 
-    private static bool IsKboGame(BaseballGameScheduleSummary gameSummary) =>
-        BaseballTeamAliasCatalog.IsKboTeamName(gameSummary.HomeParticipant.Team.ShortName) || BaseballTeamAliasCatalog.IsKboTeamName(gameSummary.AwayParticipant.Team.ShortName);
+    private static bool IsSubscriptionSupportedGame(BaseballGameScheduleSummary gameSummary) =>
+        BaseballTeamAliasCatalog.IsKnownTeamName(gameSummary.HomeParticipant.Team.ShortName) || BaseballTeamAliasCatalog.IsKnownTeamName(gameSummary.AwayParticipant.Team.ShortName);
 
     private static BaseballGameSubscriptionCommandContext? TryCreateCommandContext(string content)
     {
