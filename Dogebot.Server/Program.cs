@@ -105,6 +105,7 @@ builder.Services.AddSingleton<IRoomMigrationService, RoomMigrationService>();
 // Register user identity services
 builder.Services.AddSingleton<IUserIdentityMergeService, UserIdentityMergeService>();
 builder.Services.AddSingleton<ISenderHashResolutionService, SenderHashResolutionService>();
+builder.Services.AddSingleton<IUserIdentityLinkService, UserIdentityLinkService>();
 
 // Register IMAX Notification service
 builder.Services.AddSingleton<ImaxNotificationService>();
@@ -236,6 +237,7 @@ builder.Services.AddSingleton<ICommandHandler, ChoiceCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, AdminAddCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, AdminRemoveCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, AdminListCommandHandler>();
+builder.Services.AddSingleton<ICommandHandler, IdentityLinkCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, MultiMessageCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SingleMessageCommandHandler>();
 builder.Services.AddSingleton<ICommandHandler, SetRequestLimitCommandHandler>();

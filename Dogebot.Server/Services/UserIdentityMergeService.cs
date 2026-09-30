@@ -5,7 +5,7 @@ namespace Dogebot.Server.Services;
 
 /// <summary>
 /// Merges room-scoped records that reference an old sender identity into the new identity.
-/// Used when a room migration changes the sender hashes of the room members.
+/// Used when a room migration changes the sender hashes of the room members or when an admin links two identities manually.
 /// </summary>
 public class UserIdentityMergeService : IUserIdentityMergeService
 {
@@ -36,6 +36,9 @@ public class UserIdentityMergeService : IUserIdentityMergeService
 
         // roomMentionUsages: keep the latest cooldown when a sender hash changes
         await MergeHashInCollectionAsync("roomMentionUsages", roomId, oldSenderHash, newSenderHash, additionalKeyFields: [], incrementFields: [], maxFields: ["lastUsedAt", "nextAvailableAt"], setFields: ["roomName", "senderName"]);
+
+        // userDailyRequests: merge daily counters so the request limit keeps counting after an identity change
+        await MergeHashInCollectionAsync("userDailyRequests", roomId, oldSenderHash, newSenderHash, additionalKeyFields: ["date"], incrementFields: ["requestCount"], maxFields: ["lastRequestTime"]);
     }
 
     private async Task MergeHashInCollectionAsync(string collectionName, string? roomId, string oldSenderHash, string newSenderHash, string[] additionalKeyFields, string[] incrementFields, string[]? maxFields = null, string[]? setFields = null, string[]? setOnInsertFields = null)
