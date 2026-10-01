@@ -5,8 +5,6 @@ namespace Dogebot.Server.Commands;
 
 public class RankingCommandHandler(IChatStatisticsService statisticsService, ILogger<RankingCommandHandler> logger) : ICommandHandler
 {
-    private const string WordJoiner = "\u2060";
-
     public string Command => "!랭킹";
 
     public bool CanHandle(string content)
@@ -22,8 +20,7 @@ public class RankingCommandHandler(IChatStatisticsService statisticsService, ILo
             var parts = data.Content.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var limit = 10;
 
-            if (parts.Length > 1 && int.TryParse(parts[1], out var parsedLimit))
-                limit = Math.Max(1, Math.Min(parsedLimit, 50));
+            if (parts.Length > 1 && int.TryParse(parts[1], out var parsedLimit)) limit = Math.Max(1, Math.Min(parsedLimit, 50));
 
             var topUsers = await statisticsService.GetTopUsersAsync(data.RoomId, limit);
 
@@ -37,29 +34,15 @@ public class RankingCommandHandler(IChatStatisticsService statisticsService, ILo
                 };
             }
 
-            var message = $"📊 채팅 랭킹 TOP {limit}\n\n";
-            for (var index = 0; index < topUsers.Count; index++)
-            {
-                var (senderName, messageCount) = topUsers[index];
-                var medal = index switch
-                {
-                    0 => "🥇",
-                    1 => "🥈",
-                    2 => "🥉",
-                    _ => $"{index + 1}."
-                };
+            var message = RankingMessageFormatter.FormatUserRanking($"📊 채팅 랭킹 TOP {limit}", topUsers);
 
-                message += $"{medal} {InsertWordJoiners(senderName)}: {messageCount:N0}회\n";
-            }
-
-            if (logger.IsEnabled(LogLevel.Information))
-                logger.LogInformation("[RANKING] Showing top {Limit} users for room {RoomId}", limit, data.RoomId);
+            if (logger.IsEnabled(LogLevel.Information)) logger.LogInformation("[RANKING] Showing top {Limit} users for room {RoomId}", limit, data.RoomId);
 
             return new ServerResponse
             {
                 Action = "send_text",
                 RoomId = data.RoomId,
-                Message = message.TrimEnd()
+                Message = message
             };
         }
         catch (Exception exception)
@@ -73,7 +56,4 @@ public class RankingCommandHandler(IChatStatisticsService statisticsService, ILo
             };
         }
     }
-
-    private static string InsertWordJoiners(string value) =>
-        value.Length <= 1 ? value : string.Join(WordJoiner, value.Select(character => character.ToString()));
 }

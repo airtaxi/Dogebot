@@ -59,6 +59,13 @@ public class ChatStatisticsService : IChatStatisticsService
         var hourlyStatsIndexModel = new CreateIndexModel<HourlyChatStatistics>(hourlyStatsIndexKeys, new CreateIndexOptions { Unique = true });
         _hourlyChatStatistics.Indexes.CreateOne(hourlyStatsIndexModel);
 
+        // Range queries for rolling period rankings filter by room and dateTime only.
+        var hourlyPeriodIndexKeys = Builders<HourlyChatStatistics>.IndexKeys
+            .Ascending(x => x.RoomId)
+            .Ascending(x => x.DateTime);
+        var hourlyPeriodIndexModel = new CreateIndexModel<HourlyChatStatistics>(hourlyPeriodIndexKeys);
+        _hourlyChatStatistics.Indexes.CreateOne(hourlyPeriodIndexModel);
+
         var dailyStatsIndexKeys = Builders<DailyChatStatistics>.IndexKeys
             .Ascending(x => x.RoomId)
             .Ascending(x => x.SenderHash)
@@ -216,6 +223,67 @@ public class ChatStatisticsService : IChatStatisticsService
             return null;
 
         return (userIndex + 1, allUsers[userIndex].MessageCount);
+    }
+
+    public async Task<List<(string SenderName, long MessageCount)>> GetTopUsersByPeriodAsync(string roomId, DateTimeOffset fromUtc, DateTimeOffset toUtc, int limit = 10)
+    {
+        var rankedUsers = await GetRankedUsersByPeriodAsync(roomId, fromUtc, toUtc, limit);
+        if (rankedUsers.Count == 0) return [];
+
+        var senderNamesByHash = await GetSenderNamesByHashesAsync(roomId, [.. rankedUsers.Select(user => user.SenderHash)]);
+
+        return [.. rankedUsers.Select(user => (senderNamesByHash.GetValueOrDefault(user.SenderHash, user.SenderHash), user.MessageCount))];
+    }
+
+    public async Task<(int Rank, long MessageCount)?> GetUserRankByPeriodAsync(string roomId, string senderHash, DateTimeOffset fromUtc, DateTimeOffset toUtc)
+    {
+        var rankedUsers = await GetRankedUsersByPeriodAsync(roomId, fromUtc, toUtc, null);
+
+        var userIndex = rankedUsers.FindIndex(user => user.SenderHash == senderHash);
+        if (userIndex == -1) return null;
+
+        return (userIndex + 1, rankedUsers[userIndex].MessageCount);
+    }
+
+    /// <summary>
+    /// Aggregates per-user message counts within the UTC time range from the minute-level records.
+    /// </summary>
+    private async Task<List<(string SenderHash, long MessageCount)>> GetRankedUsersByPeriodAsync(string roomId, DateTimeOffset fromUtc, DateTimeOffset toUtc, int? limit)
+    {
+        var pipelineStages = new List<BsonDocument>
+        {
+            new("$match", new BsonDocument
+            {
+                { "roomId", roomId },
+                { "dateTime", new BsonDocument { { "$gte", new BsonDateTime(fromUtc.ToUnixTimeMilliseconds()) }, { "$lt", new BsonDateTime(toUtc.ToUnixTimeMilliseconds()) } } }
+            }),
+            new("$group", new BsonDocument
+            {
+                { "_id", "$senderHash" },
+                { "messageCount", new BsonDocument("$sum", "$messageCount") }
+            }),
+            new("$sort", new BsonDocument("messageCount", -1))
+        };
+
+        if (limit.HasValue) pipelineStages.Add(new BsonDocument("$limit", limit.Value));
+
+        PipelineDefinition<HourlyChatStatistics, BsonDocument> pipeline = pipelineStages.ToArray();
+        var results = await _hourlyChatStatistics.Aggregate(pipeline).ToListAsync();
+
+        return [.. results.Select(result => (SenderHash: result["_id"].AsString, MessageCount: result["messageCount"].ToInt64()))];
+    }
+
+    private async Task<Dictionary<string, string>> GetSenderNamesByHashesAsync(string roomId, IReadOnlyCollection<string> senderHashes)
+    {
+        if (senderHashes.Count == 0) return [];
+
+        var filter = Builders<ChatStatistics>.Filter.And(Builders<ChatStatistics>.Filter.Eq(x => x.RoomId, roomId), Builders<ChatStatistics>.Filter.In(x => x.SenderHash, senderHashes));
+
+        var users = await _chatStatistics.Find(filter).ToListAsync();
+
+        return users
+            .GroupBy(user => user.SenderHash)
+            .ToDictionary(group => group.Key, group => group.First().SenderName);
     }
 
     public async Task<List<(string Content, long Count)>> GetTopMessagesAsync(string roomId, int limit = 10)
@@ -438,8 +506,8 @@ public class ChatStatisticsService : IChatStatisticsService
     IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
     [
         new("get_chat_room_statistics", "Get total message count and unique user count for the current chat room.", DengAiJsonSchema.Object()),
-        new("get_chat_user_ranking", "Get message count ranking for users in the current chat room.", CreateRankingSchema()),
-        new("get_chat_my_ranking", "Get the current sender's message count rank in the current chat room.", DengAiJsonSchema.Object()),
+        new("get_chat_user_ranking", "Get message count ranking for users in the current chat room. Supports an optional 'week' (last 7 days) or 'month' (last 28 days) period; omit it for the all-time ranking.", CreateUserRankingSchema()),
+        new("get_chat_my_ranking", "Get the current sender's message count rank in the current chat room. Supports an optional 'week' (last 7 days) or 'month' (last 28 days) period; omit it for the all-time rank.", CreateUserRankingPeriodSchema()),
         new("get_chat_message_ranking", "Get frequent message content ranking in the current chat room.", CreateRankingSchema()),
         new("get_chat_word_ranking", "Get frequent word ranking in the current chat room.", CreateRankingSchema()),
         new("get_chat_hourly_statistics", "Get hourly message statistics for the current chat room or current sender.", CreateStatisticsScopeSchema()),
@@ -453,7 +521,7 @@ public class ChatStatisticsService : IChatStatisticsService
         {
             "get_chat_room_statistics" => await CreateRoomStatisticsToolResultAsync(context),
             "get_chat_user_ranking" => await CreateUserRankingToolResultAsync(arguments, context),
-            "get_chat_my_ranking" => await CreateMyRankingToolResultAsync(context),
+            "get_chat_my_ranking" => await CreateMyRankingToolResultAsync(arguments, context),
             "get_chat_message_ranking" => await CreateMessageRankingToolResultAsync(arguments, context),
             "get_chat_word_ranking" => await CreateWordRankingToolResultAsync(arguments, context),
             "get_chat_hourly_statistics" => await CreateHourlyStatisticsToolResultAsync(arguments, context),
@@ -469,6 +537,22 @@ public class ChatStatisticsService : IChatStatisticsService
             ["limit"] = DengAiJsonSchemaProperty.Integer("Maximum number of ranking rows. Allowed range is 1 to 20.", 1, 20)
         });
 
+    private static DengAiJsonSchema CreateUserRankingSchema() =>
+        DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        {
+            ["limit"] = DengAiJsonSchemaProperty.Integer("Maximum number of ranking rows. Allowed range is 1 to 20.", 1, 20),
+            ["period"] = CreateRankingPeriodProperty()
+        });
+
+    private static DengAiJsonSchema CreateUserRankingPeriodSchema() =>
+        DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
+        {
+            ["period"] = CreateRankingPeriodProperty()
+        });
+
+    private static DengAiJsonSchemaProperty CreateRankingPeriodProperty() =>
+        DengAiJsonSchemaProperty.String("Time window for the ranking. Use 'week' for the last 7 days, 'month' for the last 28 days, or 'all' for the all-time ranking.", ["week", "month", "all"]);
+
     private static DengAiJsonSchema CreateStatisticsScopeSchema() =>
         DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
         {
@@ -477,6 +561,21 @@ public class ChatStatisticsService : IChatStatisticsService
 
     private static int ReadRankingLimit(string arguments) =>
         Math.Clamp(DengAiToolJson.ReadInt32(arguments, "limit") ?? 10, 1, 20);
+
+    /// <summary>
+    /// Resolves the optional 'week' or 'month' ranking period into a UTC range. Returns null for the all-time ranking.
+    /// </summary>
+    private static (DateTimeOffset FromUtc, DateTimeOffset ToUtc)? ResolveRankingPeriod(string arguments)
+    {
+        var toUtc = DateTimeOffset.UtcNow;
+
+        return DengAiToolJson.ReadString(arguments, "period") switch
+        {
+            var period when string.Equals(period, "week", StringComparison.OrdinalIgnoreCase) => (toUtc.AddDays(-7), toUtc),
+            var period when string.Equals(period, "month", StringComparison.OrdinalIgnoreCase) => (toUtc.AddDays(-28), toUtc),
+            _ => null
+        };
+    }
 
     private static bool IsMeScope(string arguments) =>
         string.Equals(DengAiToolJson.ReadString(arguments, "scope"), "me", StringComparison.OrdinalIgnoreCase);
@@ -489,13 +588,18 @@ public class ChatStatisticsService : IChatStatisticsService
 
     private async Task<string> CreateUserRankingToolResultAsync(string arguments, DengAiToolContext context)
     {
-        var rankings = await GetTopUsersAsync(context.RoomId, ReadRankingLimit(arguments));
+        var limit = ReadRankingLimit(arguments);
+        var period = ResolveRankingPeriod(arguments);
+        var rankings = period.HasValue ? await GetTopUsersByPeriodAsync(context.RoomId, period.Value.FromUtc, period.Value.ToUtc, limit) : await GetTopUsersAsync(context.RoomId, limit);
+
         return DengAiToolJson.Serialize(rankings.Select(ranking => new { ranking.SenderName, ranking.MessageCount }).ToList());
     }
 
-    private async Task<string> CreateMyRankingToolResultAsync(DengAiToolContext context)
+    private async Task<string> CreateMyRankingToolResultAsync(string arguments, DengAiToolContext context)
     {
-        var ranking = await GetUserRankAsync(context.RoomId, context.SenderHash);
+        var period = ResolveRankingPeriod(arguments);
+        var ranking = period.HasValue ? await GetUserRankByPeriodAsync(context.RoomId, context.SenderHash, period.Value.FromUtc, period.Value.ToUtc) : await GetUserRankAsync(context.RoomId, context.SenderHash);
+
         return ranking.HasValue ? DengAiToolJson.Serialize(new { ranking.Value.Rank, ranking.Value.MessageCount }) : DengAiToolJson.Serialize(new { Message = "현재 사용자의 랭킹을 찾지 못했습니다." });
     }
 

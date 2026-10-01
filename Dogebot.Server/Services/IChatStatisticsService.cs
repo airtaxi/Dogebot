@@ -9,6 +9,14 @@ public interface IChatStatisticsService : IDengAiCallableService
     Task<List<string>> GetSenderHashesByNameAsync(string roomId, string senderName);
     Task<List<(string SenderName, long MessageCount)>> GetTopUsersAsync(string roomId, int limit = 10);
     Task<(int Rank, long MessageCount)?> GetUserRankAsync(string roomId, string senderHash);
+    /// <summary>
+    /// Gets per-user message counts within the specified UTC time range, ordered by count descending.
+    /// </summary>
+    Task<List<(string SenderName, long MessageCount)>> GetTopUsersByPeriodAsync(string roomId, DateTimeOffset fromUtc, DateTimeOffset toUtc, int limit = 10);
+    /// <summary>
+    /// Gets the rank and message count of a specific user within the specified UTC time range.
+    /// </summary>
+    Task<(int Rank, long MessageCount)?> GetUserRankByPeriodAsync(string roomId, string senderHash, DateTimeOffset fromUtc, DateTimeOffset toUtc);
     Task<List<(string Content, long Count)>> GetTopMessagesAsync(string roomId, int limit = 10);
     Task<List<(string Word, long Count)>> GetTopWordsAsync(string roomId, int limit = 10);
     Task<(long TotalMessages, int UniqueUsers)> GetRoomStatisticsAsync(string roomId);
