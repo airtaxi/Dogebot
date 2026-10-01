@@ -13,6 +13,17 @@ namespace Dogebot.Server.Services;
 /// </summary>
 public class SenderHashResolutionService : ISenderHashResolutionService
 {
+    // Placeholder names clients use when a sender name cannot be resolved.
+    // Merging by these names would collapse unrelated senders into a single identity, so they are excluded below.
+    private static readonly HashSet<string> s_placeholderSenderNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "(알 수 없음)",
+        "알 수 없음",
+        "알수없음",
+        "Unknown",
+        "(Unknown)",
+    };
+
     private readonly IMongoCollection<ChatStatistics> _chatStatistics;
     private readonly ILogger<SenderHashResolutionService> _logger;
 
@@ -29,6 +40,9 @@ public class SenderHashResolutionService : ISenderHashResolutionService
         var senderName = data.SenderName.Trim();
 
         if (roomId.Length == 0 || senderName.Length == 0 || incomingSenderHash.Length == 0) return incomingSenderHash;
+
+        // A placeholder name is not a real nickname, so it is never used for name-based migration.
+        if (s_placeholderSenderNames.Contains(senderName)) return incomingSenderHash;
 
         try
         {
