@@ -10,6 +10,7 @@ public class ChatStatisticsService : IChatStatisticsService
 {
     private const int MaximumStatisticsContentLength = 2000;
     private const int MaximumWordCountPerMessage = 100;
+    private const string UnknownSenderName = "(알 수 없음)";
 
     private readonly IMongoCollection<ChatStatistics> _chatStatistics;
     private readonly IMongoCollection<MessageContent> _messageContents;
@@ -232,7 +233,16 @@ public class ChatStatisticsService : IChatStatisticsService
 
         var senderNamesByHash = await GetSenderNamesByHashesAsync(roomId, [.. rankedUsers.Select(user => user.SenderHash)]);
 
-        return [.. rankedUsers.Select(user => (senderNamesByHash.GetValueOrDefault(user.SenderHash, user.SenderHash), user.MessageCount))];
+        return [.. rankedUsers.Select(user => (ResolveSenderName(senderNamesByHash, user.SenderHash), user.MessageCount))];
+    }
+
+    /// <summary>
+    /// Resolves a sender name for the period ranking, falling back to a placeholder when no name document exists.
+    /// </summary>
+    private static string ResolveSenderName(IReadOnlyDictionary<string, string> senderNamesByHash, string senderHash)
+    {
+        var senderName = senderNamesByHash.GetValueOrDefault(senderHash, string.Empty);
+        return string.IsNullOrWhiteSpace(senderName) ? UnknownSenderName : senderName;
     }
 
     public async Task<(int Rank, long MessageCount)?> GetUserRankByPeriodAsync(string roomId, string senderHash, DateTimeOffset fromUtc, DateTimeOffset toUtc)
