@@ -516,8 +516,8 @@ public class ChatStatisticsService : IChatStatisticsService
     IReadOnlyList<DengAiToolDefinition> IDengAiCallableService.GetDengAiTools() =>
     [
         new("get_chat_room_statistics", "Get total message count and unique user count for the current chat room.", DengAiJsonSchema.Object()),
-        new("get_chat_user_ranking", "Get message count ranking for users in the current chat room. Supports an optional 'week' (last 7 days) or 'month' (last 28 days) period; omit it for the all-time ranking.", CreateUserRankingSchema()),
-        new("get_chat_my_ranking", "Get the current sender's message count rank in the current chat room. Supports an optional 'week' (last 7 days) or 'month' (last 28 days) period; omit it for the all-time rank.", CreateUserRankingPeriodSchema()),
+        new("get_chat_user_ranking", "Get message count ranking for users in the current chat room. Supports an optional 'day' (last 1 day), 'week' (last 7 days), or 'month' (last 28 days) period; omit it for the all-time ranking.", CreateUserRankingSchema()),
+        new("get_chat_my_ranking", "Get the current sender's message count rank in the current chat room. Supports an optional 'day' (last 1 day), 'week' (last 7 days), or 'month' (last 28 days) period; omit it for the all-time rank.", CreateUserRankingPeriodSchema()),
         new("get_chat_message_ranking", "Get frequent message content ranking in the current chat room.", CreateRankingSchema()),
         new("get_chat_word_ranking", "Get frequent word ranking in the current chat room.", CreateRankingSchema()),
         new("get_chat_hourly_statistics", "Get hourly message statistics for the current chat room or current sender.", CreateStatisticsScopeSchema()),
@@ -561,7 +561,7 @@ public class ChatStatisticsService : IChatStatisticsService
         });
 
     private static DengAiJsonSchemaProperty CreateRankingPeriodProperty() =>
-        DengAiJsonSchemaProperty.String("Time window for the ranking. Use 'week' for the last 7 days, 'month' for the last 28 days, or 'all' for the all-time ranking.", ["week", "month", "all"]);
+        DengAiJsonSchemaProperty.String("Time window for the ranking. Use 'day' for the last 1 day, 'week' for the last 7 days, 'month' for the last 28 days, or 'all' for the all-time ranking.", ["day", "week", "month", "all"]);
 
     private static DengAiJsonSchema CreateStatisticsScopeSchema() =>
         DengAiJsonSchema.Object(new Dictionary<string, DengAiJsonSchemaProperty>
@@ -581,6 +581,7 @@ public class ChatStatisticsService : IChatStatisticsService
 
         return DengAiToolJson.ReadString(arguments, "period") switch
         {
+            var period when string.Equals(period, "day", StringComparison.OrdinalIgnoreCase) => (toUtc.AddDays(-1), toUtc),
             var period when string.Equals(period, "week", StringComparison.OrdinalIgnoreCase) => (toUtc.AddDays(-7), toUtc),
             var period when string.Equals(period, "month", StringComparison.OrdinalIgnoreCase) => (toUtc.AddDays(-28), toUtc),
             _ => null
